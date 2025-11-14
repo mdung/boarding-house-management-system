@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye } from 'lucide-react'
 
 const Tenants = () => {
+  const navigate = useNavigate()
   const [tenants, setTenants] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -108,7 +110,14 @@ const Tenants = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {tenants.map((tenant) => (
               <tr key={tenant.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{tenant.fullName}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <button
+                    onClick={() => navigate(`/admin/tenants/${tenant.id}/detail`)}
+                    className="text-blue-600 hover:text-blue-900"
+                  >
+                    {tenant.fullName}
+                  </button>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.phone}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.email || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.identityNumber || '-'}</td>
@@ -120,6 +129,9 @@ const Tenants = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button onClick={() => navigate(`/admin/tenants/${tenant.id}/detail`)} className="text-blue-600 hover:text-blue-900 mr-4">
+                    <Eye className="w-4 h-4" />
+                  </button>
                   <button onClick={() => handleEdit(tenant)} className="text-blue-600 hover:text-blue-900 mr-4">
                     <Edit className="w-4 h-4" />
                   </button>

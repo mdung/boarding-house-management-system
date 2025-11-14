@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
-import { Plus, Edit, X } from 'lucide-react'
+import { Plus, Edit, X, Eye } from 'lucide-react'
 
 const Contracts = () => {
+  const navigate = useNavigate()
   const [contracts, setContracts] = useState([])
   const [rooms, setRooms] = useState([])
   const [tenants, setTenants] = useState([])
@@ -96,6 +98,7 @@ const Contracts = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monthly Rent</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -118,6 +121,14 @@ const Contracts = () => {
                   }`}>
                     {contract.status}
                   </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button
+                    onClick={() => navigate(`/admin/contracts/${contract.id}/detail`)}
+                    className="text-blue-600 hover:text-blue-900"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
                 </td>
               </tr>
             ))}

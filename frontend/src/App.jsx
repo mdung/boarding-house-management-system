@@ -15,6 +15,9 @@ import ServiceTypes from './pages/admin/ServiceTypes'
 import RoomServices from './pages/admin/RoomServices'
 import Reports from './pages/admin/Reports'
 import InvoiceDetail from './pages/admin/InvoiceDetail'
+import ContractDetail from './pages/admin/ContractDetail'
+import RoomDetail from './pages/admin/RoomDetail'
+import TenantDetail from './pages/admin/TenantDetail'
 import Profile from './pages/admin/Profile'
 import TenantDashboard from './pages/tenant/Dashboard'
 import TenantInvoices from './pages/tenant/Invoices'
@@ -39,6 +42,9 @@ function App() {
             <Route path="room-services" element={<RoomServices />} />
             <Route path="reports" element={<Reports />} />
             <Route path="invoices/:id/detail" element={<InvoiceDetail />} />
+            <Route path="contracts/:id/detail" element={<ContractDetail />} />
+            <Route path="rooms/:id/detail" element={<RoomDetail />} />
+            <Route path="tenants/:id/detail" element={<TenantDetail />} />
             <Route path="profile" element={<Profile />} />
           </Route>
           <Route path="/tenant" element={<PrivateRoute><TenantLayout /></PrivateRoute>}>

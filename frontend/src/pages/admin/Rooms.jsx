@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye } from 'lucide-react'
 
 const Rooms = () => {
+  const navigate = useNavigate()
   const [rooms, setRooms] = useState([])
   const [houses, setHouses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -122,7 +124,14 @@ const Rooms = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {rooms.map((room) => (
               <tr key={room.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{room.code}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <button
+                    onClick={() => navigate(`/admin/rooms/${room.id}/detail`)}
+                    className="text-blue-600 hover:text-blue-900"
+                  >
+                    {room.code}
+                  </button>
+                </td>
                 <td className="px-6 py-4 text-sm text-gray-500">{room.boardingHouseName}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{room.floor || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{room.area || '-'}</td>
@@ -139,6 +148,9 @@ const Rooms = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button onClick={() => navigate(`/admin/rooms/${room.id}/detail`)} className="text-blue-600 hover:text-blue-900 mr-4">
+                    <Eye className="w-4 h-4" />
+                  </button>
                   <button onClick={() => handleEdit(room)} className="text-blue-600 hover:text-blue-900 mr-4">
                     <Edit className="w-4 h-4" />
                   </button>
