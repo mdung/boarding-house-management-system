@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { ToastProvider } from './context/ToastContext'
 import PrivateRoute from './components/PrivateRoute'
 import Login from './pages/Login'
 import AdminLayout from './layouts/AdminLayout'
@@ -25,8 +26,9 @@ import TenantPayments from './pages/tenant/Payments'
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <ToastProvider>
+      <AuthProvider>
+        <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
@@ -56,7 +58,8 @@ function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </ToastProvider>
   )
 }
 

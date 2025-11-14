@@ -218,6 +218,93 @@ public class InvoiceService {
         return toDto(repository.save(invoice));
     }
 
+    public InvoiceDto previewInvoiceWithReadings(GenerateInvoiceWithReadingsRequest request) {
+        Contract contract = contractRepository.findById(request.getContractId())
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        if (contract.getStatus() != ContractStatus.ACTIVE) {
+            throw new BadRequestException("Cannot generate invoice for non-active contract");
+        }
+
+        // Check if invoice already exists
+        List<Invoice> existing = repository.findByContractIdAndPeriodMonthAndPeriodYear(
+                request.getContractId(), request.getMonth(), request.getYear());
+        if (!existing.isEmpty()) {
+            throw new BadRequestException("Invoice already exists for this period");
+        }
+
+        Invoice invoice = new Invoice();
+        invoice.setCode(generateInvoiceCode(contract.getCode(), request.getMonth(), request.getYear()));
+        invoice.setContract(contract);
+        invoice.setRoom(contract.getRoom());
+        invoice.setPeriodMonth(request.getMonth());
+        invoice.setPeriodYear(request.getYear());
+        invoice.setDueDate(LocalDate.of(request.getYear(), request.getMonth(), 1).plusMonths(1).minusDays(1));
+        invoice.setStatus(PaymentStatus.UNPAID);
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+
+        // Add rent item
+        InvoiceItem rentItem = new InvoiceItem();
+        rentItem.setInvoice(invoice);
+        rentItem.setDescription("Monthly Rent");
+        rentItem.setType(InvoiceItemType.RENT);
+        rentItem.setQuantity(BigDecimal.ONE);
+        rentItem.setUnitPrice(contract.getMonthlyRent());
+        rentItem.setAmount(contract.getMonthlyRent());
+        invoice.getItems().add(rentItem);
+        totalAmount = totalAmount.add(contract.getMonthlyRent());
+
+        // Create a map of readings by service type ID
+        java.util.Map<Long, UtilityReadingDto> readingsMap = request.getReadings().stream()
+                .collect(Collectors.toMap(UtilityReadingDto::getServiceTypeId, r -> r));
+
+        // Add service items with actual readings
+        List<RoomService> roomServices = roomServiceRepository.findByRoomId(contract.getRoom().getId());
+        for (RoomService roomService : roomServices) {
+            InvoiceItem serviceItem = new InvoiceItem();
+            serviceItem.setInvoice(invoice);
+            serviceItem.setDescription(roomService.getServiceType().getName());
+            serviceItem.setType(InvoiceItemType.SERVICE);
+
+            if (roomService.getServiceType().getCategory() == ServiceCategory.FIXED) {
+                BigDecimal price = roomService.getFixedPrice() != null ?
+                        roomService.getFixedPrice() : roomService.getServiceType().getPricePerUnit();
+                serviceItem.setQuantity(BigDecimal.ONE);
+                serviceItem.setUnitPrice(price);
+                serviceItem.setAmount(price);
+                totalAmount = totalAmount.add(price);
+            } else {
+                // For electricity/water, use readings
+                UtilityReadingDto reading = readingsMap.get(roomService.getServiceType().getId());
+                if (reading != null && reading.getOldIndex() != null && reading.getNewIndex() != null) {
+                    BigDecimal consumption = reading.getNewIndex().subtract(reading.getOldIndex());
+                    if (consumption.compareTo(BigDecimal.ZERO) < 0) {
+                        throw new BadRequestException("New index must be greater than or equal to old index for " +
+                                roomService.getServiceType().getName());
+                    }
+                    BigDecimal unitPrice = roomService.getPricePerUnit() != null ?
+                            roomService.getPricePerUnit() : roomService.getServiceType().getPricePerUnit();
+                    BigDecimal amount = consumption.multiply(unitPrice);
+
+                    serviceItem.setOldIndex(reading.getOldIndex());
+                    serviceItem.setNewIndex(reading.getNewIndex());
+                    serviceItem.setQuantity(consumption);
+                    serviceItem.setUnitPrice(unitPrice);
+                    serviceItem.setAmount(amount);
+                    totalAmount = totalAmount.add(amount);
+                } else {
+                    throw new BadRequestException("Reading required for " + roomService.getServiceType().getName());
+                }
+            }
+            invoice.getItems().add(serviceItem);
+        }
+
+        invoice.setTotalAmount(totalAmount);
+        // Don't save, just return preview
+        return toDto(invoice);
+    }
+
     @Transactional
     public void updateInvoiceStatus(Long invoiceId) {
         Invoice invoice = repository.findById(invoiceId)

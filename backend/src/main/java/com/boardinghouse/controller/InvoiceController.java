@@ -42,6 +42,11 @@ public class InvoiceController {
         return new ResponseEntity<>(service.generateInvoice(contractId, month, year), HttpStatus.CREATED);
     }
 
+    @PostMapping("/preview-with-readings")
+    public ResponseEntity<InvoiceDto> previewInvoiceWithReadings(@RequestBody com.boardinghouse.dto.GenerateInvoiceWithReadingsRequest request) {
+        return ResponseEntity.ok(service.previewInvoiceWithReadings(request));
+    }
+
     @PostMapping("/generate-with-readings")
     public ResponseEntity<InvoiceDto> generateInvoiceWithReadings(@RequestBody com.boardinghouse.dto.GenerateInvoiceWithReadingsRequest request) {
         return new ResponseEntity<>(service.generateInvoiceWithReadings(request), HttpStatus.CREATED);
