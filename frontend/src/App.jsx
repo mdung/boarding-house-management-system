@@ -11,6 +11,9 @@ import Tenants from './pages/admin/Tenants'
 import Contracts from './pages/admin/Contracts'
 import Invoices from './pages/admin/Invoices'
 import Payments from './pages/admin/Payments'
+import ServiceTypes from './pages/admin/ServiceTypes'
+import RoomServices from './pages/admin/RoomServices'
+import Reports from './pages/admin/Reports'
 import TenantDashboard from './pages/tenant/Dashboard'
 import TenantInvoices from './pages/tenant/Invoices'
 import TenantPayments from './pages/tenant/Payments'
@@ -30,6 +33,9 @@ function App() {
             <Route path="contracts" element={<Contracts />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="payments" element={<Payments />} />
+            <Route path="service-types" element={<ServiceTypes />} />
+            <Route path="room-services" element={<RoomServices />} />
+            <Route path="reports" element={<Reports />} />
           </Route>
           <Route path="/tenant" element={<PrivateRoute><TenantLayout /></PrivateRoute>}>
             <Route index element={<Navigate to="dashboard" replace />} />

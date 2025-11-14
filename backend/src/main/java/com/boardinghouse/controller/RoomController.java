@@ -1,7 +1,9 @@
 package com.boardinghouse.controller;
 
 import com.boardinghouse.dto.RoomDto;
+import com.boardinghouse.dto.RoomServiceDto;
 import com.boardinghouse.service.RoomService;
+import com.boardinghouse.service.RoomServiceService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,9 +16,11 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class RoomController {
     private final RoomService service;
+    private final RoomServiceService roomServiceService;
 
-    public RoomController(RoomService service) {
+    public RoomController(RoomService service, RoomServiceService roomServiceService) {
         this.service = service;
+        this.roomServiceService = roomServiceService;
     }
 
     @GetMapping
@@ -46,6 +50,11 @@ public class RoomController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{roomId}/services")
+    public ResponseEntity<List<RoomServiceDto>> getRoomServices(@PathVariable Long roomId) {
+        return ResponseEntity.ok(roomServiceService.getByRoom(roomId));
     }
 }
 
