@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Printer } from 'lucide-react'
 
 const InvoiceDetail = () => {
   const { id } = useParams()
@@ -38,7 +38,16 @@ const InvoiceDetail = () => {
       </button>
 
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h1 className="text-3xl font-bold mb-6">Invoice {invoice.code}</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Invoice {invoice.code}</h1>
+          <button
+            onClick={() => window.print()}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Print
+          </button>
+        </div>
         
         <div className="grid grid-cols-2 gap-6 mb-6">
           <div>
