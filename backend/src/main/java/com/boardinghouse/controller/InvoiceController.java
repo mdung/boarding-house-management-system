@@ -41,5 +41,15 @@ public class InvoiceController {
         Integer year = Integer.valueOf(request.get("year").toString());
         return new ResponseEntity<>(service.generateInvoice(contractId, month, year), HttpStatus.CREATED);
     }
+
+    @PostMapping("/generate-with-readings")
+    public ResponseEntity<InvoiceDto> generateInvoiceWithReadings(@RequestBody com.boardinghouse.dto.GenerateInvoiceWithReadingsRequest request) {
+        return new ResponseEntity<>(service.generateInvoiceWithReadings(request), HttpStatus.CREATED);
+    }
+
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<com.boardinghouse.dto.InvoiceDetailDto> getDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getDetailById(id));
+    }
 }
 

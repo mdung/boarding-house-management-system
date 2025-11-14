@@ -14,9 +14,11 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class TenantController {
     private final TenantService service;
+    private final com.boardinghouse.service.DetailService detailService;
 
-    public TenantController(TenantService service) {
+    public TenantController(TenantService service, com.boardinghouse.service.DetailService detailService) {
         this.service = service;
+        this.detailService = detailService;
     }
 
     @GetMapping
@@ -48,6 +50,11 @@ public class TenantController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<com.boardinghouse.dto.TenantDetailDto> getDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(detailService.getTenantDetail(id));
     }
 }
 

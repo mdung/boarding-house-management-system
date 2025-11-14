@@ -17,10 +17,13 @@ import java.util.List;
 public class RoomController {
     private final RoomService service;
     private final RoomServiceService roomServiceService;
+    private final com.boardinghouse.service.DetailService detailService;
 
-    public RoomController(RoomService service, RoomServiceService roomServiceService) {
+    public RoomController(RoomService service, RoomServiceService roomServiceService,
+                         com.boardinghouse.service.DetailService detailService) {
         this.service = service;
         this.roomServiceService = roomServiceService;
+        this.detailService = detailService;
     }
 
     @GetMapping
@@ -55,6 +58,11 @@ public class RoomController {
     @GetMapping("/{roomId}/services")
     public ResponseEntity<List<RoomServiceDto>> getRoomServices(@PathVariable Long roomId) {
         return ResponseEntity.ok(roomServiceService.getByRoom(roomId));
+    }
+
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<com.boardinghouse.dto.RoomDetailDto> getDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(detailService.getRoomDetail(id));
     }
 }
 

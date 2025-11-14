@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard, LogOut, Settings, BarChart3 } from 'lucide-react'
+import { Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard, LogOut, Settings, BarChart3, User } from 'lucide-react'
 
 const AdminLayout = () => {
   const { user, logout } = useAuth()
@@ -22,6 +22,7 @@ const AdminLayout = () => {
     { path: '/admin/service-types', icon: Settings, label: 'Service Types' },
     { path: '/admin/room-services', icon: Settings, label: 'Room Services' },
     { path: '/admin/reports', icon: BarChart3, label: 'Reports' },
+    { path: '/admin/profile', icon: User, label: 'My Profile' },
   ]
 
   return (

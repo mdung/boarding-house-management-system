@@ -17,9 +17,11 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class ContractController {
     private final ContractService service;
+    private final com.boardinghouse.service.DetailService detailService;
 
-    public ContractController(ContractService service) {
+    public ContractController(ContractService service, com.boardinghouse.service.DetailService detailService) {
         this.service = service;
+        this.detailService = detailService;
     }
 
     @GetMapping
@@ -56,6 +58,11 @@ public class ContractController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<com.boardinghouse.dto.ContractDetailDto> getDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(detailService.getContractDetail(id));
     }
 }
 
