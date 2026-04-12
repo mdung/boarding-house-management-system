@@ -7,6 +7,7 @@ import com.boardinghouse.dto.InvoiceItemDto;
 import com.boardinghouse.dto.PaymentDto;
 import com.boardinghouse.dto.UtilityReadingDto;
 import com.boardinghouse.entity.*;
+import com.boardinghouse.entity.RoomService;
 import com.boardinghouse.exception.BadRequestException;
 import com.boardinghouse.exception.ResourceNotFoundException;
 import com.boardinghouse.repository.ContractRepository;

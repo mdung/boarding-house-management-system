@@ -1,34 +1,45 @@
 package com.boardinghouse.service;
 
 import com.boardinghouse.dto.TenantDto;
-import com.boardinghouse.entity.Tenant;
-import com.boardinghouse.entity.TenantStatus;
-import com.boardinghouse.entity.User;
+import com.boardinghouse.entity.*;
 import com.boardinghouse.exception.ResourceNotFoundException;
-import com.boardinghouse.repository.TenantRepository;
-import com.boardinghouse.repository.UserRepository;
+import com.boardinghouse.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 public class TenantService {
     private final TenantRepository repository;
     private final UserRepository userRepository;
+    private final ContractRepository contractRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final PaymentRepository paymentRepository;
+    private final GuestServiceChargeRepository guestChargeRepository;
 
-    public TenantService(TenantRepository repository, UserRepository userRepository) {
+    public TenantService(TenantRepository repository, UserRepository userRepository,
+                         ContractRepository contractRepository, InvoiceRepository invoiceRepository,
+                         PaymentRepository paymentRepository, GuestServiceChargeRepository guestChargeRepository) {
         this.repository = repository;
         this.userRepository = userRepository;
+        this.contractRepository = contractRepository;
+        this.invoiceRepository = invoiceRepository;
+        this.paymentRepository = paymentRepository;
+        this.guestChargeRepository = guestChargeRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<TenantDto> getAll() {
         return repository.findAll().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public TenantDto getById(Long id) {
         Tenant tenant = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with id: " + id));
@@ -76,17 +87,13 @@ public class TenantService {
         tenant.setIdentityNumber(dto.getIdentityNumber());
         tenant.setDateOfBirth(dto.getDateOfBirth());
         tenant.setPermanentAddress(dto.getPermanentAddress());
-        if (dto.getStatus() != null) {
-            tenant.setStatus(dto.getStatus());
-        }
+        if (dto.getStatus() != null) tenant.setStatus(dto.getStatus());
         return toDto(repository.save(tenant));
     }
 
     @Transactional
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Tenant not found with id: " + id);
-        }
+        if (!repository.existsById(id)) throw new ResourceNotFoundException("Tenant not found with id: " + id);
         repository.deleteById(id);
     }
 
@@ -101,6 +108,29 @@ public class TenantService {
         dto.setDateOfBirth(tenant.getDateOfBirth());
         dto.setPermanentAddress(tenant.getPermanentAddress());
         dto.setStatus(tenant.getStatus());
+
+        try {
+            Optional<Contract> activeContract = contractRepository.findActiveByMainTenantId(tenant.getId());
+            activeContract.ifPresent(c -> {
+                dto.setActiveContractId(c.getId());
+                dto.setActiveRoomCode(c.getRoom().getCode());
+                dto.setCheckInDate(c.getStartDate());
+                dto.setCheckOutDate(c.getEndDate());
+
+                BigDecimal invoiceTotal = invoiceRepository.findByContractId(c.getId()).stream()
+                        .map(inv -> inv.getTotalAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal paid = invoiceRepository.findByContractId(c.getId()).stream()
+                        .flatMap(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream())
+                        .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal charges = guestChargeRepository.sumAmountByContractId(c.getId());
+                dto.setTotalCharges(charges);
+                dto.setTotalDebt(invoiceTotal.add(charges).subtract(paid));
+            });
+        } catch (Exception e) {
+            // log but don't fail the whole list
+            System.err.println("Error loading contract info for tenant " + tenant.getId() + ": " + e.getMessage());
+        }
+
         return dto;
     }
 }

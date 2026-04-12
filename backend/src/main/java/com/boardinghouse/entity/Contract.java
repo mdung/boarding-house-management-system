@@ -47,6 +47,7 @@ public class Contract {
 
     private BigDecimal deposit;
     private BigDecimal monthlyRent;
+    private BigDecimal dailyRate; // tiền thuê theo ngày
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

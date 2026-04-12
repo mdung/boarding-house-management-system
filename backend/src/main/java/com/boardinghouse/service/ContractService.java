@@ -57,6 +57,7 @@ public class ContractService {
         contract.setEndDate(dto.getEndDate());
         contract.setDeposit(dto.getDeposit());
         contract.setMonthlyRent(dto.getMonthlyRent());
+        contract.setDailyRate(dto.getDailyRate());
         contract.setStatus(dto.getStatus() != null ? dto.getStatus() : ContractStatus.DRAFT);
         contract.setBillingCycle(dto.getBillingCycle() != null ? dto.getBillingCycle() : BillingCycle.MONTHLY);
 
@@ -90,6 +91,7 @@ public class ContractService {
         contract.setEndDate(dto.getEndDate());
         contract.setDeposit(dto.getDeposit());
         contract.setMonthlyRent(dto.getMonthlyRent());
+        contract.setDailyRate(dto.getDailyRate());
         if (dto.getStatus() != null) {
             contract.setStatus(dto.getStatus());
         }
@@ -114,6 +116,17 @@ public class ContractService {
         roomRepository.save(room);
 
         return toDto(saved);
+    }
+
+    @Transactional
+    public ContractDto updateCheckoutDate(Long id, java.time.LocalDate newEndDate) {
+        Contract contract = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + id));
+        if (newEndDate.isBefore(contract.getStartDate())) {
+            throw new com.boardinghouse.exception.BadRequestException("Checkout date cannot be before check-in date");
+        }
+        contract.setEndDate(newEndDate);
+        return toDto(repository.save(contract));
     }
 
     @Transactional
@@ -153,6 +166,7 @@ public class ContractService {
         dto.setEndDate(contract.getEndDate());
         dto.setDeposit(contract.getDeposit());
         dto.setMonthlyRent(contract.getMonthlyRent());
+        dto.setDailyRate(contract.getDailyRate());
         dto.setStatus(contract.getStatus());
         dto.setBillingCycle(contract.getBillingCycle());
         dto.setTerminationReason(contract.getTerminationReason());

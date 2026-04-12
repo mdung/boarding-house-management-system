@@ -54,6 +54,14 @@ public class ContractController {
         return ResponseEntity.ok(service.terminate(id, reason, terminationDate));
     }
 
+    @PatchMapping("/{id}/checkout-date")
+    public ResponseEntity<ContractDto> updateCheckoutDate(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request) {
+        LocalDate newDate = LocalDate.parse(request.get("endDate"));
+        return ResponseEntity.ok(service.updateCheckoutDate(id, newDate));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);

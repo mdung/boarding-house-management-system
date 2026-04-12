@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard, LogOut, Settings, BarChart3, User } from 'lucide-react'
+import { Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard, LogOut, Settings, BarChart3, User, ShoppingCart } from 'lucide-react'
 
 const AdminLayout = () => {
   const { user, logout } = useAuth()
@@ -19,6 +19,7 @@ const AdminLayout = () => {
     { path: '/admin/contracts', icon: FileText, label: 'Contracts' },
     { path: '/admin/invoices', icon: Receipt, label: 'Invoices' },
     { path: '/admin/payments', icon: CreditCard, label: 'Payments' },
+    { path: '/admin/guest-charges', icon: ShoppingCart, label: 'Guest Charges' },
     { path: '/admin/service-types', icon: Settings, label: 'Service Types' },
     { path: '/admin/room-services', icon: Settings, label: 'Room Services' },
     { path: '/admin/reports', icon: BarChart3, label: 'Reports' },
@@ -27,12 +28,12 @@ const AdminLayout = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <aside className="w-64 bg-gray-800 text-white">
+      <aside className="w-64 bg-gray-800 text-white flex flex-col h-screen">
         <div className="p-6">
           <h1 className="text-xl font-bold">Boarding House</h1>
           <p className="text-sm text-gray-400">Management System</p>
         </div>
-        <nav className="mt-6">
+        <nav className="mt-6 flex-1 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon
             return (
@@ -47,7 +48,7 @@ const AdminLayout = () => {
             )
           })}
         </nav>
-        <div className="absolute bottom-0 w-64 p-6 border-t border-gray-700">
+        <div className="p-6 border-t border-gray-700">
           <div className="mb-4">
             <p className="text-sm font-medium">{user?.fullName}</p>
             <p className="text-xs text-gray-400">{user?.username}</p>

@@ -20,6 +20,7 @@ import ContractDetail from './pages/admin/ContractDetail'
 import RoomDetail from './pages/admin/RoomDetail'
 import TenantDetail from './pages/admin/TenantDetail'
 import Profile from './pages/admin/Profile'
+import GuestCharges from './pages/admin/GuestCharges'
 import TenantDashboard from './pages/tenant/Dashboard'
 import TenantInvoices from './pages/tenant/Invoices'
 import TenantPayments from './pages/tenant/Payments'
@@ -42,6 +43,7 @@ function App() {
             <Route path="payments" element={<Payments />} />
             <Route path="service-types" element={<ServiceTypes />} />
             <Route path="room-services" element={<RoomServices />} />
+            <Route path="guest-charges" element={<GuestCharges />} />
             <Route path="reports" element={<Reports />} />
             <Route path="invoices/:id/detail" element={<InvoiceDetail />} />
             <Route path="contracts/:id/detail" element={<ContractDetail />} />

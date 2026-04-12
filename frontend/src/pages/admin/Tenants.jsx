@@ -1,79 +1,112 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
-import { Plus, Edit, Trash2, Eye } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, AlertCircle, Clock } from 'lucide-react'
+
+const fmt = (n) => n != null ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n) : '-'
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '-'
+
+const debtColor = (debt, checkOut) => {
+  if (!debt || debt <= 0) return 'text-green-600'
+  const today = new Date(); today.setHours(0,0,0,0)
+  const out = checkOut ? new Date(checkOut) : null
+  if (out && out < today) return 'text-red-700 font-bold'   // quá hạn
+  if (out && (out - today) / 86400000 <= 1) return 'text-red-600 font-semibold' // checkout hôm nay/ngày mai
+  return 'text-orange-500'
+}
+
+const checkoutBadge = (checkOut) => {
+  if (!checkOut) return null
+  const today = new Date(); today.setHours(0,0,0,0)
+  const out = new Date(checkOut)
+  const diff = Math.round((out - today) / 86400000)
+  if (diff < 0) return <span className="ml-1 px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded">Quá hạn</span>
+  if (diff === 0) return <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded">Hôm nay</span>
+  if (diff === 1) return <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded">Ngày mai</span>
+  return null
+}
 
 const Tenants = () => {
   const navigate = useNavigate()
   const [tenants, setTenants] = useState([])
+  const [availableRooms, setAvailableRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [formData, setFormData] = useState({
-    fullName: '',
-    phone: '',
-    email: '',
-    identityNumber: '',
-    dateOfBirth: '',
-    permanentAddress: '',
-    status: 'ACTIVE',
+    fullName: '', phone: '', email: '', identityNumber: '',
+    dateOfBirth: '', permanentAddress: '', status: 'ACTIVE',
+    // checkin fields
+    roomId: '', checkInDate: new Date().toISOString().split('T')[0],
+    checkOutDate: '', monthlyRent: '', deposit: '',
   })
 
-  useEffect(() => {
-    fetchTenants()
-  }, [])
+  useEffect(() => { fetchData() }, [])
 
-  const fetchTenants = async () => {
+  const fetchData = async () => {
     try {
-      const response = await api.get('/tenants')
-      setTenants(response.data)
-    } catch (error) {
-      console.error('Failed to fetch tenants:', error)
-    } finally {
-      setLoading(false)
-    }
+      const roomsRes = await api.get('/rooms')
+      setAvailableRooms(roomsRes.data.filter(r => r.status === 'AVAILABLE'))
+    } catch (e) { console.error('rooms error', e) }
+
+    try {
+      const tenantsRes = await api.get('/tenants')
+      setTenants(tenantsRes.data)
+    } catch (e) { console.error('tenants error', e) }
+
+    setLoading(false)
+  }
+
+  const openAdd = () => {
+    setEditing(null)
+    setFormData({ fullName: '', phone: '', email: '', identityNumber: '', dateOfBirth: '', permanentAddress: '', status: 'ACTIVE', roomId: '', checkInDate: new Date().toISOString().split('T')[0], checkOutDate: '', monthlyRent: '', deposit: '' })
+    setShowModal(true)
+  }
+
+  const openEdit = (t) => {
+    setEditing(t)
+    setFormData({ fullName: t.fullName, phone: t.phone || '', email: t.email || '', identityNumber: t.identityNumber || '', dateOfBirth: t.dateOfBirth || '', permanentAddress: t.permanentAddress || '', status: t.status, roomId: '', checkInDate: '', checkOutDate: '', monthlyRent: '', deposit: '' })
+    setShowModal(true)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      let tenantId
       if (editing) {
         await api.put(`/tenants/${editing.id}`, formData)
+        tenantId = editing.id
       } else {
-        await api.post('/tenants', formData)
+        const res = await api.post('/tenants', formData)
+        tenantId = res.data.id
+        // Create contract if room selected
+        if (formData.roomId && formData.checkInDate && formData.checkOutDate) {
+          const room = availableRooms.find(r => r.id === parseInt(formData.roomId))
+          await api.post('/contracts', {
+            code: `CT-${Date.now()}`,
+            roomId: parseInt(formData.roomId),
+            mainTenantId: tenantId,
+            startDate: formData.checkInDate,
+            endDate: formData.checkOutDate,
+            dailyRate: formData.monthlyRent ? parseFloat(formData.monthlyRent) : null,
+            monthlyRent: formData.monthlyRent ? parseFloat(formData.monthlyRent) * 30 : null,
+            deposit: formData.deposit ? parseFloat(formData.deposit) : 0,
+            status: 'ACTIVE',
+            billingCycle: 'MONTHLY',
+          })
+        }
       }
       setShowModal(false)
-      setEditing(null)
-      setFormData({ fullName: '', phone: '', email: '', identityNumber: '', dateOfBirth: '', permanentAddress: '', status: 'ACTIVE' })
-      fetchTenants()
-    } catch (error) {
-      console.error('Failed to save tenant:', error)
+      fetchData()
+    } catch (e) {
+      alert(e.response?.data?.message || 'Lỗi khi lưu')
     }
-  }
-
-  const handleEdit = (tenant) => {
-    setEditing(tenant)
-    setFormData({
-      fullName: tenant.fullName,
-      phone: tenant.phone || '',
-      email: tenant.email || '',
-      identityNumber: tenant.identityNumber || '',
-      dateOfBirth: tenant.dateOfBirth || '',
-      permanentAddress: tenant.permanentAddress || '',
-      status: tenant.status,
-    })
-    setShowModal(true)
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this tenant?')) {
-      try {
-        await api.delete(`/tenants/${id}`)
-        fetchTenants()
-      } catch (error) {
-        console.error('Failed to delete tenant:', error)
-      }
-    }
+    if (!confirm('Xóa khách này?')) return
+    try { await api.delete(`/tenants/${id}`); fetchData() }
+    catch (e) { alert(e.response?.data?.message || 'Không thể xóa') }
   }
 
   if (loading) return <div>Loading...</div>
@@ -81,63 +114,68 @@ const Tenants = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Tenants</h1>
-        <button
-          onClick={() => {
-            setEditing(null)
-            setFormData({ fullName: '', phone: '', email: '', identityNumber: '', dateOfBirth: '', permanentAddress: '', status: 'ACTIVE' })
-            setShowModal(true)
-          }}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Tenant
+        <h1 className="text-3xl font-bold">Khách thuê</h1>
+        <button onClick={openAdd} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          <Plus className="w-4 h-4 mr-2" /> Thêm khách mới
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID Number</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên khách</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SĐT</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phòng</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check-in</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check-out</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Còn nợ</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {tenants.map((tenant) => (
-              <tr key={tenant.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  <button
-                    onClick={() => navigate(`/admin/tenants/${tenant.id}/detail`)}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    {tenant.fullName}
+            {tenants.map((t) => (
+              <tr key={t.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm font-medium">
+                  <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="text-blue-600 hover:underline">
+                    {t.fullName}
                   </button>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.phone}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.email || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.identityNumber || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {tenant.status}
+                <td className="px-4 py-3 text-sm text-gray-600">{t.phone}</td>
+                <td className="px-4 py-3 text-sm">
+                  {t.activeRoomCode
+                    ? <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">{t.activeRoomCode}</span>
+                    : <span className="text-gray-400">-</span>}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">{fmtDate(t.checkInDate)}</td>
+                <td className="px-4 py-3 text-sm">
+                  {t.checkOutDate ? (
+                    <span className="flex items-center gap-1">
+                      {fmtDate(t.checkOutDate)}
+                      {checkoutBadge(t.checkOutDate)}
+                    </span>
+                  ) : '-'}
+                </td>
+                <td className="px-4 py-3 text-sm">
+                  {t.totalDebt != null && t.totalDebt > 0 ? (
+                    <span className={`flex items-center gap-1 ${debtColor(t.totalDebt, t.checkOutDate)}`}>
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      {fmt(t.totalDebt)}
+                    </span>
+                  ) : t.totalDebt === 0 ? (
+                    <span className="text-green-600 text-xs">Đã thanh toán</span>
+                  ) : '-'}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${t.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                    {t.status === 'ACTIVE' ? 'Đang ở' : 'Không hoạt động'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button onClick={() => navigate(`/admin/tenants/${tenant.id}/detail`)} className="text-blue-600 hover:text-blue-900 mr-4">
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleEdit(tenant)} className="text-blue-600 hover:text-blue-900 mr-4">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDelete(tenant.id)} className="text-red-600 hover:text-red-900">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <td className="px-4 py-3 text-right">
+                  <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="text-blue-500 hover:text-blue-700 mr-3"><Eye className="w-4 h-4" /></button>
+                  <button onClick={() => openEdit(t)} className="text-gray-500 hover:text-gray-700 mr-3"><Edit className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete(t.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                 </td>
               </tr>
             ))}
@@ -147,92 +185,102 @@ const Tenants = () => {
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">{editing ? 'Edit' : 'Add'} Tenant</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">{editing ? 'Sửa thông tin khách' : 'Thêm khách mới'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
+                <label className="block text-sm font-medium text-gray-700">Họ tên *</label>
+                <input required type="text" value={formData.fullName}
+                  onChange={e => setFormData({...formData, fullName: e.target.value})}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Phone</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
+                  <label className="block text-sm font-medium text-gray-700">Số điện thoại *</label>
+                  <input required type="text" value={formData.phone}
+                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
+                  <label className="block text-sm font-medium text-gray-700">CCCD/CMND</label>
+                  <input type="text" value={formData.identityNumber}
+                    onChange={e => setFormData({...formData, identityNumber: e.target.value})}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Identity Number</label>
-                <input
-                  type="text"
-                  value={formData.identityNumber}
-                  onChange={(e) => setFormData({ ...formData, identityNumber: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" value={formData.email}
+                  onChange={e => setFormData({...formData, email: e.target.value})}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
-                <input
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
+                <label className="block text-sm font-medium text-gray-700">Địa chỉ thường trú</label>
+                <input type="text" value={formData.permanentAddress}
+                  onChange={e => setFormData({...formData, permanentAddress: e.target.value})}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Permanent Address</label>
-                <textarea
-                  value={formData.permanentAddress}
-                  onChange={(e) => setFormData({ ...formData, permanentAddress: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows="2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                </select>
-              </div>
-              <div className="flex justify-end space-x-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false)
-                    setEditing(null)
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                  Save
-                </button>
+
+              {!editing && (
+                <>
+                  <div className="border-t pt-3 mt-3">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Thông tin phòng (tùy chọn)</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Chọn phòng</label>
+                    <select value={formData.roomId}
+                      onChange={e => {
+                        const room = availableRooms.find(r => r.id === parseInt(e.target.value))
+                        const daily = room?.baseRent ? Math.round(room.baseRent / 30) : ''
+                        setFormData({...formData, roomId: e.target.value, monthlyRent: daily})
+                      }}
+                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
+                      <option value="">-- Chưa chọn phòng --</option>
+                      {availableRooms.map(r => (
+                        <option key={r.id} value={r.id}>
+                          {r.code} — {r.boardingHouseName} — {fmt(r.baseRent)}/tháng
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {formData.roomId && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Ngày nhận phòng *</label>
+                          <input required type="date" value={formData.checkInDate}
+                            onChange={e => setFormData({...formData, checkInDate: e.target.value})}
+                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Ngày trả phòng *</label>
+                          <input required type="date" value={formData.checkOutDate}
+                            onChange={e => setFormData({...formData, checkOutDate: e.target.value})}
+                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Giá thuê/ngày (VND)</label>
+                          <input type="number" value={formData.monthlyRent}
+                            onChange={e => setFormData({...formData, monthlyRent: e.target.value})}
+                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Tiền cọc</label>
+                          <input type="number" value={formData.deposit}
+                            onChange={e => setFormData({...formData, deposit: e.target.value})}
+                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-md">Hủy</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Lưu</button>
               </div>
             </form>
           </div>
@@ -243,4 +291,3 @@ const Tenants = () => {
 }
 
 export default Tenants
-

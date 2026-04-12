@@ -3,6 +3,8 @@ package com.boardinghouse.dto;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class DashboardDto {
@@ -13,5 +15,36 @@ public class DashboardDto {
     private BigDecimal monthlyRevenue;
     private BigDecimal unpaidAmount;
     private Long overdueInvoices;
+
+    // 3 cột ngày
+    private DayActivityDto yesterday;
+    private DayActivityDto today;
+    private DayActivityDto tomorrow;
+
+    @Data
+    public static class DayActivityDto {
+        private List<GuestActivityDto> checkIns;
+        private List<GuestActivityDto> checkOuts;
+        private List<GuestActivityDto> staying; // đang ở (không checkin/checkout ngày đó)
+    }
+
+    @Data
+    public static class GuestActivityDto {
+        private Long contractId;
+        private Long tenantId;
+        private String tenantName;
+        private String tenantPhone;
+        private String roomCode;
+        private String boardingHouseName;
+        private LocalDate checkInDate;
+        private LocalDate checkOutDate;
+        private BigDecimal dailyRate;
+        private Integer totalDays;
+        private BigDecimal totalRoomCost;   // dailyRate * totalDays
+        private BigDecimal totalCharges;    // guest service charges
+        private BigDecimal totalPaid;
+        private BigDecimal totalDebt;
+        private String activityType; // CHECKIN, CHECKOUT, STAYING
+    }
 }
 
