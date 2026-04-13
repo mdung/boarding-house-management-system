@@ -1,16 +1,22 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
+import { useToast } from '../../context/ToastContext'
 import { Plus, Edit, X, Eye } from 'lucide-react'
+
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '-'
 
 const Contracts = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [contracts, setContracts] = useState([])
   const [rooms, setRooms] = useState([])
   const [tenants, setTenants] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('ALL')
   const [formData, setFormData] = useState({
     code: '',
     roomId: '',
@@ -63,8 +69,9 @@ const Contracts = () => {
       setEditing(null)
       setFormData({ code: '', roomId: '', mainTenantId: '', startDate: '', endDate: '', deposit: '', monthlyRent: '', status: 'DRAFT', billingCycle: 'MONTHLY' })
       fetchData()
+      showToast(editing ? 'Cập nhật hợp đồng thành công' : 'Tạo hợp đồng thành công', 'success')
     } catch (error) {
-      console.error('Failed to save contract:', error)
+      showToast(error.response?.data?.message || 'Lỗi khi lưu hợp đồng', 'error')
     }
   }
 
@@ -87,6 +94,19 @@ const Contracts = () => {
         </button>
       </div>
 
+      <div className="mb-4 flex gap-3">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm">
+          <option value="ALL">Tất cả trạng thái</option>
+          <option value="ACTIVE">Đang hoạt động</option>
+          <option value="DRAFT">Nháp</option>
+          <option value="TERMINATED">Đã hủy</option>
+          <option value="EXPIRED">Hết hạn</option>
+        </select>
+        <span className="flex items-center text-sm text-gray-500">
+          {(statusFilter === 'ALL' ? contracts : contracts.filter(c => c.status === statusFilter)).length} hợp đồng
+        </span>
+      </div>
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -102,15 +122,19 @@ const Contracts = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {contracts.map((contract) => (
+            {(statusFilter === 'ALL' ? contracts : contracts.filter(c => c.status === statusFilter)).map((contract) => (
               <tr key={contract.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{contract.code}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{contract.roomCode}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{contract.mainTenantName}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contract.startDate}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contract.endDate}</td>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  <button onClick={() => navigate(`/admin/tenants/${contract.mainTenantId}/detail`)} className="text-blue-600 hover:underline">
+                    {contract.mainTenantName}
+                  </button>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{fmtDate(contract.startDate)}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{fmtDate(contract.endDate)}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(contract.monthlyRent || 0)}
+                  {fmt(contract.monthlyRent)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs rounded-full ${

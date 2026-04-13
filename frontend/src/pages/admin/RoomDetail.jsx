@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, DollarSign } from 'lucide-react'
 
 const RoomDetail = () => {
   const { id } = useParams()
@@ -112,38 +112,51 @@ const RoomDetail = () => {
 
         {room.currentContract && (
           <div className="border-t pt-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Current Contract</h2>
-            <div className="p-4 bg-gray-50 rounded">
-              <p className="font-medium">{room.currentContract.code}</p>
-              <p className="text-sm text-gray-600">Tenant: {room.currentContract.mainTenantName}</p>
-              <p className="text-sm text-gray-600">
-                {room.currentContract.startDate} to {room.currentContract.endDate}
-              </p>
-              <p className="text-sm text-gray-600">
-                Rent: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(room.currentContract.monthlyRent || 0)}
-              </p>
+            <h2 className="text-xl font-semibold mb-4">Hợp đồng hiện tại</h2>
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex justify-between items-start">
+                <div>
+                  <button onClick={() => navigate(`/admin/contracts/${room.currentContract.id}/detail`)} className="font-medium text-blue-600 hover:underline">
+                    {room.currentContract.code}
+                  </button>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Khách: <button onClick={() => navigate(`/admin/tenants/${room.currentContract.mainTenantId}/detail`)} className="text-blue-600 hover:underline">{room.currentContract.mainTenantName}</button>
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {room.currentContract.startDate} → {room.currentContract.endDate}
+                  </p>
+                </div>
+                <span className="font-semibold text-gray-700">
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(room.currentContract.monthlyRent || 0)}/tháng
+                </span>
+              </div>
             </div>
           </div>
         )}
 
         {room.recentInvoices && room.recentInvoices.length > 0 && (
           <div className="border-t pt-6">
-            <h2 className="text-xl font-semibold mb-4">Recent Invoices</h2>
+            <h2 className="text-xl font-semibold mb-4">Hóa đơn gần đây</h2>
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã HĐ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kỳ</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng tiền</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                  <th className="px-6 py-3"></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {room.recentInvoices.map((invoice) => (
-                  <tr key={invoice.id}>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{invoice.code}</td>
+                  <tr key={invoice.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <button onClick={() => navigate(`/admin/invoices/${invoice.id}/detail`)} className="text-blue-600 hover:underline">
+                        {invoice.code}
+                      </button>
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{invoice.periodMonth}/{invoice.periodYear}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-right text-gray-700">
                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount || 0)}
                     </td>
                     <td className="px-6 py-4">
@@ -155,6 +168,13 @@ const RoomDetail = () => {
                       }`}>
                         {invoice.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {invoice.status !== 'PAID' && (
+                        <button onClick={() => navigate(`/admin/payments?invoiceId=${invoice.id}`)} className="text-green-600 hover:text-green-800" title="Thanh toán">
+                          <DollarSign className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

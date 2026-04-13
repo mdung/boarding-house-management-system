@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api'
+import { useToast } from '../../context/ToastContext'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 
 const ServiceTypes = () => {
+  const { showToast } = useToast()
   const [serviceTypes, setServiceTypes] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
     category: 'ELECTRICITY',
@@ -46,8 +50,9 @@ const ServiceTypes = () => {
       setEditing(null)
       setFormData({ name: '', category: 'ELECTRICITY', unit: '', pricePerUnit: '', isActive: true })
       fetchServiceTypes()
+      showToast(editing ? 'Cập nhật thành công' : 'Thêm loại dịch vụ thành công', 'success')
     } catch (error) {
-      console.error('Failed to save service type:', error)
+      showToast(error.response?.data?.message || 'Lỗi khi lưu', 'error')
     }
   }
 
@@ -64,13 +69,12 @@ const ServiceTypes = () => {
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this service type?')) {
-      try {
-        await api.delete(`/service-types/${id}`)
-        fetchServiceTypes()
-      } catch (error) {
-        console.error('Failed to delete service type:', error)
-      }
+    try {
+      await api.delete(`/service-types/${id}`)
+      fetchServiceTypes()
+      showToast('Đã xóa loại dịch vụ', 'success')
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Không thể xóa', 'error')
     }
   }
 
@@ -127,7 +131,7 @@ const ServiceTypes = () => {
                   <button onClick={() => handleEdit(serviceType)} className="text-blue-600 hover:text-blue-900 mr-4">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(serviceType.id)} className="text-red-600 hover:text-red-900">
+                  <button onClick={() => setConfirmDelete(serviceType.id)} className="text-red-600 hover:text-red-900">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </td>
@@ -215,6 +219,17 @@ const ServiceTypes = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Xóa loại dịch vụ"
+        message="Bạn có chắc muốn xóa loại dịch vụ này?"
+        confirmText="Xóa"
+        cancelText="Hủy"
+        danger
+        onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

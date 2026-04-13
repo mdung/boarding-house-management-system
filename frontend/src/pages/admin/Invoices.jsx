@@ -181,6 +181,7 @@ const Invoices = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Khách</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
@@ -193,12 +194,13 @@ const Invoices = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredInvoices.length === 0 ? (
               <tr>
-                <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">No invoices found</td>
+                <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">No invoices found</td>
               </tr>
             ) : (
               filteredInvoices.map((invoice) => (
               <tr key={invoice.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{invoice.code}</td>
+                <td className="px-6 py-4 text-sm text-gray-700">{invoice.tenantName || '-'}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{invoice.roomCode}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {invoice.periodMonth}/{invoice.periodYear}

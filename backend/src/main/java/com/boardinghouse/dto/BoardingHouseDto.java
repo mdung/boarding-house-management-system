@@ -10,5 +10,8 @@ public class BoardingHouseDto {
     private String description;
     private Integer numberOfFloors;
     private String notes;
+    private Long totalRooms;
+    private Long occupiedRooms;
+    private Long availableRooms;
 }
 

@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api'
+import { useToast } from '../../context/ToastContext'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 
 const BoardingHouses = () => {
+  const { showToast } = useToast()
   const [houses, setHouses] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -42,8 +46,9 @@ const BoardingHouses = () => {
       setEditing(null)
       setFormData({ name: '', address: '', description: '', numberOfFloors: '', notes: '' })
       fetchHouses()
+      showToast(editing ? 'Cập nhật thành công' : 'Thêm nhà trọ thành công', 'success')
     } catch (error) {
-      console.error('Failed to save house:', error)
+      showToast(error.response?.data?.message || 'Lỗi khi lưu', 'error')
     }
   }
 
@@ -60,13 +65,12 @@ const BoardingHouses = () => {
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this boarding house?')) {
-      try {
-        await api.delete(`/boarding-houses/${id}`)
-        fetchHouses()
-      } catch (error) {
-        console.error('Failed to delete house:', error)
-      }
+    try {
+      await api.delete(`/boarding-houses/${id}`)
+      fetchHouses()
+      showToast('Đã xóa nhà trọ', 'success')
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Không thể xóa', 'error')
     }
   }
 
@@ -96,6 +100,9 @@ const BoardingHouses = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Address</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Floors</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Phòng</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Có khách</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Trống</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
@@ -105,11 +112,18 @@ const BoardingHouses = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{house.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{house.address}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{house.numberOfFloors || '-'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-medium text-gray-700">{house.totalRooms || 0}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">{house.occupiedRooms || 0}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                  <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">{house.availableRooms || 0}</span>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button onClick={() => handleEdit(house)} className="text-blue-600 hover:text-blue-900 mr-4">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(house.id)} className="text-red-600 hover:text-red-900">
+                  <button onClick={() => setConfirmDelete(house.id)} className="text-red-600 hover:text-red-900">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </td>
@@ -181,6 +195,17 @@ const BoardingHouses = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Xóa nhà trọ"
+        message="Bạn có chắc muốn xóa nhà trọ này? Tất cả phòng liên quan cũng sẽ bị ảnh hưởng."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        danger
+        onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

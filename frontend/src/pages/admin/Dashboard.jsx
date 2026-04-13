@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
-import { DoorOpen, Users, DollarSign, AlertCircle, LogIn, LogOut, BedDouble } from 'lucide-react'
+import { DoorOpen, Users, DollarSign, AlertCircle, LogIn, LogOut, BedDouble, CreditCard } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '-'
@@ -17,27 +17,36 @@ const GuestCard = ({ guest, navigate }) => {
   const debt = parseFloat(guest.totalDebt) || 0
   return (
     <div
-      onClick={() => navigate(`/admin/tenants/${guest.tenantId}/detail`)}
-      className="p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow cursor-pointer transition-all"
+      className="p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow transition-all"
     >
-      <div className="flex justify-between items-start mb-1">
-        <div>
-          <p className="font-semibold text-sm text-gray-900">{guest.tenantName}</p>
-          <p className="text-xs text-gray-400">{guest.tenantPhone}</p>
+      <div onClick={() => navigate(`/admin/tenants/${guest.tenantId}/detail`)} className="cursor-pointer">
+        <div className="flex justify-between items-start mb-1">
+          <div>
+            <p className="font-semibold text-sm text-gray-900">{guest.tenantName}</p>
+            <p className="text-xs text-gray-400">{guest.tenantPhone}</p>
+          </div>
+          <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded font-medium">{guest.roomCode}</span>
         </div>
-        <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded font-medium">{guest.roomCode}</span>
+        <div className="flex items-center justify-between mt-1">
+          {activityBadge(guest.activityType)}
+          {debt > 0
+            ? <span className="text-xs text-red-600 font-semibold flex items-center gap-0.5"><AlertCircle className="w-3 h-3"/>Nợ {fmt(debt)}</span>
+            : <span className="text-xs text-green-600">✓ Đã TT</span>
+          }
+        </div>
+        <div className="mt-1.5 text-xs text-gray-400">
+          {fmtDate(guest.checkInDate)} → {fmtDate(guest.checkOutDate)}
+          {guest.totalDays > 0 && <span className="ml-1">({guest.totalDays} ngày × {fmt(guest.dailyRate)})</span>}
+        </div>
       </div>
-      <div className="flex items-center justify-between mt-1">
-        {activityBadge(guest.activityType)}
-        {debt > 0
-          ? <span className="text-xs text-red-600 font-semibold flex items-center gap-0.5"><AlertCircle className="w-3 h-3"/>Nợ {fmt(debt)}</span>
-          : <span className="text-xs text-green-600">✓ Đã TT</span>
-        }
-      </div>
-      <div className="mt-1.5 text-xs text-gray-400">
-        {fmtDate(guest.checkInDate)} → {fmtDate(guest.checkOutDate)}
-        {guest.totalDays > 0 && <span className="ml-1">({guest.totalDays} ngày × {fmt(guest.dailyRate)})</span>}
-      </div>
+      {debt > 0 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); navigate(`/admin/tenants/${guest.tenantId}/detail`) }}
+          className="mt-2 w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-green-50 text-green-700 text-xs font-medium rounded-lg hover:bg-green-100 transition-colors border border-green-200"
+        >
+          <CreditCard className="w-3 h-3" /> Thu tiền
+        </button>
+      )}
     </div>
   )
 }
@@ -90,12 +99,12 @@ const Dashboard = () => {
   }
 
   const stats = [
-    { label: 'Tổng phòng', value: dashboard?.totalRooms || 0, icon: DoorOpen, color: 'bg-blue-500' },
-    { label: 'Đang có khách', value: dashboard?.occupiedRooms || 0, icon: Users, color: 'bg-green-500' },
-    { label: 'Phòng trống', value: dashboard?.availableRooms || 0, icon: DoorOpen, color: 'bg-gray-400' },
-    { label: 'Doanh thu tháng', value: fmt(dashboard?.monthlyRevenue), icon: DollarSign, color: 'bg-emerald-600' },
-    { label: 'Chưa thanh toán', value: fmt(dashboard?.unpaidAmount), icon: DollarSign, color: 'bg-yellow-500' },
-    { label: 'HĐ quá hạn', value: dashboard?.overdueInvoices || 0, icon: AlertCircle, color: 'bg-red-500' },
+    { label: 'Tổng phòng', value: dashboard?.totalRooms || 0, icon: DoorOpen, color: 'bg-blue-500', link: '/admin/rooms' },
+    { label: 'Đang có khách', value: dashboard?.occupiedRooms || 0, icon: Users, color: 'bg-green-500', link: '/admin/tenants' },
+    { label: 'Phòng trống', value: dashboard?.availableRooms || 0, icon: DoorOpen, color: 'bg-gray-400', link: '/admin/rooms' },
+    { label: 'Doanh thu tháng', value: fmt(dashboard?.monthlyRevenue), icon: DollarSign, color: 'bg-emerald-600', link: '/admin/reports' },
+    { label: 'Chưa thanh toán', value: fmt(dashboard?.unpaidAmount), icon: DollarSign, color: 'bg-yellow-500', link: '/admin/invoices' },
+    { label: 'HĐ quá hạn', value: dashboard?.overdueInvoices || 0, icon: AlertCircle, color: 'bg-red-500', link: '/admin/invoices' },
   ]
 
   return (
@@ -106,7 +115,7 @@ const Dashboard = () => {
         {stats.map((s, i) => {
           const Icon = s.icon
           return (
-            <div key={i} className="bg-white rounded-lg shadow p-4">
+            <div key={i} onClick={() => navigate(s.link)} className="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all">
               <div className={`${s.color} w-8 h-8 rounded-full flex items-center justify-center mb-2`}>
                 <Icon className="w-4 h-4 text-white" />
               </div>

@@ -16,5 +16,6 @@ public class RoomDto {
     private Integer maxOccupants;
     private BigDecimal baseRent;
     private RoomStatus status;
+    private String currentTenantName;
 }
 

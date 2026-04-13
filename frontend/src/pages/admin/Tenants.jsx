@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
+import { useToast } from '../../context/ToastContext'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import { Plus, Edit, Trash2, Eye, AlertCircle, Clock } from 'lucide-react'
 
 const fmt = (n) => n != null ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n) : '-'
@@ -29,11 +31,13 @@ const checkoutBadge = (checkOut) => {
 
 const Tenants = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [tenants, setTenants] = useState([])
   const [availableRooms, setAvailableRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const [formData, setFormData] = useState({
     fullName: '', phone: '', email: '', identityNumber: '',
     dateOfBirth: '', permanentAddress: '', status: 'ACTIVE',
@@ -103,15 +107,15 @@ const Tenants = () => {
       }
       setShowModal(false)
       fetchData()
+      showToast(editing ? 'Cập nhật thành công' : 'Thêm khách thành công', 'success')
     } catch (e) {
-      alert(e.response?.data?.message || 'Lỗi khi lưu')
+      showToast(e.response?.data?.message || 'Lỗi khi lưu', 'error')
     }
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Xóa khách này?')) return
-    try { await api.delete(`/tenants/${id}`); fetchData() }
-    catch (e) { alert(e.response?.data?.message || 'Không thể xóa') }
+    try { await api.delete(`/tenants/${id}`); fetchData(); showToast('Đã xóa khách', 'success') }
+    catch (e) { showToast(e.response?.data?.message || 'Không thể xóa', 'error') }
   }
 
   if (loading) return <div>Loading...</div>
@@ -180,7 +184,7 @@ const Tenants = () => {
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="text-blue-500 hover:text-blue-700 mr-3"><Eye className="w-4 h-4" /></button>
                   <button onClick={() => openEdit(t)} className="text-gray-500 hover:text-gray-700 mr-3"><Edit className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(t.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => setConfirmDelete(t.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                 </td>
               </tr>
             ))}
@@ -291,6 +295,17 @@ const Tenants = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Xóa khách"
+        message="Bạn có chắc muốn xóa khách này?"
+        confirmText="Xóa"
+        cancelText="Hủy"
+        danger
+        onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

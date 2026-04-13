@@ -1,15 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
+import { useToast } from '../../context/ToastContext'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import { Plus, Edit, Trash2, Eye } from 'lucide-react'
+
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
 
 const Rooms = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [rooms, setRooms] = useState([])
+  const [filteredRooms, setFilteredRooms] = useState([])
   const [houses, setHouses] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [filterHouse, setFilterHouse] = useState('ALL')
+  const [filterStatus, setFilterStatus] = useState('ALL')
   const [formData, setFormData] = useState({
     code: '',
     boardingHouseId: '',
@@ -23,6 +32,13 @@ const Rooms = () => {
   useEffect(() => {
     fetchData()
   }, [])
+
+  useEffect(() => {
+    let filtered = [...rooms]
+    if (filterHouse !== 'ALL') filtered = filtered.filter(r => r.boardingHouseId.toString() === filterHouse)
+    if (filterStatus !== 'ALL') filtered = filtered.filter(r => r.status === filterStatus)
+    setFilteredRooms(filtered)
+  }, [rooms, filterHouse, filterStatus])
 
   const fetchData = async () => {
     try {
@@ -59,8 +75,9 @@ const Rooms = () => {
       setEditing(null)
       setFormData({ code: '', boardingHouseId: '', floor: '', area: '', maxOccupants: '', baseRent: '', status: 'AVAILABLE' })
       fetchData()
+      showToast(editing ? 'Cập nhật phòng thành công' : 'Thêm phòng thành công', 'success')
     } catch (error) {
-      console.error('Failed to save room:', error)
+      showToast(error.response?.data?.message || 'Lỗi khi lưu phòng', 'error')
     }
   }
 
@@ -79,13 +96,12 @@ const Rooms = () => {
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this room?')) {
-      try {
-        await api.delete(`/rooms/${id}`)
-        fetchData()
-      } catch (error) {
-        console.error('Failed to delete room:', error)
-      }
+    try {
+      await api.delete(`/rooms/${id}`)
+      fetchData()
+      showToast('Đã xóa phòng', 'success')
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Không thể xóa phòng', 'error')
     }
   }
 
@@ -108,6 +124,20 @@ const Rooms = () => {
         </button>
       </div>
 
+      <div className="mb-4 flex gap-3">
+        <select value={filterHouse} onChange={e => setFilterHouse(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm">
+          <option value="ALL">Tất cả nhà trọ</option>
+          {houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+        </select>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm">
+          <option value="ALL">Tất cả trạng thái</option>
+          <option value="AVAILABLE">Trống</option>
+          <option value="OCCUPIED">Có khách</option>
+          <option value="MAINTENANCE">Bảo trì</option>
+        </select>
+        <span className="flex items-center text-sm text-gray-500">{filteredRooms.length} phòng</span>
+      </div>
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -117,12 +147,13 @@ const Rooms = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Floor</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Area (m²)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rent</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {rooms.map((room) => (
+            {filteredRooms.map((room) => (
               <tr key={room.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   <button
@@ -137,6 +168,9 @@ const Rooms = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{room.area || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(room.baseRent || 0)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  {room.currentTenantName || <span className="text-gray-300">—</span>}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs rounded-full ${
@@ -154,7 +188,7 @@ const Rooms = () => {
                   <button onClick={() => handleEdit(room)} className="text-blue-600 hover:text-blue-900 mr-4">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(room.id)} className="text-red-600 hover:text-red-900">
+                  <button onClick={() => setConfirmDelete(room.id)} className="text-red-600 hover:text-red-900">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </td>
@@ -266,6 +300,17 @@ const Rooms = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Xóa phòng"
+        message="Bạn có chắc muốn xóa phòng này?"
+        confirmText="Xóa"
+        cancelText="Hủy"
+        danger
+        onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

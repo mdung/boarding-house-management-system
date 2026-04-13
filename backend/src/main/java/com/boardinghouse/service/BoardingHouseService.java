@@ -2,8 +2,10 @@ package com.boardinghouse.service;
 
 import com.boardinghouse.dto.BoardingHouseDto;
 import com.boardinghouse.entity.BoardingHouse;
+import com.boardinghouse.entity.RoomStatus;
 import com.boardinghouse.exception.ResourceNotFoundException;
 import com.boardinghouse.repository.BoardingHouseRepository;
+import com.boardinghouse.repository.RoomRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,9 +15,11 @@ import java.util.stream.Collectors;
 @Service
 public class BoardingHouseService {
     private final BoardingHouseRepository repository;
+    private final RoomRepository roomRepository;
 
-    public BoardingHouseService(BoardingHouseRepository repository) {
+    public BoardingHouseService(BoardingHouseRepository repository, RoomRepository roomRepository) {
         this.repository = repository;
+        this.roomRepository = roomRepository;
     }
 
     public List<BoardingHouseDto> getAll() {
@@ -69,6 +73,12 @@ public class BoardingHouseService {
         dto.setDescription(house.getDescription());
         dto.setNumberOfFloors(house.getNumberOfFloors());
         dto.setNotes(house.getNotes());
+        try {
+            var rooms = roomRepository.findByBoardingHouseId(house.getId());
+            dto.setTotalRooms((long) rooms.size());
+            dto.setOccupiedRooms(rooms.stream().filter(r -> r.getStatus() == RoomStatus.OCCUPIED).count());
+            dto.setAvailableRooms(rooms.stream().filter(r -> r.getStatus() == RoomStatus.AVAILABLE).count());
+        } catch (Exception ignored) {}
         return dto;
     }
 }

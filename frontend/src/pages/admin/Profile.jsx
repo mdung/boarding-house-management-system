@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/ToastContext'
 
 const Profile = () => {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -42,11 +44,10 @@ const Profile = () => {
     e.preventDefault()
     try {
       await api.put('/users/profile', formData)
-      alert('Profile updated successfully')
+      showToast('Cập nhật thông tin thành công', 'success')
       fetchProfile()
     } catch (error) {
-      console.error('Failed to update profile:', error)
-      alert('Failed to update profile')
+      showToast('Lỗi khi cập nhật thông tin', 'error')
     }
   }
 

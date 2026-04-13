@@ -29,5 +29,8 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     // For tenant list: get active contract for a tenant
     @Query("SELECT c FROM Contract c JOIN FETCH c.room r JOIN FETCH r.boardingHouse WHERE c.mainTenant.id = :tenantId AND c.status = 'ACTIVE' ORDER BY c.startDate DESC")
     Optional<Contract> findActiveByMainTenantId(@Param("tenantId") Long tenantId);
+
+    @Query("SELECT c FROM Contract c JOIN FETCH c.mainTenant WHERE c.room.id = :roomId AND c.status = 'ACTIVE' ORDER BY c.startDate DESC")
+    Optional<Contract> findActiveByRoomId(@Param("roomId") Long roomId);
 }
 

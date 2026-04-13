@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api'
+import { useToast } from '../../context/ToastContext'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 
 const RoomServices = () => {
+  const { showToast } = useToast()
   const [roomServices, setRoomServices] = useState([])
   const [rooms, setRooms] = useState([])
   const [serviceTypes, setServiceTypes] = useState([])
@@ -10,6 +13,7 @@ const RoomServices = () => {
   const [showModal, setShowModal] = useState(false)
   const [selectedRoomId, setSelectedRoomId] = useState('')
   const [editing, setEditing] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const [formData, setFormData] = useState({
     serviceTypeId: '',
     pricePerUnit: '',
@@ -71,9 +75,9 @@ const RoomServices = () => {
       setEditing(null)
       setFormData({ serviceTypeId: '', pricePerUnit: '', fixedPrice: '' })
       fetchRoomServices(parseInt(selectedRoomId))
+      showToast(editing ? 'Cập nhật thành công' : 'Gán dịch vụ thành công', 'success')
     } catch (error) {
-      console.error('Failed to save room service:', error)
-      alert(error.response?.data?.message || 'Failed to save room service')
+      showToast(error.response?.data?.message || 'Lỗi khi lưu', 'error')
     }
   }
 
@@ -88,13 +92,12 @@ const RoomServices = () => {
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to remove this service from the room?')) {
-      try {
-        await api.delete(`/room-services/${id}`)
-        fetchRoomServices(parseInt(selectedRoomId))
-      } catch (error) {
-        console.error('Failed to delete room service:', error)
-      }
+    try {
+      await api.delete(`/room-services/${id}`)
+      fetchRoomServices(parseInt(selectedRoomId))
+      showToast('Đã xóa dịch vụ khỏi phòng', 'success')
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Không thể xóa', 'error')
     }
   }
 
@@ -175,7 +178,7 @@ const RoomServices = () => {
                     <button onClick={() => handleEdit(roomService)} className="text-blue-600 hover:text-blue-900 mr-4">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDelete(roomService.id)} className="text-red-600 hover:text-red-900">
+                    <button onClick={() => setConfirmDelete(roomService.id)} className="text-red-600 hover:text-red-900">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
@@ -245,6 +248,17 @@ const RoomServices = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Xóa dịch vụ"
+        message="Bạn có chắc muốn xóa dịch vụ này khỏi phòng?"
+        confirmText="Xóa"
+        cancelText="Hủy"
+        danger
+        onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

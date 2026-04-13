@@ -7,6 +7,7 @@ import com.boardinghouse.entity.RoomStatus;
 import com.boardinghouse.exception.BadRequestException;
 import com.boardinghouse.exception.ResourceNotFoundException;
 import com.boardinghouse.repository.BoardingHouseRepository;
+import com.boardinghouse.repository.ContractRepository;
 import com.boardinghouse.repository.RoomRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,10 +19,13 @@ import java.util.stream.Collectors;
 public class RoomService {
     private final RoomRepository repository;
     private final BoardingHouseRepository boardingHouseRepository;
+    private final ContractRepository contractRepository;
 
-    public RoomService(RoomRepository repository, BoardingHouseRepository boardingHouseRepository) {
+    public RoomService(RoomRepository repository, BoardingHouseRepository boardingHouseRepository,
+                       ContractRepository contractRepository) {
         this.repository = repository;
         this.boardingHouseRepository = boardingHouseRepository;
+        this.contractRepository = contractRepository;
     }
 
     public List<RoomDto> getAll() {
@@ -107,6 +111,11 @@ public class RoomService {
         dto.setMaxOccupants(room.getMaxOccupants());
         dto.setBaseRent(room.getBaseRent());
         dto.setStatus(room.getStatus());
+        try {
+            contractRepository.findActiveByRoomId(room.getId()).ifPresent(c ->
+                dto.setCurrentTenantName(c.getMainTenant().getFullName())
+            );
+        } catch (Exception ignored) {}
         return dto;
     }
 }
