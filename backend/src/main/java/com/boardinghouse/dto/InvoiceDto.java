@@ -15,6 +15,7 @@ public class InvoiceDto {
     private String contractCode;
     private Long roomId;
     private String roomCode;
+    private String tenantName;
     private Integer periodMonth;
     private Integer periodYear;
     private BigDecimal totalAmount;

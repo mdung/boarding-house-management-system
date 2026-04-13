@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api'
+import eventBus, { EVENTS } from '../../services/eventBus'
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -26,6 +27,12 @@ const GuestCharges = () => {
 
   useEffect(() => {
     if (selectedContractId) fetchSummary()
+  }, [selectedContractId])
+
+  useEffect(() => {
+    if (selectedContractId) {
+      return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchSummary)
+    }
   }, [selectedContractId])
 
   const fetchSummary = async () => {

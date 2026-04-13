@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
+import eventBus, { EVENTS } from '../../services/eventBus'
 import { Plus, Edit, Trash2, Eye, AlertCircle, Clock } from 'lucide-react'
 
 const fmt = (n) => n != null ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n) : '-'
@@ -42,6 +43,10 @@ const Tenants = () => {
   })
 
   useEffect(() => { fetchData() }, [])
+
+  useEffect(() => {
+    return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchData)
+  }, [])
 
   const fetchData = async () => {
     try {

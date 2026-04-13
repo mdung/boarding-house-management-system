@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
+import eventBus, { EVENTS } from '../../services/eventBus'
 import { DoorOpen, Users, DollarSign, AlertCircle, LogIn, LogOut, BedDouble } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -70,7 +71,15 @@ const Dashboard = () => {
   const [dashboard, setDashboard] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { api.get('/dashboard').then(r => setDashboard(r.data)).catch(console.error).finally(() => setLoading(false)) }, [])
+  const fetchDashboard = () => {
+    api.get('/dashboard').then(r => setDashboard(r.data)).catch(console.error).finally(() => setLoading(false))
+  }
+
+  useEffect(() => { fetchDashboard() }, [])
+
+  useEffect(() => {
+    return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchDashboard)
+  }, [])
 
   if (loading) return <div className="p-8 text-center text-gray-400">Đang tải...</div>
 

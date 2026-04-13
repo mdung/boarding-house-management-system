@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api'
+import eventBus, { EVENTS } from '../../services/eventBus'
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('revenue-month')
@@ -22,6 +23,15 @@ const Reports = () => {
     } else if (activeTab === 'debts') {
       fetchOutstandingDebts()
     }
+  }, [activeTab, year, startDate, endDate])
+
+  useEffect(() => {
+    const refetchCurrent = () => {
+      if (activeTab === 'revenue-month') fetchRevenueByMonth()
+      else if (activeTab === 'revenue-house') fetchRevenueByHouse()
+      else if (activeTab === 'debts') fetchOutstandingDebts()
+    }
+    return eventBus.on(EVENTS.PAYMENT_CHANGED, refetchCurrent)
   }, [activeTab, year, startDate, endDate])
 
   const fetchRevenueByMonth = async () => {

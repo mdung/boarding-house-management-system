@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
+import eventBus, { EVENTS } from '../../services/eventBus'
 import { useToast } from '../../context/ToastContext'
-import { Plus, Eye, EyeOff, Calculator } from 'lucide-react'
+import { Plus, Eye, EyeOff, Calculator, DollarSign } from 'lucide-react'
 import SearchFilter from '../../components/SearchFilter'
 import ConfirmDialog from '../../components/ConfirmDialog'
 
@@ -35,6 +36,10 @@ const Invoices = () => {
 
   useEffect(() => {
     fetchData()
+  }, [])
+
+  useEffect(() => {
+    return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchData)
   }, [])
 
   useEffect(() => {
@@ -218,12 +223,24 @@ const Invoices = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => navigate(`/admin/invoices/${invoice.id}/detail`)}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => navigate(`/admin/invoices/${invoice.id}/detail`)}
+                      className="text-blue-600 hover:text-blue-900"
+                      title="Xem chi tiết"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    {invoice.status !== 'PAID' && (
+                      <button
+                        onClick={() => navigate(`/admin/payments?invoiceId=${invoice.id}`)}
+                        className="text-green-600 hover:text-green-800"
+                        title="Thanh toán"
+                      >
+                        <DollarSign className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
               ))

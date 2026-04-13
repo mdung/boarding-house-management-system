@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
+import eventBus, { EVENTS } from '../../services/eventBus'
 import { ArrowLeft } from 'lucide-react'
 
 const ContractDetail = () => {
@@ -11,6 +12,10 @@ const ContractDetail = () => {
 
   useEffect(() => {
     fetchContract()
+  }, [id])
+
+  useEffect(() => {
+    return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchContract)
   }, [id])
 
   const fetchContract = async () => {

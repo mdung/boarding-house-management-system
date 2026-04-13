@@ -343,6 +343,7 @@ public class InvoiceService {
         dto.setContractCode(invoice.getContract().getCode());
         dto.setRoomId(invoice.getRoom().getId());
         dto.setRoomCode(invoice.getRoom().getCode());
+        dto.setTenantName(invoice.getContract().getMainTenant().getFullName());
         dto.setPeriodMonth(invoice.getPeriodMonth());
         dto.setPeriodYear(invoice.getPeriodYear());
         dto.setTotalAmount(invoice.getTotalAmount());

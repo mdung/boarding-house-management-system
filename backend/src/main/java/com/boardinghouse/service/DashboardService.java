@@ -41,13 +41,15 @@ public class DashboardService {
         YearMonth currentMonth = YearMonth.now();
         BigDecimal monthlyRevenue = invoiceRepository.findAll().stream()
                 .filter(inv -> inv.getPeriodYear() == currentMonth.getYear()
-                        && inv.getPeriodMonth() == currentMonth.getMonthValue()
-                        && inv.getStatus() == PaymentStatus.PAID)
-                .map(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream()
-                        .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add))
+                        && inv.getPeriodMonth() == currentMonth.getMonthValue())
+                .flatMap(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream())
+                .map(Payment::getPaidAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal unpaidAmount = invoiceRepository.findByStatus(PaymentStatus.UNPAID).stream()
+        BigDecimal unpaidAmount = invoiceRepository.findAll().stream()
+                .filter(inv -> inv.getStatus() == PaymentStatus.UNPAID
+                        || inv.getStatus() == PaymentStatus.PARTIALLY_PAID
+                        || inv.getStatus() == PaymentStatus.OVERDUE)
                 .map(inv -> inv.getTotalAmount().subtract(
                         paymentRepository.findByInvoiceId(inv.getId()).stream()
                                 .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add)))

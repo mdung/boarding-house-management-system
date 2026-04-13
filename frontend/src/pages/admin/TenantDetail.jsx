@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
-import { ArrowLeft, Edit2, Save, X } from 'lucide-react'
+import eventBus, { EVENTS } from '../../services/eventBus'
+import { ArrowLeft, Edit2, Save, X, DollarSign } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '-'
@@ -16,6 +17,10 @@ const TenantDetail = () => {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { fetchTenant() }, [id])
+
+  useEffect(() => {
+    return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchTenant)
+  }, [id])
 
   const fetchTenant = async () => {
     try {
@@ -178,6 +183,7 @@ const TenantDetail = () => {
                 <th className="px-4 py-2 text-right text-xs text-gray-500 uppercase">Đã trả</th>
                 <th className="px-4 py-2 text-right text-xs text-gray-500 uppercase">Còn lại</th>
                 <th className="px-4 py-2 text-left text-xs text-gray-500 uppercase">Trạng thái</th>
+                <th className="px-4 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -194,6 +200,17 @@ const TenantDetail = () => {
                       inv.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800' :
                       inv.status === 'OVERDUE' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
                     }`}>{inv.status}</span>
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    {inv.status !== 'PAID' && (
+                      <button
+                        onClick={() => navigate(`/admin/payments?invoiceId=${inv.id}`)}
+                        className="text-green-600 hover:text-green-800"
+                        title="Thanh toán"
+                      >
+                        <DollarSign className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
