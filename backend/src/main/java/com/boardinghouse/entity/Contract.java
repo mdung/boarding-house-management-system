@@ -62,5 +62,8 @@ public class Contract {
 
     @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL)
     private List<Invoice> invoices = new ArrayList<>();
+
+    @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<GuestServiceCharge> guestServiceCharges = new ArrayList<>();
 }
 

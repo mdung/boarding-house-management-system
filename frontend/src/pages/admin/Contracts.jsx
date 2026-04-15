@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useToast } from '../../context/ToastContext'
-import { Plus, Edit, X, Eye } from 'lucide-react'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import BulkActionBar from '../../components/BulkActionBar'
+import { Plus, Edit, X, Eye, Trash2 } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '-'
@@ -17,6 +19,8 @@ const Contracts = () => {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [selected, setSelected] = useState(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [formData, setFormData] = useState({
     code: '',
     roomId: '',
@@ -99,6 +103,33 @@ const Contracts = () => {
     setShowModal(true)
   }
 
+  const handleDelete = async (id) => {
+    try { await api.delete(`/contracts/${id}`); fetchData(); showToast('Đã xóa hợp đồng', 'success') }
+    catch (e) { showToast(e.response?.data?.message || 'Không thể xóa', 'error') }
+  }
+
+  const toggleSelect = (id) => {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  const visibleContracts = statusFilter === 'ALL' ? contracts : contracts.filter(c => c.status === statusFilter)
+
+  const toggleSelectAll = () => {
+    if (selected.size === visibleContracts.length) setSelected(new Set())
+    else setSelected(new Set(visibleContracts.map(c => c.id)))
+  }
+
+  const handleBulkDelete = async () => {
+    let ok = 0, fail = 0
+    for (const id of selected) {
+      try { await api.delete(`/contracts/${id}`); ok++ }
+      catch { fail++ }
+    }
+    setSelected(new Set())
+    fetchData()
+    showToast(`Đã xóa ${ok} hợp đồng${fail > 0 ? `, ${fail} không thể xóa` : ''}`, fail > 0 ? 'warning' : 'success')
+  }
+
   if (loading) return <div>Loading...</div>
 
   return (
@@ -135,6 +166,10 @@ const Contracts = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3">
+                <input type="checkbox" checked={selected.size === visibleContracts.length && visibleContracts.length > 0}
+                  onChange={toggleSelectAll} className="rounded" />
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
@@ -146,8 +181,12 @@ const Contracts = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {(statusFilter === 'ALL' ? contracts : contracts.filter(c => c.status === statusFilter)).map((contract) => (
-              <tr key={contract.id}>
+            {visibleContracts.map((contract) => (
+              <tr key={contract.id} className={`hover:bg-gray-50 ${selected.has(contract.id) ? 'bg-blue-50' : ''}`}>
+                <td className="px-4 py-4">
+                  <input type="checkbox" checked={selected.has(contract.id)}
+                    onChange={() => toggleSelect(contract.id)} className="rounded" />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{contract.code}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{contract.roomCode}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">
@@ -171,18 +210,9 @@ const Contracts = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-3">
-                  <button
-                    onClick={() => navigate(`/admin/contracts/${contract.id}/detail`)}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleEdit(contract)}
-                    className="text-gray-500 hover:text-gray-800"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
+                  <button onClick={() => navigate(`/admin/contracts/${contract.id}/detail`)} className="text-blue-600 hover:text-blue-900"><Eye className="w-4 h-4" /></button>
+                  <button onClick={() => handleEdit(contract)} className="text-gray-500 hover:text-gray-800"><Edit className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete(contract.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                 </td>
               </tr>
             ))}
@@ -321,6 +351,16 @@ const Contracts = () => {
           </div>
         </div>
       )}
+      {/* Bulk action bar */}
+      <ConfirmDialog
+        isOpen={confirmBulkDelete}
+        title={`Xóa ${selected.size} hợp đồng`}
+        message={`Xóa ${selected.size} hợp đồng đã chọn? Hợp đồng có hóa đơn sẽ không thể xóa.`}
+        confirmText="Xóa" cancelText="Hủy" danger
+        onConfirm={() => { handleBulkDelete(); setConfirmBulkDelete(false) }}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
+      <BulkActionBar selectedCount={selected.size} onDelete={() => setConfirmBulkDelete(true)} onClear={() => setSelected(new Set())} />
     </div>
   )
 }

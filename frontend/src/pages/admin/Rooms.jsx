@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useToast } from '../../context/ToastContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import BulkActionBar from '../../components/BulkActionBar'
 import { Plus, Edit, Trash2, Eye } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -17,6 +18,8 @@ const Rooms = () => {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [selected, setSelected] = useState(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [filterHouse, setFilterHouse] = useState('ALL')
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [formData, setFormData] = useState({
@@ -105,6 +108,30 @@ const Rooms = () => {
     }
   }
 
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selected.size === filteredRooms.length) setSelected(new Set())
+    else setSelected(new Set(filteredRooms.map(r => r.id)))
+  }
+
+  const handleBulkDelete = async () => {
+    let ok = 0, fail = 0
+    for (const id of selected) {
+      try { await api.delete(`/rooms/${id}`); ok++ }
+      catch { fail++ }
+    }
+    setSelected(new Set())
+    fetchData()
+    showToast(`Đã xóa ${ok} phòng${fail > 0 ? `, ${fail} không thể xóa` : ''}`, fail > 0 ? 'warning' : 'success')
+  }
+
   if (loading) return <div>Loading...</div>
 
   return (
@@ -142,6 +169,10 @@ const Rooms = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3">
+                <input type="checkbox" checked={selected.size === filteredRooms.length && filteredRooms.length > 0}
+                  onChange={toggleSelectAll} className="rounded" />
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Boarding House</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Floor</th>
@@ -154,7 +185,11 @@ const Rooms = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredRooms.map((room) => (
-              <tr key={room.id}>
+              <tr key={room.id} className={`hover:bg-gray-50 ${selected.has(room.id) ? 'bg-blue-50' : ''}`}>
+                <td className="px-4 py-4">
+                  <input type="checkbox" checked={selected.has(room.id)}
+                    onChange={() => toggleSelect(room.id)} className="rounded" />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   <button
                     onClick={() => navigate(`/admin/rooms/${room.id}/detail`)}
@@ -310,6 +345,23 @@ const Rooms = () => {
         danger
         onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
         onCancel={() => setConfirmDelete(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmBulkDelete}
+        title={`Xóa ${selected.size} phòng`}
+        message={`Bạn có chắc muốn xóa ${selected.size} phòng đã chọn? Phòng đang có khách sẽ không thể xóa.`}
+        confirmText="Xóa tất cả"
+        cancelText="Hủy"
+        danger
+        onConfirm={() => { handleBulkDelete(); setConfirmBulkDelete(false) }}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
+
+      <BulkActionBar
+        selectedCount={selected.size}
+        onDelete={() => setConfirmBulkDelete(true)}
+        onClear={() => setSelected(new Set())}
       />
     </div>
   )

@@ -169,12 +169,11 @@ public class ContractService {
     public void delete(Long id) {
         Contract contract = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + id));
-        // Block if invoices exist
         if (!contract.getInvoices().isEmpty()) {
             throw new com.boardinghouse.exception.BadRequestException(
                 "Cannot delete contract with " + contract.getInvoices().size() + " invoice(s). Delete invoices first.");
         }
-        // Free the room
+        // Guest charges cascade via entity, room freed
         Room room = contract.getRoom();
         room.setStatus(RoomStatus.AVAILABLE);
         roomRepository.save(room);

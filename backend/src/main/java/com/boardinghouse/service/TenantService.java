@@ -2,6 +2,7 @@ package com.boardinghouse.service;
 
 import com.boardinghouse.dto.TenantDto;
 import com.boardinghouse.entity.*;
+import com.boardinghouse.entity.ContractStatus;
 import com.boardinghouse.exception.ResourceNotFoundException;
 import com.boardinghouse.repository.*;
 import org.springframework.stereotype.Service;
@@ -93,13 +94,27 @@ public class TenantService {
 
     @Transactional
     public void delete(Long id) {
-        if (!repository.existsById(id)) throw new ResourceNotFoundException("Tenant not found with id: " + id);
-        // Block delete if active contracts exist
-        boolean hasActiveContract = contractRepository.findByMainTenantId(id).stream()
-                .anyMatch(c -> c.getStatus() == com.boardinghouse.entity.ContractStatus.ACTIVE);
-        if (hasActiveContract) {
-            throw new com.boardinghouse.exception.BadRequestException("Cannot delete tenant with active contracts");
+        Tenant tenant = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with id: " + id));
+
+        // Check active contracts where tenant is main tenant
+        boolean hasActiveAsMain = contractRepository.findByMainTenantId(id).stream()
+                .anyMatch(c -> c.getStatus() == ContractStatus.ACTIVE);
+        if (hasActiveAsMain) {
+            throw new com.boardinghouse.exception.BadRequestException(
+                "Cannot delete tenant with active contracts");
         }
+
+        // Remove tenant from all contract_tenants join table entries
+        // (tenant may be a member in other contracts)
+        List<Contract> memberContracts = contractRepository.findAll().stream()
+                .filter(c -> c.getTenants().stream().anyMatch(t -> t.getId().equals(id)))
+                .collect(Collectors.toList());
+        for (Contract c : memberContracts) {
+            c.getTenants().removeIf(t -> t.getId().equals(id));
+            contractRepository.save(c);
+        }
+
         repository.deleteById(id);
     }
 

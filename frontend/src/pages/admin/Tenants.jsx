@@ -5,6 +5,7 @@ import eventBus, { EVENTS } from '../../services/eventBus'
 import { useToast } from '../../context/ToastContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { Plus, Edit, Trash2, Eye, AlertCircle, Clock } from 'lucide-react'
+import BulkActionBar from '../../components/BulkActionBar'
 
 const fmt = (n) => n != null ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n) : '-'
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '-'
@@ -38,6 +39,8 @@ const Tenants = () => {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [selected, setSelected] = useState(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [formData, setFormData] = useState({
     fullName: '', phone: '', email: '', identityNumber: '',
     dateOfBirth: '', permanentAddress: '', status: 'ACTIVE',
@@ -122,6 +125,26 @@ const Tenants = () => {
     catch (e) { showToast(e.response?.data?.message || 'Không thể xóa', 'error') }
   }
 
+  const toggleSelect = (id) => {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  const toggleSelectAll = () => {
+    if (selected.size === tenants.length) setSelected(new Set())
+    else setSelected(new Set(tenants.map(t => t.id)))
+  }
+
+  const handleBulkDelete = async () => {
+    let ok = 0, fail = 0
+    for (const id of selected) {
+      try { await api.delete(`/tenants/${id}`); ok++ }
+      catch { fail++ }
+    }
+    setSelected(new Set())
+    fetchData()
+    showToast(`Đã xóa ${ok} khách${fail > 0 ? `, ${fail} không thể xóa (có hợp đồng active)` : ''}`, fail > 0 ? 'warning' : 'success')
+  }
+
   if (loading) return <div>Loading...</div>
 
   return (
@@ -137,6 +160,10 @@ const Tenants = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3">
+                <input type="checkbox" checked={selected.size === tenants.length && tenants.length > 0}
+                  onChange={toggleSelectAll} className="rounded" />
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên khách</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SĐT</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phòng</th>
@@ -149,7 +176,11 @@ const Tenants = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {tenants.map((t) => (
-              <tr key={t.id} className="hover:bg-gray-50">
+              <tr key={t.id} className={`hover:bg-gray-50 ${selected.has(t.id) ? 'bg-blue-50' : ''}`}>
+                <td className="px-4 py-3">
+                  <input type="checkbox" checked={selected.has(t.id)}
+                    onChange={() => toggleSelect(t.id)} className="rounded" />
+                </td>
                 <td className="px-4 py-3 text-sm font-medium">
                   <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="text-blue-600 hover:underline">
                     {t.fullName}
@@ -310,6 +341,17 @@ const Tenants = () => {
         onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      <ConfirmDialog
+        isOpen={confirmBulkDelete}
+        title={`Xóa ${selected.size} khách`}
+        message={`Xóa ${selected.size} khách đã chọn? Khách có hợp đồng active sẽ không thể xóa.`}
+        confirmText="Xóa" cancelText="Hủy" danger
+        onConfirm={() => { handleBulkDelete(); setConfirmBulkDelete(false) }}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
+
+      <BulkActionBar selectedCount={selected.size} onDelete={() => setConfirmBulkDelete(true)} onClear={() => setSelected(new Set())} />
     </div>
   )
 }
