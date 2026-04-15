@@ -10,8 +10,18 @@ import BulkActionBar from '../../components/BulkActionBar'
 const fmt = (n) => n != null ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n) : '-'
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '-'
 
+const getGuestStatus = (t) => {
+  if (!t.checkOutDate) return { label: 'Đang ở', cls: 'bg-green-100 text-green-800' }
+  const today = new Date(); today.setHours(0,0,0,0)
+  const out = new Date(t.checkOutDate + 'T00:00:00')
+  const diff = Math.round((out - today) / 86400000)
+  if (diff < 0)  return { label: 'Đã trả phòng', cls: 'bg-gray-100 text-gray-600' }
+  if (diff === 0) return { label: 'Trả phòng hôm nay', cls: 'bg-orange-100 text-orange-700' }
+  if (diff === 1) return { label: 'Trả phòng ngày mai', cls: 'bg-yellow-100 text-yellow-700' }
+  return { label: 'Đang ở', cls: 'bg-green-100 text-green-800' }
+}
+
 const debtColor = (debt, checkOut) => {
-  if (!debt || debt <= 0) return 'text-green-600'
   const today = new Date(); today.setHours(0,0,0,0)
   const out = checkOut ? new Date(checkOut) : null
   if (out && out < today) return 'text-red-700 font-bold'   // quá hạn
@@ -212,9 +222,10 @@ const Tenants = () => {
                   ) : '-'}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 text-xs rounded-full ${t.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                    {t.status === 'ACTIVE' ? 'Đang ở' : 'Không hoạt động'}
-                  </span>
+                  {(() => {
+                    const s = getGuestStatus(t)
+                    return <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${s.cls}`}>{s.label}</span>
+                  })()}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="text-blue-500 hover:text-blue-700 mr-3"><Eye className="w-4 h-4" /></button>

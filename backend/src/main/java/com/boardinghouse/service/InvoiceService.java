@@ -311,6 +311,13 @@ public class InvoiceService {
         Invoice invoice = repository.findById(invoiceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found"));
 
+        // Guard: never mark PAID if totalAmount is 0 (misconfigured invoice)
+        if (invoice.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            invoice.setStatus(PaymentStatus.UNPAID);
+            repository.save(invoice);
+            return;
+        }
+
         BigDecimal totalPaid = paymentRepository.findByInvoiceId(invoiceId).stream()
                 .map(Payment::getPaidAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);

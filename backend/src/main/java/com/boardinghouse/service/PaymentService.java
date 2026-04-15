@@ -106,6 +106,11 @@ public class PaymentService {
 
         BigDecimal remaining = totalBill.subtract(alreadyPaid);
 
+        // Guard: if totalBill is 0 (no dailyRate set), don't create invoice
+        if (totalBill.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException(
+                "Cannot process payment: contract has no daily rate or monthly rent configured. Please edit the contract first.");
+        }
         if (dto.getPaidAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BadRequestException("Payment amount must be greater than 0");
         }
