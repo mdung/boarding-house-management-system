@@ -78,14 +78,18 @@ public class GuestServiceChargeService {
                 .map(GuestServiceCharge::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Tổng tiền thuê từ invoices
-        BigDecimal totalRent = invoiceRepository.findByContractId(contractId).stream()
-                .map(inv -> inv.getTotalAmount())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Tính tiền phòng từ dailyRate × số đêm (không phụ thuộc invoices)
+        long nights = java.time.temporal.ChronoUnit.DAYS.between(
+                contract.getStartDate(), contract.getEndDate());
+        BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate()
+                : (contract.getMonthlyRent() != null
+                    ? contract.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO);
+        BigDecimal totalRent = dailyRate.multiply(BigDecimal.valueOf(nights));
 
         BigDecimal totalAmount = totalCharges.add(totalRent);
 
-        // Tổng đã thanh toán từ payments
+        // Tổng đã thanh toán từ payments của invoices
         BigDecimal totalPaid = invoiceRepository.findByContractId(contractId).stream()
                 .flatMap(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream())
                 .map(Payment::getPaidAmount)
@@ -106,6 +110,11 @@ public class GuestServiceChargeService {
         summary.setContractCode(contract.getCode());
         summary.setRoomCode(contract.getRoom().getCode());
         summary.setTenantName(contract.getMainTenant().getFullName());
+        summary.setCheckInDate(contract.getStartDate());
+        summary.setCheckOutDate(contract.getEndDate());
+        summary.setTotalNights((int) nights);
+        summary.setDailyRate(dailyRate);
+        summary.setDeposit(contract.getDeposit());
         summary.setTotalCharges(totalCharges);
         summary.setTotalRent(totalRent);
         summary.setTotalAmount(totalAmount);

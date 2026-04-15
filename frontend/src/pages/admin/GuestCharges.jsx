@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 
@@ -7,6 +8,7 @@ const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency:
 const CATEGORIES = { FOOD_DRINK: '🍺 Food & Drink', SERVICE: '🛵 Service' }
 
 const GuestCharges = () => {
+  const [searchParams] = useSearchParams()
   const [contracts, setContracts] = useState([])
   const [catalog, setCatalog] = useState([])
   const [selectedContractId, setSelectedContractId] = useState('')
@@ -27,6 +29,12 @@ const GuestCharges = () => {
     api.get('/contracts').then(r => setContracts(r.data)).catch(console.error)
     api.get('/service-catalog').then(r => setCatalog(r.data)).catch(console.error)
   }, [])
+
+  // Auto-select contract from URL param (e.g. from dashboard modal)
+  useEffect(() => {
+    const cid = searchParams.get('contractId')
+    if (cid) setSelectedContractId(cid)
+  }, [searchParams])
 
   useEffect(() => {
     if (selectedContractId) fetchSummary()
@@ -128,25 +136,61 @@ const GuestCharges = () => {
 
       {summary && !loading && (
         <>
+          {/* Contract info bar */}
+          <div className="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap gap-6 text-sm">
+            <div>
+              <span className="text-gray-500">Khách:</span>
+              <span className="font-semibold ml-1">{summary.tenantName}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Phòng:</span>
+              <span className="font-semibold ml-1">{summary.roomCode}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Check-in:</span>
+              <span className="font-semibold ml-1">{summary.checkInDate ? new Date(summary.checkInDate + 'T00:00:00').toLocaleDateString('vi-VN') : '-'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Check-out:</span>
+              <span className="font-semibold ml-1">{summary.checkOutDate ? new Date(summary.checkOutDate + 'T00:00:00').toLocaleDateString('vi-VN') : '-'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Số đêm:</span>
+              <span className="font-bold text-blue-600 ml-1">{summary.totalNights} đêm</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Đơn giá:</span>
+              <span className="font-semibold ml-1">{fmt(summary.dailyRate)}/đêm</span>
+            </div>
+            {summary.deposit > 0 && (
+              <div>
+                <span className="text-gray-500">Tiền cọc:</span>
+                <span className="font-semibold text-blue-600 ml-1">{fmt(summary.deposit)}</span>
+              </div>
+            )}
+          </div>
+
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-500">Tổng dịch vụ</p>
-              <p className="text-xl font-bold text-blue-600">{fmt(summary.totalCharges)}</p>
+              <p className="text-xs text-gray-500">Tiền phòng</p>
+              <p className="text-lg font-bold text-gray-700">{fmt(summary.totalRent)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{summary.totalNights} đêm × {fmt(summary.dailyRate)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-500">Tiền thuê phòng</p>
-              <p className="text-xl font-bold text-gray-700">{fmt(summary.totalRent)}</p>
+              <p className="text-xs text-gray-500">Tổng dịch vụ</p>
+              <p className="text-lg font-bold text-blue-600">{fmt(summary.totalCharges)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-500">Đã thanh toán</p>
-              <p className="text-xl font-bold text-green-600">{fmt(summary.totalPaid)}</p>
+              <p className="text-xs text-gray-500">Đã thanh toán</p>
+              <p className="text-lg font-bold text-green-600">{fmt(summary.totalPaid)}</p>
             </div>
             <div className={`rounded-lg shadow p-4 ${summary.remainingAmount > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
-              <p className="text-sm text-gray-500">Còn lại</p>
-              <p className={`text-xl font-bold ${summary.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <p className="text-xs text-gray-500">Còn lại</p>
+              <p className={`text-lg font-bold ${summary.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {fmt(summary.remainingAmount)}
               </p>
+              <p className="text-xs text-gray-400 mt-0.5">Tổng: {fmt(summary.totalAmount)}</p>
             </div>
           </div>
 
