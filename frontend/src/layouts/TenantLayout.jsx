@@ -19,11 +19,12 @@ const TenantLayout = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <aside className="w-64 bg-blue-800 text-white">
+      <aside className="w-64 bg-blue-800 text-white flex flex-col h-screen">
         <div className="p-6">
           <h1 className="text-xl font-bold">Tenant Portal</h1>
+          <p className="text-xs text-blue-300 mt-1">Boarding House</p>
         </div>
-        <nav className="mt-6">
+        <nav className="mt-2 flex-1 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon
             return (
@@ -38,7 +39,7 @@ const TenantLayout = () => {
             )
           })}
         </nav>
-        <div className="absolute bottom-0 w-64 p-6 border-t border-blue-700">
+        <div className="p-6 border-t border-blue-700">
           <div className="mb-4">
             <p className="text-sm font-medium">{user?.fullName}</p>
             <p className="text-xs text-blue-200">{user?.username}</p>

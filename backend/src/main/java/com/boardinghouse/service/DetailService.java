@@ -51,6 +51,7 @@ public class DetailService {
         dto.setEndDate(contract.getEndDate());
         dto.setDeposit(contract.getDeposit());
         dto.setMonthlyRent(contract.getMonthlyRent());
+        dto.setDailyRate(contract.getDailyRate());
         dto.setStatus(contract.getStatus());
         dto.setBillingCycle(contract.getBillingCycle());
         dto.setTerminationReason(contract.getTerminationReason());
@@ -162,6 +163,9 @@ public class DetailService {
             contractDto.setStartDate(c.getStartDate());
             contractDto.setEndDate(c.getEndDate());
             contractDto.setMonthlyRent(c.getMonthlyRent());
+            contractDto.setDailyRate(c.getDailyRate());
+            contractDto.setDeposit(c.getDeposit());
+            contractDto.setBillingCycle(c.getBillingCycle());
             contractDto.setStatus(c.getStatus());
             return contractDto;
         }).collect(Collectors.toList()));

@@ -21,6 +21,7 @@ import RoomDetail from './pages/admin/RoomDetail'
 import TenantDetail from './pages/admin/TenantDetail'
 import Profile from './pages/admin/Profile'
 import GuestCharges from './pages/admin/GuestCharges'
+import ServiceCatalog from './pages/admin/ServiceCatalog'
 import Calendar from './pages/admin/Calendar'
 import TenantDashboard from './pages/tenant/Dashboard'
 import TenantInvoices from './pages/tenant/Invoices'
@@ -45,6 +46,7 @@ function App() {
             <Route path="service-types" element={<ServiceTypes />} />
             <Route path="room-services" element={<RoomServices />} />
             <Route path="guest-charges" element={<GuestCharges />} />
+            <Route path="service-catalog" element={<ServiceCatalog />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="reports" element={<Reports />} />
             <Route path="invoices/:id/detail" element={<InvoiceDetail />} />

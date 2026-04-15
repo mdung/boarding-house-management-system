@@ -129,6 +129,23 @@ const Invoices = () => {
     return parseFloat(newIndex) - parseFloat(oldIndex)
   }
 
+  const handleGenerateWithReadings = async (e) => {
+    e.preventDefault()
+    try {
+      await api.post('/invoices/generate-with-readings', readingsData)
+      setShowReadingsModal(false)
+      setReadingsData({ contractId: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), readings: [] })
+      setRoomServices([])
+      setShowPreview(false)
+      setPreviewInvoice(null)
+      showToast('Invoice generated successfully', 'success')
+      fetchData()
+    } catch (error) {
+      console.error('Failed to generate invoice:', error)
+      showToast(error.response?.data?.message || 'Failed to generate invoice', 'error')
+    }
+  }
+
   if (loading) return <div>Loading...</div>
 
   return (
@@ -528,23 +545,6 @@ const Invoices = () => {
       )}
     </div>
   )
-
-  const handleGenerateWithReadings = async (e) => {
-    e.preventDefault()
-    try {
-      await api.post('/invoices/generate-with-readings', readingsData)
-      setShowReadingsModal(false)
-      setReadingsData({ contractId: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), readings: [] })
-      setRoomServices([])
-      setShowPreview(false)
-      setPreviewInvoice(null)
-      showToast('Invoice generated successfully', 'success')
-      fetchData()
-    } catch (error) {
-      console.error('Failed to generate invoice:', error)
-      showToast(error.response?.data?.message || 'Failed to generate invoice', 'error')
-    }
-  }
 }
 
 export default Invoices

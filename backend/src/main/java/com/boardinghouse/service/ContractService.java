@@ -92,6 +92,24 @@ public class ContractService {
         contract.setDeposit(dto.getDeposit());
         contract.setMonthlyRent(dto.getMonthlyRent());
         contract.setDailyRate(dto.getDailyRate());
+
+        // Update room if changed
+        if (dto.getRoomId() != null && !dto.getRoomId().equals(contract.getRoom().getId())) {
+            Room oldRoom = contract.getRoom();
+            Room newRoom = roomRepository.findById(dto.getRoomId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+            // Free old room
+            oldRoom.setStatus(RoomStatus.AVAILABLE);
+            roomRepository.save(oldRoom);
+            contract.setRoom(newRoom);
+        }
+
+        // Update main tenant if changed
+        if (dto.getMainTenantId() != null && !dto.getMainTenantId().equals(contract.getMainTenant().getId())) {
+            Tenant newTenant = tenantRepository.findById(dto.getMainTenantId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
+            contract.setMainTenant(newTenant);
+        }
         if (dto.getStatus() != null) {
             contract.setStatus(dto.getStatus());
         }
@@ -110,7 +128,9 @@ public class ContractService {
         Room room = saved.getRoom();
         if (saved.getStatus() == ContractStatus.ACTIVE) {
             room.setStatus(RoomStatus.OCCUPIED);
-        } else if (saved.getStatus() == ContractStatus.TERMINATED || saved.getStatus() == ContractStatus.EXPIRED) {
+        } else if (saved.getStatus() == ContractStatus.TERMINATED
+                || saved.getStatus() == ContractStatus.EXPIRED
+                || saved.getStatus() == ContractStatus.DRAFT) {
             room.setStatus(RoomStatus.AVAILABLE);
         }
         roomRepository.save(room);
@@ -147,9 +167,17 @@ public class ContractService {
 
     @Transactional
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Contract not found with id: " + id);
+        Contract contract = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + id));
+        // Block if invoices exist
+        if (!contract.getInvoices().isEmpty()) {
+            throw new com.boardinghouse.exception.BadRequestException(
+                "Cannot delete contract with " + contract.getInvoices().size() + " invoice(s). Delete invoices first.");
         }
+        // Free the room
+        Room room = contract.getRoom();
+        room.setStatus(RoomStatus.AVAILABLE);
+        roomRepository.save(room);
         repository.deleteById(id);
     }
 

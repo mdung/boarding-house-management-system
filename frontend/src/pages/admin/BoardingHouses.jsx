@@ -176,6 +176,15 @@ const BoardingHouses = () => {
                   rows="3"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Notes</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  rows="2"
+                />
+              </div>
               <div className="flex justify-end space-x-4">
                 <button
                   type="button"

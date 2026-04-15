@@ -1,77 +1,73 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
+
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
 
 const TenantInvoices = () => {
+  const { user } = useAuth()
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchInvoices()
-  }, [])
+    if (user?.id) fetchInvoices()
+  }, [user])
 
   const fetchInvoices = async () => {
     try {
-      const response = await api.get('/invoices')
-      // In a real app, filter by tenant's contract
-      setInvoices(response.data)
-    } catch (error) {
-      console.error('Failed to fetch invoices:', error)
+      const tenantRes = await api.get(`/tenants/user/${user.id}`)
+      const detailRes = await api.get(`/tenants/${tenantRes.data.id}/detail`)
+      setInvoices(detailRes.data.invoices || [])
+    } catch (e) {
+      console.error(e)
     } finally {
       setLoading(false)
     }
   }
 
-  if (loading) return <div>Loading...</div>
+  if (loading) return <div className="p-8 text-center text-gray-400">Đang tải...</div>
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">My Invoices</h1>
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {invoices.map((invoice) => (
-              <tr key={invoice.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{invoice.code}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {invoice.periodMonth}/{invoice.periodYear}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount || 0)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.paidAmount || 0)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.remainingAmount || 0)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    invoice.status === 'PAID' ? 'bg-green-100 text-green-800' :
-                    invoice.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800' :
-                    invoice.status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {invoice.status}
-                  </span>
-                </td>
+      <h1 className="text-2xl font-bold mb-6">Hóa đơn của tôi</h1>
+      {invoices.length === 0 ? (
+        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">Chưa có hóa đơn nào.</div>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã HĐ</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kỳ</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng tiền</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Đã trả</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Còn lại</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {invoices.map((inv) => (
+                <tr key={inv.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-medium">{inv.code}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{inv.periodMonth}/{inv.periodYear}</td>
+                  <td className="px-4 py-3 text-sm text-right">{fmt(inv.totalAmount)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-green-600">{fmt(inv.paidAmount)}</td>
+                  <td className="px-4 py-3 text-sm text-right font-medium text-red-600">{fmt(inv.remainingAmount)}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-0.5 text-xs rounded-full ${
+                      inv.status === 'PAID' ? 'bg-green-100 text-green-800' :
+                      inv.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800' :
+                      inv.status === 'OVERDUE' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
+                    }`}>{inv.status}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
 
 export default TenantInvoices
-

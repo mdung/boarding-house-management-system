@@ -26,12 +26,15 @@ public class DataSeeder implements CommandLineRunner {
     private final PaymentRepository paymentRepository;
     private final GuestServiceChargeRepository guestServiceChargeRepository;
 
+    private final ServiceCatalogRepository serviceCatalogRepository;
+
     public DataSeeder(UserRepository userRepository, PasswordEncoder passwordEncoder,
                      BoardingHouseRepository boardingHouseRepository, RoomRepository roomRepository,
                      TenantRepository tenantRepository, ContractRepository contractRepository,
                      ServiceTypeRepository serviceTypeRepository, RoomServiceRepository roomServiceRepository,
                      InvoiceRepository invoiceRepository, PaymentRepository paymentRepository,
-                     GuestServiceChargeRepository guestServiceChargeRepository) {
+                     GuestServiceChargeRepository guestServiceChargeRepository,
+                     ServiceCatalogRepository serviceCatalogRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.boardingHouseRepository = boardingHouseRepository;
@@ -43,6 +46,7 @@ public class DataSeeder implements CommandLineRunner {
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.guestServiceChargeRepository = guestServiceChargeRepository;
+        this.serviceCatalogRepository = serviceCatalogRepository;
     }
 
     @Override
@@ -188,6 +192,9 @@ public class DataSeeder implements CommandLineRunner {
         addCharge(ct5, r401, today, "Cà phê sáng", new BigDecimal("2"), new BigDecimal("25000"), null);
         addCharge(ct5, r401, yesterday, "Thuê xe máy", new BigDecimal("1"), new BigDecimal("120000"), "Nửa ngày");
         addCharge(ct5, r401, yesterday, "Bữa ăn tối", new BigDecimal("1"), new BigDecimal("55000"), null);
+
+        // ============ SERVICE CATALOG ============
+        seedServiceCatalog();
     }
 
     // ============ HELPERS ============
@@ -278,6 +285,42 @@ public class DataSeeder implements CommandLineRunner {
         c.setDescription(desc); c.setQuantity(qty); c.setUnitPrice(unitPrice);
         c.setAmount(qty.multiply(unitPrice)); c.setNote(note);
         guestServiceChargeRepository.save(c);
+    }
+
+    private void seedServiceCatalog() {
+        // FOOD & DRINK
+        addCatalog("🍺 Beer",        "FOOD_DRINK", "bottle", "25000",  1);
+        addCatalog("🥤 Coke",        "FOOD_DRINK", "can",    "15000",  2);
+        addCatalog("💧 Water",       "FOOD_DRINK", "bottle", "10000",  3);
+        addCatalog("☕ Coffee",      "FOOD_DRINK", "cup",    "25000",  4);
+        addCatalog("🍳 Breakfast",   "FOOD_DRINK", "set",    "35000",  5);
+        addCatalog("🍱 Lunch",       "FOOD_DRINK", "set",    "50000",  6);
+        addCatalog("🍜 Dinner",      "FOOD_DRINK", "set",    "55000",  7);
+        addCatalog("🍜 Instant Noodle","FOOD_DRINK","pack",  "15000",  8);
+        addCatalog("🧃 Juice",       "FOOD_DRINK", "bottle", "20000",  9);
+        addCatalog("🍫 Snack",       "FOOD_DRINK", "pack",   "20000", 10);
+        addCatalog("🍶 Other Drink", "FOOD_DRINK", "item",   "20000", 11);
+        addCatalog("🍽️ Other Food",  "FOOD_DRINK", "item",   "40000", 12);
+
+        // SERVICE
+        addCatalog("🛵 Motorbike Rent", "SERVICE", "day",   "150000",  1);
+        addCatalog("🚲 Bicycle Rent",   "SERVICE", "day",    "50000",  2);
+        addCatalog("👕 Laundry",        "SERVICE", "kg",     "30000",  3);
+        addCatalog("🏙️ City Tour",      "SERVICE", "trip",  "200000",  4);
+        addCatalog("🍜 Food Tour",      "SERVICE", "trip",  "250000",  5);
+        addCatalog("🚗 Airport Transfer","SERVICE","trip",  "300000",  6);
+        addCatalog("🧹 Room Cleaning",  "SERVICE", "time",   "50000",  7);
+        addCatalog("📦 Luggage Storage","SERVICE", "day",    "20000",  8);
+        addCatalog("🖨️ Printing",       "SERVICE", "page",    "5000",  9);
+        addCatalog("🔌 Extra Charging", "SERVICE", "time",   "10000", 10);
+        addCatalog("🛎️ Other Service",  "SERVICE", "item",   "50000", 11);
+    }
+
+    private void addCatalog(String name, String category, String unit, String price, int order) {
+        com.boardinghouse.entity.ServiceCatalog s = new com.boardinghouse.entity.ServiceCatalog();
+        s.setName(name); s.setCategory(category); s.setUnit(unit);
+        s.setDefaultPrice(new BigDecimal(price)); s.setIsActive(true); s.setSortOrder(order);
+        serviceCatalogRepository.save(s);
     }
 }
 

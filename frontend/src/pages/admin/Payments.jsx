@@ -20,6 +20,7 @@ const Payments = () => {
   const [formData, setFormData] = useState({
     invoiceId: '',
     paidAmount: '',
+    paymentDate: new Date().toISOString().split('T')[0],
     method: 'CASH',
     note: '',
     transactionCode: '',
@@ -60,6 +61,7 @@ const Payments = () => {
     setFormData({
       invoiceId: invoice.id.toString(),
       paidAmount: invoice.remainingAmount?.toString() || '',
+      paymentDate: new Date().toISOString().split('T')[0],
       method: 'CASH',
       note: '',
       transactionCode: '',
@@ -74,6 +76,7 @@ const Payments = () => {
         ...formData,
         invoiceId: parseInt(formData.invoiceId),
         paidAmount: parseFloat(formData.paidAmount),
+        paymentDate: formData.paymentDate || new Date().toISOString(),
       })
       setShowModal(false)
       setSelectedInvoice(null)
@@ -96,7 +99,7 @@ const Payments = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Thanh toán</h1>
         <button
-          onClick={() => { setSelectedInvoice(null); setFormData({ invoiceId: '', paidAmount: '', method: 'CASH', note: '', transactionCode: '' }); setShowModal(true) }}
+          onClick={() => { setSelectedInvoice(null); setFormData({ invoiceId: '', paidAmount: '', paymentDate: new Date().toISOString().split('T')[0], method: 'CASH', note: '', transactionCode: '' }); setShowModal(true) }}
           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           <Plus className="w-4 h-4 mr-2" /> Thêm thanh toán
@@ -248,6 +251,15 @@ const Payments = () => {
                       : `⚠️ Còn thiếu ${fmt(selectedInvoice.remainingAmount - parseFloat(formData.paidAmount))}`}
                   </p>
                 )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Ngày thanh toán</label>
+                <input
+                  type="date"
+                  value={formData.paymentDate}
+                  onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Phương thức</label>

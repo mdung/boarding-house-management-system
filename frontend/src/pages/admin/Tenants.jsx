@@ -90,6 +90,10 @@ const Tenants = () => {
         tenantId = res.data.id
         // Create contract if room selected
         if (formData.roomId && formData.checkInDate && formData.checkOutDate) {
+          if (formData.checkOutDate <= formData.checkInDate) {
+            showToast('Ngày trả phòng phải sau ngày nhận phòng', 'error')
+            return
+          }
           const room = availableRooms.find(r => r.id === parseInt(formData.roomId))
           await api.post('/contracts', {
             code: `CT-${Date.now()}`,

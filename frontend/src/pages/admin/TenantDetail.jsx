@@ -92,6 +92,12 @@ const TenantDetail = () => {
               <span className="text-gray-600">Tổng hóa đơn:</span>
               <span className="font-medium">{fmt(totalInvoiceAmount)}</span>
             </div>
+            {activeContract?.deposit > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Tiền cọc:</span>
+                <span className="font-medium text-blue-600">{fmt(activeContract.deposit)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-600">Đã thanh toán:</span>
               <span className="font-medium text-green-600">{fmt(totalPaid)}</span>
@@ -134,7 +140,9 @@ const TenantDetail = () => {
                       c.status === 'TERMINATED' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
                     }`}>{c.status}</span>
                   </div>
-                  <span className="text-sm font-medium">{fmt(c.monthlyRent)}/tháng</span>
+                  <span className="text-sm font-medium">
+                    {c.dailyRate ? `${fmt(c.dailyRate)}/ngày` : `${fmt(c.monthlyRent)}/tháng`}
+                  </span>
                 </div>
                 <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
                   <span>Check-in: <strong>{fmtDate(c.startDate)}</strong></span>

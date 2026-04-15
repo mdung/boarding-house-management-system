@@ -94,6 +94,12 @@ public class TenantService {
     @Transactional
     public void delete(Long id) {
         if (!repository.existsById(id)) throw new ResourceNotFoundException("Tenant not found with id: " + id);
+        // Block delete if active contracts exist
+        boolean hasActiveContract = contractRepository.findByMainTenantId(id).stream()
+                .anyMatch(c -> c.getStatus() == com.boardinghouse.entity.ContractStatus.ACTIVE);
+        if (hasActiveContract) {
+            throw new com.boardinghouse.exception.BadRequestException("Cannot delete tenant with active contracts");
+        }
         repository.deleteById(id);
     }
 

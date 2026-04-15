@@ -24,6 +24,7 @@ public class ContractDetailDto {
     private LocalDate endDate;
     private BigDecimal deposit;
     private BigDecimal monthlyRent;
+    private BigDecimal dailyRate;
     private ContractStatus status;
     private BillingCycle billingCycle;
     private String terminationReason;

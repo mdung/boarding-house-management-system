@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useState } from 'react'
 import {
   Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard,
-  LogOut, Settings, BarChart3, ShoppingCart, Menu, CalendarDays
+  LogOut, Settings, BarChart3, ShoppingCart, Menu, CalendarDays, BookOpen
 } from 'lucide-react'
 
 const menuGroups = [
@@ -36,6 +36,7 @@ const menuGroups = [
     items: [
       { path: '/admin/service-types', icon: Settings, label: 'Loại dịch vụ' },
       { path: '/admin/room-services', icon: Settings, label: 'DV theo phòng' },
+      { path: '/admin/service-catalog', icon: BookOpen, label: 'Danh mục dịch vụ' },
       { path: '/admin/reports', icon: BarChart3, label: 'Báo cáo' },
     ],
   },

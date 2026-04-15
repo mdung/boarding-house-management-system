@@ -62,6 +62,12 @@ public class BoardingHouseService {
         if (!repository.existsById(id)) {
             throw new ResourceNotFoundException("Boarding house not found with id: " + id);
         }
+        // Block delete if rooms exist
+        long roomCount = roomRepository.findByBoardingHouseId(id).size();
+        if (roomCount > 0) {
+            throw new com.boardinghouse.exception.BadRequestException(
+                "Cannot delete boarding house with " + roomCount + " room(s). Remove rooms first.");
+        }
         repository.deleteById(id);
     }
 
