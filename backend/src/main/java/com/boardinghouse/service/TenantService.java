@@ -138,17 +138,24 @@ public class TenantService {
                 dto.setCheckInDate(c.getStartDate());
                 dto.setCheckOutDate(c.getEndDate());
 
-                BigDecimal invoiceTotal = invoiceRepository.findByContractId(c.getId()).stream()
-                        .map(inv -> inv.getTotalAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                // Calculate debt: dailyRate × nights + guest charges - paid
+                long nights = java.time.temporal.ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate());
+                BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
+                        : (c.getMonthlyRent() != null
+                            ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO);
+                BigDecimal roomCost = dailyRate.multiply(BigDecimal.valueOf(nights));
+                BigDecimal charges = guestChargeRepository.sumAmountByContractId(c.getId());
+
+                // Total paid across all invoices
                 BigDecimal paid = invoiceRepository.findByContractId(c.getId()).stream()
                         .flatMap(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream())
                         .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-                BigDecimal charges = guestChargeRepository.sumAmountByContractId(c.getId());
+
                 dto.setTotalCharges(charges);
-                dto.setTotalDebt(invoiceTotal.add(charges).subtract(paid));
+                dto.setTotalDebt(roomCost.add(charges).subtract(paid));
             });
         } catch (Exception e) {
-            // log but don't fail the whole list
             System.err.println("Error loading contract info for tenant " + tenant.getId() + ": " + e.getMessage());
         }
 

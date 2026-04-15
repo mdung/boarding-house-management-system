@@ -39,6 +39,13 @@ public class PaymentController {
         return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED);
     }
 
+    @PostMapping("/contract/{contractId}")
+    public ResponseEntity<PaymentDto> createForContract(
+            @PathVariable Long contractId,
+            @RequestBody PaymentDto dto) {
+        return new ResponseEntity<>(service.createForContract(contractId, dto), HttpStatus.CREATED);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
-import { ArrowLeft, Edit2, Save, X, DollarSign } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, CreditCard, ShoppingCart } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '-'
@@ -11,58 +11,73 @@ const TenantDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const [tenant, setTenant] = useState(null)
+  const [summary, setSummary] = useState(null) // contract financial summary
   const [loading, setLoading] = useState(true)
-  const [editingCheckout, setEditingCheckout] = useState(null) // contractId being edited
+  const [editingCheckout, setEditingCheckout] = useState(null)
   const [newCheckoutDate, setNewCheckoutDate] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showPayModal, setShowPayModal] = useState(false)
+  const [payForm, setPayForm] = useState({ paidAmount: '', method: 'CASH', note: '', transactionCode: '', paymentDate: new Date().toISOString().split('T')[0] })
+  const [paying, setPaying] = useState(false)
 
-  useEffect(() => { fetchTenant() }, [id])
+  useEffect(() => { fetchAll() }, [id])
+  useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchAll) }, [id])
 
-  useEffect(() => {
-    return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchTenant)
-  }, [id])
-
-  const fetchTenant = async () => {
+  const fetchAll = async () => {
     try {
       const r = await api.get(`/tenants/${id}/detail`)
       setTenant(r.data)
+      // Fetch contract summary for active contract
+      const active = r.data.contracts?.find(c => c.status === 'ACTIVE')
+      if (active) {
+        const s = await api.get(`/guest-charges/contract/${active.id}/summary`)
+        setSummary(s.data)
+      } else {
+        setSummary(null)
+      }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
-  const startEditCheckout = (contract) => {
-    setEditingCheckout(contract.id)
-    setNewCheckoutDate(contract.endDate)
-  }
+  const startEditCheckout = (contract) => { setEditingCheckout(contract.id); setNewCheckoutDate(contract.endDate) }
 
   const saveCheckout = async (contractId) => {
     setSaving(true)
     try {
       await api.patch(`/contracts/${contractId}/checkout-date`, { endDate: newCheckoutDate })
-      setEditingCheckout(null)
-      fetchTenant()
-    } catch (e) {
-      alert(e.response?.data?.message || 'Lỗi khi cập nhật')
-    } finally { setSaving(false) }
+      setEditingCheckout(null); fetchAll()
+    } catch (e) { alert(e.response?.data?.message || 'Lỗi') }
+    finally { setSaving(false) }
+  }
+
+  const handlePay = async (e) => {
+    e.preventDefault()
+    const active = tenant.contracts?.find(c => c.status === 'ACTIVE')
+    if (!active) return
+    setPaying(true)
+    try {
+      await api.post(`/payments/contract/${active.id}`, {
+        paidAmount: parseFloat(payForm.paidAmount),
+        method: payForm.method,
+        note: payForm.note,
+        transactionCode: payForm.transactionCode,
+        paymentDate: payForm.paymentDate ? new Date(payForm.paymentDate).toISOString() : null,
+      })
+      setShowPayModal(false)
+      setPayForm({ paidAmount: '', method: 'CASH', note: '', transactionCode: '', paymentDate: new Date().toISOString().split('T')[0] })
+      eventBus.emit(EVENTS.PAYMENT_CHANGED)
+      fetchAll()
+    } catch (e) { alert(e.response?.data?.message || 'Lỗi khi thanh toán') }
+    finally { setPaying(false) }
   }
 
   if (loading) return <div className="p-8 text-center text-gray-500">Đang tải...</div>
   if (!tenant) return <div className="p-8 text-center text-red-500">Không tìm thấy khách</div>
 
-  // Find active contract
   const activeContract = tenant.contracts?.find(c => c.status === 'ACTIVE')
-
-  // Calculate debt summary from active contract
-  const activeInvoices = tenant.invoices?.filter(inv => {
-    return activeContract && tenant.contracts?.some(c => c.id === activeContract.id)
-  }) || []
-
-  const totalInvoiceAmount = tenant.invoices?.reduce((s, i) => s + (i.totalAmount || 0), 0) || 0
-  const totalPaid = tenant.invoices?.reduce((s, i) => s + (i.paidAmount || 0), 0) || 0
-  const totalRemaining = tenant.invoices?.reduce((s, i) => s + (i.remainingAmount || 0), 0) || 0
-
+  const remaining = summary ? parseFloat(summary.remainingAmount) : 0
   const today = new Date(); today.setHours(0,0,0,0)
-  const checkoutDate = activeContract ? new Date(activeContract.endDate) : null
+  const checkoutDate = activeContract ? new Date(activeContract.endDate + 'T00:00:00') : null
   const daysUntilCheckout = checkoutDate ? Math.round((checkoutDate - today) / 86400000) : null
 
   return (
@@ -85,41 +100,64 @@ const TenantDetail = () => {
         </div>
 
         {/* Debt summary card */}
-        <div className={`rounded-lg shadow p-6 ${totalRemaining > 0 ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+        <div className={`rounded-lg shadow p-6 ${remaining > 0 ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
           <h3 className="font-semibold text-gray-700 mb-3">Tổng kết thanh toán</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Tổng hóa đơn:</span>
-              <span className="font-medium">{fmt(totalInvoiceAmount)}</span>
-            </div>
-            {activeContract?.deposit > 0 && (
+          {summary ? (
+            <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Tiền cọc:</span>
-                <span className="font-medium text-blue-600">{fmt(activeContract.deposit)}</span>
+                <span className="text-gray-600">Tiền phòng:</span>
+                <span className="font-medium">{fmt(summary.totalRent)}</span>
               </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-gray-600">Đã thanh toán:</span>
-              <span className="font-medium text-green-600">{fmt(totalPaid)}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Dịch vụ:</span>
+                <span className="font-medium">{fmt(summary.totalCharges)}</span>
+              </div>
+              {summary.deposit > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tiền cọc:</span>
+                  <span className="font-medium text-blue-600">{fmt(summary.deposit)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-gray-700 font-medium border-t pt-1">
+                <span>Tổng cộng:</span>
+                <span>{fmt(summary.totalAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Đã thanh toán:</span>
+                <span className="font-medium text-green-600">{fmt(summary.totalPaid)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="font-semibold">Còn lại:</span>
+                <span className={`font-bold text-lg ${remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {fmt(remaining)}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between border-t pt-2">
-              <span className="font-semibold">Còn lại:</span>
-              <span className={`font-bold text-lg ${totalRemaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {fmt(totalRemaining)}
-              </span>
-            </div>
-          </div>
+          ) : (
+            <p className="text-sm text-gray-400">Không có hợp đồng active</p>
+          )}
           {activeContract && daysUntilCheckout !== null && (
             <div className={`mt-3 pt-3 border-t text-xs text-center font-medium ${
-              daysUntilCheckout < 0 ? 'text-red-600' :
-              daysUntilCheckout === 0 ? 'text-orange-600' :
+              daysUntilCheckout < 0 ? 'text-red-600' : daysUntilCheckout === 0 ? 'text-orange-600' :
               daysUntilCheckout <= 2 ? 'text-yellow-600' : 'text-gray-500'
             }`}>
               {daysUntilCheckout < 0 ? `⚠️ Quá hạn ${Math.abs(daysUntilCheckout)} ngày` :
                daysUntilCheckout === 0 ? '🔔 Trả phòng hôm nay' :
                daysUntilCheckout === 1 ? '🔔 Trả phòng ngày mai' :
-               `📅 Còn ${daysUntilCheckout} ngày đến checkout`}
+               `📅 Còn ${daysUntilCheckout} ngày`}
             </div>
+          )}
+          {activeContract && remaining > 0 && (
+            <button onClick={() => { setPayForm(f => ({...f, paidAmount: remaining.toFixed(0)})); setShowPayModal(true) }}
+              className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">
+              <CreditCard className="w-4 h-4" /> Thu tiền ({fmt(remaining)})
+            </button>
+          )}
+          {activeContract && (
+            <button onClick={() => navigate(`/admin/guest-charges?contractId=${activeContract.id}`)}
+              className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-50 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-100 border border-purple-200">
+              <ShoppingCart className="w-4 h-4" /> Thêm dịch vụ
+            </button>
           )}
         </div>
       </div>
@@ -211,12 +249,9 @@ const TenantDetail = () => {
                   </td>
                   <td className="px-4 py-2 text-right">
                     {inv.status !== 'PAID' && (
-                      <button
-                        onClick={() => navigate(`/admin/payments?invoiceId=${inv.id}`)}
-                        className="text-green-600 hover:text-green-800"
-                        title="Thanh toán"
-                      >
-                        <DollarSign className="w-4 h-4" />
+                      <button onClick={() => { setPayForm(f => ({...f, paidAmount: inv.remainingAmount?.toFixed(0) || ''})); setShowPayModal(true) }}
+                        className="text-green-600 hover:text-green-800" title="Thanh toán">
+                        <CreditCard className="w-4 h-4" />
                       </button>
                     )}
                   </td>
@@ -224,6 +259,74 @@ const TenantDetail = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPayModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h2 className="text-xl font-bold mb-1">Thu tiền</h2>
+            <p className="text-sm text-gray-500 mb-4">{tenant.fullName} — {activeContract?.roomCode}</p>
+
+            {summary && (
+              <div className="bg-gray-50 rounded-xl p-4 mb-4 text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-gray-500">Tiền phòng:</span><span>{fmt(summary.totalRent)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Dịch vụ:</span><span>{fmt(summary.totalCharges)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Đã trả:</span><span className="text-green-600">- {fmt(summary.totalPaid)}</span></div>
+                <div className="flex justify-between font-bold border-t pt-1"><span>Còn lại:</span><span className="text-red-600">{fmt(summary.remainingAmount)}</span></div>
+              </div>
+            )}
+
+            <form onSubmit={handlePay} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Số tiền thanh toán *</label>
+                <input required type="number" min="1000" step="1000"
+                  value={payForm.paidAmount}
+                  onChange={e => setPayForm(f => ({...f, paidAmount: e.target.value}))}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-semibold" />
+                {payForm.paidAmount && summary && (
+                  <p className="text-xs mt-1 text-gray-500">
+                    {parseFloat(payForm.paidAmount) >= parseFloat(summary.remainingAmount)
+                      ? '✅ Thanh toán đủ'
+                      : `⚠️ Còn thiếu ${fmt(parseFloat(summary.remainingAmount) - parseFloat(payForm.paidAmount))}`}
+                  </p>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Phương thức</label>
+                  <select value={payForm.method} onChange={e => setPayForm(f => ({...f, method: e.target.value}))}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="CASH">Tiền mặt</option>
+                    <option value="BANK_TRANSFER">Chuyển khoản</option>
+                    <option value="MOMO">MoMo</option>
+                    <option value="OTHER">Khác</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Ngày</label>
+                  <input type="date" value={payForm.paymentDate}
+                    onChange={e => setPayForm(f => ({...f, paymentDate: e.target.value}))}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Ghi chú</label>
+                <input type="text" value={payForm.note}
+                  onChange={e => setPayForm(f => ({...f, note: e.target.value}))}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowPayModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">Hủy</button>
+                <button type="submit" disabled={paying}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50">
+                  {paying ? 'Đang xử lý...' : 'Xác nhận'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

@@ -16,5 +16,9 @@ public class PaymentDto {
     private PaymentMethod method;
     private String note;
     private String transactionCode;
+    // Extra display fields
+    private Long contractId;
+    private String tenantName;
+    private String roomCode;
 }
 
