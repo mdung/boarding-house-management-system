@@ -37,80 +37,86 @@ public class ReportsService {
     }
 
     public List<RevenueByMonthDto> getRevenueByMonth(Integer year) {
-        List<Invoice> invoices = invoiceRepository.findAll().stream()
+        // Group ALL payments by the month they were actually received (paymentDate)
+        List<com.boardinghouse.entity.Payment> allPayments = paymentRepository.findAll();
+
+        Map<Integer, List<com.boardinghouse.entity.Payment>> byMonth = allPayments.stream()
+                .filter(p -> p.getPaymentDate().getYear() == year)
+                .collect(Collectors.groupingBy(p -> p.getPaymentDate().getMonthValue()));
+
+        // Also get invoice counts per period month for context
+        Map<Integer, Long> invoiceCountByMonth = invoiceRepository.findAll().stream()
                 .filter(inv -> inv.getPeriodYear().equals(year))
-                .collect(Collectors.toList());
+                .collect(Collectors.groupingBy(Invoice::getPeriodMonth, Collectors.counting()));
 
-        Map<Integer, List<Invoice>> byMonth = invoices.stream()
-                .collect(Collectors.groupingBy(Invoice::getPeriodMonth));
+        Map<Integer, Long> paidInvoiceCountByMonth = invoiceRepository.findAll().stream()
+                .filter(inv -> inv.getPeriodYear().equals(year))
+                .filter(inv -> {
+                    BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
+                            .map(p -> p.getPaidAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                    return paid.compareTo(inv.getTotalAmount()) >= 0;
+                })
+                .collect(Collectors.groupingBy(Invoice::getPeriodMonth, Collectors.counting()));
 
-        return byMonth.entrySet().stream()
-                .map(entry -> {
-                    Integer month = entry.getKey();
-                    List<Invoice> monthInvoices = entry.getValue();
+        // Merge: for each month that has payments OR invoices
+        java.util.Set<Integer> months = new java.util.TreeSet<>();
+        months.addAll(byMonth.keySet());
+        months.addAll(invoiceCountByMonth.keySet());
 
-                    // Revenue = all payments received for invoices in this period
-                    BigDecimal totalRevenue = monthInvoices.stream()
-                            .map(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream()
-                                    .map(p -> p.getPaidAmount())
-                                    .reduce(BigDecimal.ZERO, BigDecimal::add))
+        return months.stream()
+                .map(month -> {
+                    BigDecimal totalRevenue = byMonth.getOrDefault(month, java.util.Collections.emptyList()).stream()
+                            .map(com.boardinghouse.entity.Payment::getPaidAmount)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                    long paidCount = monthInvoices.stream()
-                            .filter(inv -> {
-                                BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
-                                        .map(p -> p.getPaidAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
-                                return paid.compareTo(inv.getTotalAmount()) >= 0;
-                            })
-                            .count();
 
                     RevenueByMonthDto dto = new RevenueByMonthDto();
                     dto.setMonth(month);
                     dto.setYear(year);
                     dto.setTotalRevenue(totalRevenue);
-                    dto.setInvoiceCount((long) monthInvoices.size());
-                    dto.setPaidInvoiceCount(paidCount);
+                    dto.setInvoiceCount(invoiceCountByMonth.getOrDefault(month, 0L));
+                    dto.setPaidInvoiceCount(paidInvoiceCountByMonth.getOrDefault(month, 0L));
                     return dto;
                 })
-                .sorted((a, b) -> a.getMonth().compareTo(b.getMonth()))
                 .collect(Collectors.toList());
     }
 
     public List<RevenueByBoardingHouseDto> getRevenueByBoardingHouse(LocalDate startDate, LocalDate endDate) {
-        List<Invoice> invoices = invoiceRepository.findAll().stream()
-                .filter(inv -> {
-                    LocalDate invoiceDate = LocalDate.of(inv.getPeriodYear(), inv.getPeriodMonth(), 1);
-                    return !invoiceDate.isBefore(startDate) && !invoiceDate.isAfter(endDate);
+        // Group payments by boarding house, filtered by payment date range
+        List<com.boardinghouse.entity.Payment> payments = paymentRepository.findAll().stream()
+                .filter(p -> {
+                    LocalDate pd = p.getPaymentDate().toLocalDate();
+                    return !pd.isBefore(startDate) && !pd.isAfter(endDate);
                 })
                 .collect(Collectors.toList());
 
-        Map<Long, List<Invoice>> byBoardingHouse = invoices.stream()
-                .collect(Collectors.groupingBy(inv -> inv.getRoom().getBoardingHouse().getId()));
+        Map<Long, List<com.boardinghouse.entity.Payment>> byHouse = payments.stream()
+                .collect(Collectors.groupingBy(p -> p.getInvoice().getRoom().getBoardingHouse().getId()));
 
-        return byBoardingHouse.entrySet().stream()
+        return byHouse.entrySet().stream()
                 .map(entry -> {
                     Long boardingHouseId = entry.getKey();
-                    List<Invoice> houseInvoices = entry.getValue();
+                    List<com.boardinghouse.entity.Payment> housePayments = entry.getValue();
 
-                    BigDecimal totalRevenue = houseInvoices.stream()
-                            .map(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream()
-                                    .map(p -> p.getPaidAmount())
-                                    .reduce(BigDecimal.ZERO, BigDecimal::add))
+                    BigDecimal totalRevenue = housePayments.stream()
+                            .map(com.boardinghouse.entity.Payment::getPaidAmount)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                    long paidCount = houseInvoices.stream()
+                    // Count unique invoices that have payments
+                    long invoiceCount = housePayments.stream()
+                            .map(p -> p.getInvoice().getId()).distinct().count();
+                    long paidCount = housePayments.stream()
+                            .map(p -> p.getInvoice()).distinct()
                             .filter(inv -> {
                                 BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
-                                        .map(p -> p.getPaidAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                                        .map(pp -> pp.getPaidAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
                                 return paid.compareTo(inv.getTotalAmount()) >= 0;
-                            })
-                            .count();
+                            }).count();
 
                     RevenueByBoardingHouseDto dto = new RevenueByBoardingHouseDto();
                     dto.setBoardingHouseId(boardingHouseId);
-                    dto.setBoardingHouseName(houseInvoices.get(0).getRoom().getBoardingHouse().getName());
+                    dto.setBoardingHouseName(housePayments.get(0).getInvoice().getRoom().getBoardingHouse().getName());
                     dto.setTotalRevenue(totalRevenue);
-                    dto.setInvoiceCount((long) houseInvoices.size());
+                    dto.setInvoiceCount(invoiceCount);
                     dto.setPaidInvoiceCount(paidCount);
                     return dto;
                 })

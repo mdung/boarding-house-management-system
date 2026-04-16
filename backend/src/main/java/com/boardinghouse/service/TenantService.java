@@ -137,24 +137,34 @@ public class TenantService {
                 dto.setActiveRoomCode(c.getRoom().getCode());
                 dto.setCheckInDate(c.getStartDate());
                 dto.setCheckOutDate(c.getEndDate());
+            });
 
-                // Calculate debt: dailyRate × nights + guest charges - paid
+            // Calculate debt from ALL contracts (not just active) - sum unpaid invoices
+            List<Contract> allContracts = contractRepository.findByMainTenantId(tenant.getId());
+            BigDecimal totalDebt = BigDecimal.ZERO;
+            BigDecimal totalCharges = BigDecimal.ZERO;
+            for (Contract c : allContracts) {
+                BigDecimal charges = guestChargeRepository.sumAmountByContractId(c.getId());
+                totalCharges = totalCharges.add(charges);
+
                 long nights = java.time.temporal.ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate());
                 BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
                         : (c.getMonthlyRent() != null
                             ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
                             : BigDecimal.ZERO);
                 BigDecimal roomCost = dailyRate.multiply(BigDecimal.valueOf(nights));
-                BigDecimal charges = guestChargeRepository.sumAmountByContractId(c.getId());
 
-                // Total paid across all invoices
                 BigDecimal paid = invoiceRepository.findByContractId(c.getId()).stream()
                         .flatMap(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream())
                         .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                dto.setTotalCharges(charges);
-                dto.setTotalDebt(roomCost.add(charges).subtract(paid));
-            });
+                BigDecimal debt = roomCost.add(charges).subtract(paid);
+                if (debt.compareTo(BigDecimal.ZERO) > 0) {
+                    totalDebt = totalDebt.add(debt);
+                }
+            }
+            dto.setTotalCharges(totalCharges);
+            dto.setTotalDebt(allContracts.isEmpty() ? null : totalDebt);
         } catch (Exception e) {
             System.err.println("Error loading contract info for tenant " + tenant.getId() + ": " + e.getMessage());
         }

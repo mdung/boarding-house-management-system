@@ -8,7 +8,7 @@ import {
   ChevronRight, Edit2, Save, Plus, CalendarDays
 } from 'lucide-react'
 
-const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US') : '-'
 const toISO = (d) => d ? d.split('T')[0] : ''
 
@@ -636,8 +636,8 @@ const Dashboard = () => {
     { label: 'Occupied', value: dashboard?.occupiedRooms || 0, icon: Users, color: 'bg-green-500', link: '/admin/tenants' },
     { label: 'Available', value: dashboard?.availableRooms || 0, icon: DoorOpen, color: 'bg-gray-400', link: '/admin/rooms' },
     { label: 'Monthly Revenue', value: fmt(dashboard?.monthlyRevenue), icon: DollarSign, color: 'bg-emerald-600', link: '/admin/reports' },
-    { label: 'Unpaid', value: fmt(dashboard?.unpaidAmount), icon: DollarSign, color: 'bg-yellow-500', link: '/admin/invoices' },
-    { label: 'Overdue Invoices', value: dashboard?.overdueInvoices || 0, icon: AlertCircle, color: 'bg-red-500', link: '/admin/invoices' },
+    { label: 'Unpaid', value: fmt(dashboard?.unpaidAmount), icon: DollarSign, color: 'bg-yellow-500', link: '/admin/invoices?status=NOT_PAID' },
+    { label: 'Overdue Invoices', value: dashboard?.overdueInvoices || 0, icon: AlertCircle, color: 'bg-red-500', link: '/admin/invoices?status=PAST_DUE' },
   ]
 
   return (

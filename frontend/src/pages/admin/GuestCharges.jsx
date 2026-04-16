@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 
-const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
 
 const CATEGORIES = { FOOD_DRINK: '🍺 Food & Drink', SERVICE: '🛵 Service' }
 
@@ -148,11 +148,11 @@ const GuestCharges = () => {
             </div>
             <div>
               <span className="text-gray-500">Check-in:</span>
-              <span className="font-semibold ml-1">{summary.checkInDate ? new Date(summary.checkInDate + 'T00:00:00').toLocaleDateString('vi-VN') : '-'}</span>
+              <span className="font-semibold ml-1">{summary.checkInDate ? new Date(summary.checkInDate + 'T00:00:00').toLocaleDateString('en-US') : '-'}</span>
             </div>
             <div>
               <span className="text-gray-500">Check-out:</span>
-              <span className="font-semibold ml-1">{summary.checkOutDate ? new Date(summary.checkOutDate + 'T00:00:00').toLocaleDateString('vi-VN') : '-'}</span>
+              <span className="font-semibold ml-1">{summary.checkOutDate ? new Date(summary.checkOutDate + 'T00:00:00').toLocaleDateString('en-US') : '-'}</span>
             </div>
             <div>
               <span className="text-gray-500">Nights:</span>
@@ -212,7 +212,7 @@ const GuestCharges = () => {
                       className="w-full flex justify-between items-center px-6 py-3 hover:bg-gray-50"
                     >
                       <span className="font-medium text-gray-800">
-                        📅 {new Date(date).toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        📅 {new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </span>
                       <div className="flex items-center gap-3">
                         <span className="font-semibold text-blue-600">{fmt(dayTotal)}</span>

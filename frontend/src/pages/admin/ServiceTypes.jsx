@@ -117,7 +117,7 @@ const ServiceTypes = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{serviceType.unit || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {serviceType.pricePerUnit ? 
-                    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(serviceType.pricePerUnit) : 
+                    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(serviceType.pricePerUnit) : 
                     '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">

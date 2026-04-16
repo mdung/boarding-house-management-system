@@ -7,8 +7,8 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import { Plus, Edit, Trash2, Eye, AlertCircle, Clock } from 'lucide-react'
 import BulkActionBar from '../../components/BulkActionBar'
 
-const fmt = (n) => n != null ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n) : '-'
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '-'
+const fmt = (n) => n != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n) : '-'
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US') : '-'
 
 const getGuestStatus = (t) => {
   if (!t.checkOutDate) return { label: 'Staying', cls: 'bg-green-100 text-green-800' }

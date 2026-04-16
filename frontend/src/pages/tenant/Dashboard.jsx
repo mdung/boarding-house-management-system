@@ -4,8 +4,8 @@ import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { BedDouble, FileText, CreditCard, AlertCircle } from 'lucide-react'
 
-const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
-const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '-'
+const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US') : '-'
 
 const TenantDashboard = () => {
   const { user } = useAuth()

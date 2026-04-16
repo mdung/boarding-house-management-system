@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
 import { useToast } from '../../context/ToastContext'
@@ -9,6 +9,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 
 const Invoices = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { showToast } = useToast()
   const [invoices, setInvoices] = useState([])
   const [filteredInvoices, setFilteredInvoices] = useState([])
@@ -21,7 +22,7 @@ const Invoices = () => {
   const [selectedContract, setSelectedContract] = useState(null)
   const [roomServices, setRoomServices] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'ALL')
   const [formData, setFormData] = useState({
     contractId: '',
     month: new Date().getMonth() + 1,
@@ -56,7 +57,12 @@ const Invoices = () => {
       )
     }
     
-    if (statusFilter !== 'ALL') {
+    if (statusFilter === 'NOT_PAID') {
+      filtered = filtered.filter(inv => inv.status !== 'PAID' && (parseFloat(inv.remainingAmount) || 0) > 0)
+    } else if (statusFilter === 'PAST_DUE') {
+      const today = new Date().toISOString().split('T')[0]
+      filtered = filtered.filter(inv => (parseFloat(inv.remainingAmount) || 0) > 0 && inv.dueDate && inv.dueDate < today)
+    } else if (statusFilter !== 'ALL') {
       filtered = filtered.filter(inv => inv.status === statusFilter)
     }
     
@@ -185,6 +191,8 @@ const Invoices = () => {
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
           >
             <option value="ALL">All Status</option>
+            <option value="NOT_PAID">Not Paid (All)</option>
+            <option value="PAST_DUE">Past Due</option>
             <option value="UNPAID">Unpaid</option>
             <option value="PARTIALLY_PAID">Partially Paid</option>
             <option value="PAID">Paid</option>
@@ -223,13 +231,13 @@ const Invoices = () => {
                   {invoice.periodMonth}/{invoice.periodYear}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount || 0)}
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount || 0)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.paidAmount || 0)}
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.paidAmount || 0)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.remainingAmount || 0)}
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.remainingAmount || 0)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs rounded-full ${
@@ -522,10 +530,10 @@ const Invoices = () => {
                       <td className="px-4 py-2 text-sm">{item.newIndex || '-'}</td>
                       <td className="px-4 py-2 text-sm">{item.quantity || '-'}</td>
                       <td className="px-4 py-2 text-sm">
-                        {item.unitPrice ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.unitPrice) : '-'}
+                        {item.unitPrice ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.unitPrice) : '-'}
                       </td>
                       <td className="px-4 py-2 text-sm text-right">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.amount || 0)}
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.amount || 0)}
                       </td>
                     </tr>
                   ))}
@@ -534,7 +542,7 @@ const Invoices = () => {
                   <tr className="bg-gray-50 font-semibold">
                     <td colSpan="5" className="px-4 py-2 text-right">Total Amount:</td>
                     <td className="px-4 py-2 text-right">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(previewInvoice.totalAmount || 0)}
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(previewInvoice.totalAmount || 0)}
                     </td>
                   </tr>
                 </tfoot>
