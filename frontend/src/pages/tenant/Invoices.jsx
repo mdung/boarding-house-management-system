@@ -25,24 +25,24 @@ const TenantInvoices = () => {
     }
   }
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Đang tải...</div>
+  if (loading) return <div className="p-8 text-center text-gray-400">Loading...</div>
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Hóa đơn của tôi</h1>
+      <h1 className="text-2xl font-bold mb-6">My Invoices</h1>
       {invoices.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">Chưa có hóa đơn nào.</div>
+        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">No invoices yet.</div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã HĐ</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kỳ</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng tiền</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Đã trả</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Còn lại</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice Code</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Paid</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Remaining</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">

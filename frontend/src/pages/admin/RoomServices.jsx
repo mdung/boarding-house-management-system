@@ -75,9 +75,9 @@ const RoomServices = () => {
       setEditing(null)
       setFormData({ serviceTypeId: '', pricePerUnit: '', fixedPrice: '' })
       fetchRoomServices(parseInt(selectedRoomId))
-      showToast(editing ? 'Cập nhật thành công' : 'Gán dịch vụ thành công', 'success')
+      showToast(editing ? 'Updated successfully' : 'Service assigned successfully', 'success')
     } catch (error) {
-      showToast(error.response?.data?.message || 'Lỗi khi lưu', 'error')
+      showToast(error.response?.data?.message || 'Error saving', 'error')
     }
   }
 
@@ -95,9 +95,9 @@ const RoomServices = () => {
     try {
       await api.delete(`/room-services/${id}`)
       fetchRoomServices(parseInt(selectedRoomId))
-      showToast('Đã xóa dịch vụ khỏi phòng', 'success')
+      showToast('Service removed from room', 'success')
     } catch (error) {
-      showToast(error.response?.data?.message || 'Không thể xóa', 'error')
+      showToast(error.response?.data?.message || 'Cannot delete', 'error')
     }
   }
 
@@ -251,10 +251,10 @@ const RoomServices = () => {
 
       <ConfirmDialog
         isOpen={!!confirmDelete}
-        title="Xóa dịch vụ"
-        message="Bạn có chắc muốn xóa dịch vụ này khỏi phòng?"
-        confirmText="Xóa"
-        cancelText="Hủy"
+        title="Remove Service"
+        message="Are you sure you want to remove this service from the room?"
+        confirmText="Delete"
+        cancelText="Cancel"
         danger
         onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
         onCancel={() => setConfirmDelete(null)}

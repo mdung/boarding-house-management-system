@@ -48,11 +48,10 @@ const ServiceCatalog = () => {
       else await api.post('/service-catalog', payload)
       setShowModal(false)
       fetchData()
-    } catch (e) { alert(e.response?.data?.message || 'Lỗi') }
-  }
+    } catch (e) { alert(e.response?.data?.message || 'Error') }  }
 
   const handleDelete = async (id) => {
-    if (!confirm('Ẩn dịch vụ này?')) return
+    if (!confirm('Hide this service?')) return
     await api.delete(`/service-catalog/${id}`)
     fetchData()
   }
@@ -67,9 +66,9 @@ const ServiceCatalog = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Danh mục dịch vụ</h1>
+        <h1 className="text-3xl font-bold">Service Catalog</h1>
         <button onClick={openAdd} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" /> Thêm dịch vụ
+          <Plus className="w-4 h-4 mr-2" /> Add Service
         </button>
       </div>
 
@@ -82,10 +81,10 @@ const ServiceCatalog = () => {
             <table className="min-w-full">
               <thead>
                 <tr className="text-xs text-gray-500 uppercase bg-gray-50">
-                  <th className="px-4 py-2 text-left">Tên</th>
-                  <th className="px-4 py-2 text-left">Đơn vị</th>
-                  <th className="px-4 py-2 text-right">Giá mặc định</th>
-                  <th className="px-4 py-2 text-center">Trạng thái</th>
+                  <th className="px-4 py-2 text-left">Name</th>
+                  <th className="px-4 py-2 text-left">Unit</th>
+                  <th className="px-4 py-2 text-right">Default Price</th>
+                  <th className="px-4 py-2 text-center">Status</th>
                   <th className="px-4 py-2"></th>
                 </tr>
               </thead>
@@ -97,7 +96,7 @@ const ServiceCatalog = () => {
                     <td className="px-4 py-2 text-sm text-right">{fmt(item.defaultPrice)}</td>
                     <td className="px-4 py-2 text-center">
                       <span className={`px-2 py-0.5 text-xs rounded-full ${item.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {item.isActive ? 'Hoạt động' : 'Ẩn'}
+                        {item.isActive ? 'Active' : 'Hidden'}
                       </span>
                     </td>
                     <td className="px-4 py-2 text-right flex gap-2 justify-end">
@@ -107,7 +106,7 @@ const ServiceCatalog = () => {
                   </tr>
                 ))}
                 {cat.items.length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-4 text-center text-gray-400 text-sm">Chưa có dịch vụ</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-4 text-center text-gray-400 text-sm">No services yet</td></tr>
                 )}
               </tbody>
             </table>
@@ -118,10 +117,10 @@ const ServiceCatalog = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">{editing ? 'Sửa' : 'Thêm'} dịch vụ</h2>
+            <h2 className="text-xl font-bold mb-4">{editing ? 'Edit' : 'Add'} Service</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Tên dịch vụ *</label>
+                <label className="block text-sm font-medium text-gray-700">Service Name *</label>
                 <input required type="text" value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
                   placeholder="VD: 🍺 Beer, 🛵 Motorbike Rent"
@@ -129,7 +128,7 @@ const ServiceCatalog = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Danh mục *</label>
+                  <label className="block text-sm font-medium text-gray-700">Category *</label>
                   <select value={formData.category}
                     onChange={e => setFormData({...formData, category: e.target.value})}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
@@ -137,7 +136,7 @@ const ServiceCatalog = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Đơn vị</label>
+                  <label className="block text-sm font-medium text-gray-700">Unit</label>
                   <input type="text" value={formData.unit}
                     onChange={e => setFormData({...formData, unit: e.target.value})}
                     placeholder="bottle, day, set..."
@@ -146,13 +145,13 @@ const ServiceCatalog = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Giá mặc định *</label>
+                  <label className="block text-sm font-medium text-gray-700">Default Price *</label>
                   <input required type="number" value={formData.defaultPrice}
                     onChange={e => setFormData({...formData, defaultPrice: e.target.value})}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Thứ tự</label>
+                  <label className="block text-sm font-medium text-gray-700">Sort Order</label>
                   <input type="number" value={formData.sortOrder}
                     onChange={e => setFormData({...formData, sortOrder: e.target.value})}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -161,11 +160,11 @@ const ServiceCatalog = () => {
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="isActive" checked={formData.isActive}
                   onChange={e => setFormData({...formData, isActive: e.target.checked})} />
-                <label htmlFor="isActive" className="text-sm text-gray-700">Hiển thị trong danh sách</label>
+                <label htmlFor="isActive" className="text-sm text-gray-700">Show in list</label>
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-md">Hủy</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Lưu</button>
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
               </div>
             </form>
           </div>

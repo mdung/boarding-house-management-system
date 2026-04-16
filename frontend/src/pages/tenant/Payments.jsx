@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '-'
-const methodLabel = { CASH: 'Tiền mặt', BANK_TRANSFER: 'Chuyển khoản', MOMO: 'MoMo', OTHER: 'Khác' }
+const methodLabel = { CASH: 'Cash', BANK_TRANSFER: 'Bank Transfer', MOMO: 'MoMo', OTHER: 'Other' }
 
 const TenantPayments = () => {
   const { user } = useAuth()
@@ -35,23 +35,23 @@ const TenantPayments = () => {
     }
   }
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Đang tải...</div>
+  if (loading) return <div className="p-8 text-center text-gray-400">Loading...</div>
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Lịch sử thanh toán</h1>
+      <h1 className="text-2xl font-bold mb-6">Payment History</h1>
       {payments.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">Chưa có thanh toán nào.</div>
+        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">No payments yet.</div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hóa đơn</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Số tiền</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phương thức</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã GD</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction Code</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
