@@ -29,14 +29,26 @@ public class ContractService {
     @Transactional
     public void autoExpireContracts() {
         java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalTime now = java.time.LocalTime.now();
+        java.time.LocalTime noon = java.time.LocalTime.of(12, 0);
+
         List<Contract> activeContracts = repository.findByStatus(ContractStatus.ACTIVE);
         for (Contract c : activeContracts) {
+            boolean shouldExpire = false;
+
             if (c.getEndDate().isBefore(today)) {
+                // Past checkout date → always expire
+                shouldExpire = true;
+            } else if (c.getEndDate().equals(today) && now.isAfter(noon)) {
+                // Checkout date is today and it's past 12:00 PM → auto expire
+                shouldExpire = true;
+            }
+
+            if (shouldExpire) {
                 c.setStatus(ContractStatus.EXPIRED);
                 repository.save(c);
-                // Free the room
+                // Free the room if no other active contract uses it
                 Room room = c.getRoom();
-                // Only set AVAILABLE if no other active contract uses this room
                 boolean otherActive = repository.findByRoomId(room.getId()).stream()
                         .anyMatch(other -> other.getStatus() == ContractStatus.ACTIVE && !other.getId().equals(c.getId()));
                 if (!otherActive) {
@@ -45,6 +57,40 @@ public class ContractService {
                 }
             }
         }
+    }
+
+    /**
+     * Manual early checkout - admin marks guest as checked out immediately.
+     * Expires the contract and frees the room.
+     */
+    @Transactional
+    public ContractDto manualCheckout(Long id) {
+        Contract contract = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + id));
+
+        if (contract.getStatus() != ContractStatus.ACTIVE) {
+            throw new BadRequestException("Contract is not active");
+        }
+
+        // Set end date to today if checking out early
+        java.time.LocalDate today = java.time.LocalDate.now();
+        if (contract.getEndDate().isAfter(today)) {
+            contract.setEndDate(today);
+        }
+
+        contract.setStatus(ContractStatus.EXPIRED);
+        repository.save(contract);
+
+        // Free the room
+        Room room = contract.getRoom();
+        boolean otherActive = repository.findByRoomId(room.getId()).stream()
+                .anyMatch(other -> other.getStatus() == ContractStatus.ACTIVE && !other.getId().equals(contract.getId()));
+        if (!otherActive) {
+            room.setStatus(RoomStatus.AVAILABLE);
+            roomRepository.save(room);
+        }
+
+        return toDto(contract);
     }
 
     public List<ContractDto> getAll() {

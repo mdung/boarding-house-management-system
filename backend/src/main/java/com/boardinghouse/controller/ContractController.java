@@ -62,6 +62,11 @@ public class ContractController {
         return ResponseEntity.ok(service.updateCheckoutDate(id, newDate));
     }
 
+    @PostMapping("/{id}/checkout")
+    public ResponseEntity<ContractDto> manualCheckout(@PathVariable Long id) {
+        return ResponseEntity.ok(service.manualCheckout(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);

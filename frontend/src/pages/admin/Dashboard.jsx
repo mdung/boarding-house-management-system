@@ -36,6 +36,10 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
   const [extendPreview, setExtendPreview] = useState(null)
   const [savingCheckout, setSavingCheckout] = useState(false)
 
+  // Checkout confirm state
+  const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false)
+  const [checkingOut, setCheckingOut] = useState(false)
+
   const fetchAll = async () => {
     setLoading(true)
     try {
@@ -416,6 +420,12 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
         {/* Actions */}
         <div className="px-6 py-4 border-t border-gray-100 flex gap-2">
           <button
+            onClick={() => setShowCheckoutConfirm(true)}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-50 text-orange-700 text-sm font-medium rounded-lg hover:bg-orange-100 transition-colors border border-orange-200"
+          >
+            <LogOut className="w-4 h-4" /> Check Out
+          </button>
+          <button
             onClick={() => { onClose(); navigate(`/admin/guest-charges?contractId=${guest.contractId}`) }}
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-100 transition-colors"
           >
@@ -428,6 +438,74 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
             <ExternalLink className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Checkout Confirm Modal */}
+        {showCheckoutConfirm && (
+          <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center z-10 p-6">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+              <div className="bg-orange-50 px-6 py-5 text-center">
+                <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <LogOut className="w-7 h-7 text-orange-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Confirm Check Out</h3>
+                <p className="text-sm text-gray-500 mt-1">This will release the room immediately</p>
+              </div>
+              <div className="px-6 py-4">
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Guest</span>
+                    <span className="font-semibold text-gray-800">{guest.tenantName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Room</span>
+                    <span className="font-semibold text-gray-800">{guest.roomCode}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Stay</span>
+                    <span className="text-gray-700">{fmtDate(guest.checkInDate)} → Today</span>
+                  </div>
+                  {remaining > 0 && (
+                    <div className="flex justify-between border-t pt-2 mt-2">
+                      <span className="text-red-600 font-medium">Outstanding</span>
+                      <span className="font-bold text-red-600">{fmt(remaining)}</span>
+                    </div>
+                  )}
+                </div>
+                {remaining > 0 && (
+                  <p className="text-xs text-orange-600 mt-3 text-center">
+                    ⚠️ Guest still has unpaid balance. You can collect payment after checkout.
+                  </p>
+                )}
+              </div>
+              <div className="px-6 pb-5 flex gap-3">
+                <button
+                  onClick={() => setShowCheckoutConfirm(false)}
+                  disabled={checkingOut}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setCheckingOut(true)
+                    try {
+                      await api.post(`/contracts/${guest.contractId}/checkout`)
+                      setShowCheckoutConfirm(false)
+                      onClose()
+                      eventBus.emit(EVENTS.PAYMENT_CHANGED)
+                    } catch (e) { alert(e.response?.data?.message || 'Checkout failed') }
+                    finally { setCheckingOut(false) }
+                  }}
+                  disabled={checkingOut}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  <LogOut className="w-4 h-4" />
+                  {checkingOut ? 'Processing...' : 'Check Out Now'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
