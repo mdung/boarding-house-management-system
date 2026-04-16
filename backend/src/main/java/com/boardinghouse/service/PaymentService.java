@@ -89,7 +89,7 @@ public class PaymentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
         // Calculate total bill: dailyRate × nights + guest charges
-        long nights = ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate());
+        long nights = Math.max(1, ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate()));
         BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate()
                 : (contract.getMonthlyRent() != null
                     ? contract.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, RoundingMode.HALF_UP)

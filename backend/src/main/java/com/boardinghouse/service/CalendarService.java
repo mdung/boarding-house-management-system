@@ -216,7 +216,7 @@ public class CalendarService {
         BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
                 : (c.getMonthlyRent() != null ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, RoundingMode.HALF_UP) : BigDecimal.ZERO);
         ev.setDailyRate(dailyRate);
-        ev.setTotalDays((int) ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
+        ev.setTotalDays((int) Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate())));
         ev.setTotalDebt(debtInfo[0]);
         ev.setTotalPaid(debtInfo[1]);
         ev.setUnpaidInvoices(debtInfo[2].intValue());

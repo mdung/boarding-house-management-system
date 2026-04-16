@@ -23,6 +23,7 @@ public class DashboardDto {
     private DayActivityDto yesterday;
     private DayActivityDto today;
     private DayActivityDto tomorrow;
+    private List<GuestActivityDto> outstandingDebts; // checked-out guests with unpaid debt
 
     @Data
     public static class DayActivityDto {
@@ -43,11 +44,12 @@ public class DashboardDto {
         private LocalDate checkOutDate;
         private BigDecimal dailyRate;
         private Integer totalDays;
-        private BigDecimal totalRoomCost;   // dailyRate * totalDays
-        private BigDecimal totalCharges;    // guest service charges
+        private BigDecimal totalRoomCost;
+        private BigDecimal totalCharges;
         private BigDecimal totalPaid;
         private BigDecimal totalDebt;
         private String activityType; // CHECKIN, CHECKOUT, STAYING
+        private String contractStatus; // ACTIVE, EXPIRED, TERMINATED
     }
 
     @Data

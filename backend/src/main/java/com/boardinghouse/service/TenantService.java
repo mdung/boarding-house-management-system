@@ -147,15 +147,14 @@ public class TenantService {
                 dto.setCheckOutDate(c.getEndDate());
             });
 
-            // Calculate debt from ALL contracts (not just active) - sum unpaid invoices
-            List<Contract> allContracts = contractRepository.findByMainTenantId(tenant.getId());
+            // Calculate debt from ALL contracts (not just active)
             BigDecimal totalDebt = BigDecimal.ZERO;
             BigDecimal totalCharges = BigDecimal.ZERO;
             for (Contract c : allContracts) {
                 BigDecimal charges = guestChargeRepository.sumAmountByContractId(c.getId());
                 totalCharges = totalCharges.add(charges);
 
-                long nights = java.time.temporal.ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate());
+            long nights = Math.max(1, java.time.temporal.ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
                 BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
                         : (c.getMonthlyRent() != null
                             ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)

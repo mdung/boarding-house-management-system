@@ -419,23 +419,27 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
 
         {/* Actions */}
         <div className="px-6 py-4 border-t border-gray-100 flex gap-2">
-          <button
-            onClick={() => setShowCheckoutConfirm(true)}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-50 text-orange-700 text-sm font-medium rounded-lg hover:bg-orange-100 transition-colors border border-orange-200"
-          >
-            <LogOut className="w-4 h-4" /> Check Out
-          </button>
-          <button
-            onClick={() => { onClose(); navigate(`/admin/guest-charges?contractId=${guest.contractId}`) }}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-100 transition-colors"
-          >
-            <ShoppingCart className="w-4 h-4" /> Add Service
-          </button>
+          {guest.contractStatus === 'ACTIVE' && (
+            <button
+              onClick={() => setShowCheckoutConfirm(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-50 text-orange-700 text-sm font-medium rounded-lg hover:bg-orange-100 transition-colors border border-orange-200"
+            >
+              <LogOut className="w-4 h-4" /> Check Out
+            </button>
+          )}
+          {guest.contractStatus === 'ACTIVE' && (
+            <button
+              onClick={() => { onClose(); navigate(`/admin/guest-charges?contractId=${guest.contractId}`) }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-100 transition-colors"
+            >
+              <ShoppingCart className="w-4 h-4" /> Add Service
+            </button>
+          )}
           <button
             onClick={() => { onClose(); navigate(`/admin/tenants/${guest.tenantId}/detail`) }}
-            className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+            className={`flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors ${guest.contractStatus !== 'ACTIVE' ? 'flex-1' : ''}`}
           >
-            <ExternalLink className="w-4 h-4" />
+            <ExternalLink className="w-4 h-4" /> {guest.contractStatus !== 'ACTIVE' ? 'View Details' : ''}
           </button>
         </div>
 
@@ -514,18 +518,22 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
 // ─── Guest Card ───────────────────────────────────────────────────────────────
 const GuestCard = ({ guest, onSelect }) => {
   const debt = parseFloat(guest.totalDebt) || 0
+  const isExpired = guest.contractStatus === 'EXPIRED' || guest.contractStatus === 'TERMINATED'
   return (
     <div
       onClick={() => onSelect(guest)}
-      className="p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-400 hover:shadow-md cursor-pointer transition-all group"
+      className={`p-3 border rounded-lg hover:shadow-md cursor-pointer transition-all group ${
+        isExpired ? 'bg-gray-50 border-gray-200 opacity-75' : 'bg-white border-gray-200 hover:border-blue-400'
+      }`}
     >
       <div className="flex justify-between items-start mb-1">
         <div>
-          <p className="font-semibold text-sm text-gray-900 group-hover:text-blue-600 transition-colors">{guest.tenantName}</p>
+          <p className={`font-semibold text-sm group-hover:text-blue-600 transition-colors ${isExpired ? 'text-gray-500' : 'text-gray-900'}`}>{guest.tenantName}</p>
           <p className="text-xs text-gray-400">{guest.tenantPhone}</p>
         </div>
         <div className="flex items-center gap-1">
           <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded font-medium">{guest.roomCode}</span>
+          {isExpired && <span className="px-1.5 py-0.5 text-[10px] bg-gray-200 text-gray-500 rounded font-medium">Done</span>}
           <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-blue-400 transition-colors" />
         </div>
       </div>

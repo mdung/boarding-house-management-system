@@ -54,7 +54,7 @@ public class DashboardService {
         BigDecimal unpaidAmount = BigDecimal.ZERO;
         List<Contract> allContracts = contractRepository.findAll();
         for (Contract c : allContracts) {
-            long nights = ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate());
+            long nights = Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
             BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
                     : (c.getMonthlyRent() != null
                         ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
@@ -92,7 +92,7 @@ public class DashboardService {
 
         List<Contract> activeContracts = contractRepository.findAllActiveOrderByEndDate();
         for (Contract contract : activeContracts) {
-            long nights = ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate());
+            long nights = Math.max(1, ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate()));
             BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate()
                     : (contract.getMonthlyRent() != null
                         ? contract.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
@@ -153,21 +153,24 @@ public class DashboardService {
     }
 
     private DashboardDto.DayActivityDto buildDayActivity(LocalDate date) {
-        List<Contract> allActive = contractRepository.findAllActiveOrderByEndDate();
+        // Use ALL contracts except DRAFT so checked-out guests still appear
+        List<Contract> all = contractRepository.findAll().stream()
+                .filter(c -> c.getStatus() != ContractStatus.DRAFT)
+                .collect(Collectors.toList());
 
         DashboardDto.DayActivityDto day = new DashboardDto.DayActivityDto();
 
-        day.setCheckIns(allActive.stream()
+        day.setCheckIns(all.stream()
                 .filter(c -> c.getStartDate().equals(date))
                 .map(c -> toGuestActivity(c, "CHECKIN"))
                 .collect(Collectors.toList()));
 
-        day.setCheckOuts(allActive.stream()
+        day.setCheckOuts(all.stream()
                 .filter(c -> c.getEndDate().equals(date))
                 .map(c -> toGuestActivity(c, "CHECKOUT"))
                 .collect(Collectors.toList()));
 
-        day.setStaying(allActive.stream()
+        day.setStaying(all.stream()
                 .filter(c -> c.getStartDate().isBefore(date) && c.getEndDate().isAfter(date))
                 .map(c -> toGuestActivity(c, "STAYING"))
                 .collect(Collectors.toList()));
@@ -186,13 +189,14 @@ public class DashboardService {
         g.setCheckInDate(c.getStartDate());
         g.setCheckOutDate(c.getEndDate());
         g.setActivityType(type);
+        g.setContractStatus(c.getStatus().name());
 
         // Daily rate & total days
         BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
                 : (c.getMonthlyRent() != null ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO);
         g.setDailyRate(dailyRate);
 
-        long days = ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate());
+        long days = Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
         g.setTotalDays((int) days);
         g.setTotalRoomCost(dailyRate.multiply(BigDecimal.valueOf(days)));
 

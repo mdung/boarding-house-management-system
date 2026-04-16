@@ -67,7 +67,12 @@ public class ContractService {
         // Set end date to today if checking out early
         java.time.LocalDate today = java.time.LocalDate.now();
         if (contract.getEndDate().isAfter(today)) {
-            contract.setEndDate(today);
+            // Early checkout: set end to today, but ensure at least 1 night
+            if (!today.isAfter(contract.getStartDate())) {
+                contract.setEndDate(contract.getStartDate().plusDays(1));
+            } else {
+                contract.setEndDate(today);
+            }
         }
         repository.save(contract);
 
