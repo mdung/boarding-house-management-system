@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 
-const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
 
 const TenantInvoices = () => {
   const { user } = useAuth()

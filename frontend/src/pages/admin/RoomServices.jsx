@@ -166,12 +166,12 @@ const RoomServices = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{roomService.serviceCategory}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {roomService.pricePerUnit ? 
-                      new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(roomService.pricePerUnit) : 
+                      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(roomService.pricePerUnit) : 
                       '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {roomService.fixedPrice ? 
-                      new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(roomService.fixedPrice) : 
+                      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(roomService.fixedPrice) : 
                       '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

@@ -161,7 +161,7 @@ const Reports = () => {
                       <div className="flex justify-between mb-1">
                         <span className="text-sm font-medium text-gray-700">{monthNames[item.month - 1]}</span>
                         <span className="text-sm text-gray-600">
-                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
+                          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-6">
@@ -171,7 +171,7 @@ const Reports = () => {
                         >
                           {percentage > 10 && (
                             <span className="text-xs text-white font-medium">
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(item.totalRevenue || 0)}
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(item.totalRevenue || 0)}
                             </span>
                           )}
                         </div>
@@ -206,7 +206,7 @@ const Reports = () => {
                         {monthNames[item.month - 1]} {item.year}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.invoiceCount}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.paidInvoiceCount}</td>
@@ -255,7 +255,7 @@ const Reports = () => {
                       <div className="flex justify-between mb-1">
                         <span className="text-sm font-medium text-gray-700">{item.boardingHouseName}</span>
                         <span className="text-sm text-gray-600">
-                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
+                          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-6">
@@ -265,7 +265,7 @@ const Reports = () => {
                         >
                           {percentage > 15 && (
                             <span className="text-xs text-white font-medium">
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(item.totalRevenue || 0)}
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(item.totalRevenue || 0)}
                             </span>
                           )}
                         </div>
@@ -300,7 +300,7 @@ const Reports = () => {
                         {item.boardingHouseName}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.invoiceCount}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.paidInvoiceCount}</td>
@@ -356,7 +356,7 @@ const Reports = () => {
               <div>
                 <p className="text-sm text-gray-600">Total Outstanding Debts</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(
                     outstandingDebts.reduce((sum, debt) => sum + parseFloat(debt.remainingAmount || 0), 0)
                   )}
                 </p>
@@ -400,13 +400,13 @@ const Reports = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{debt.roomCode}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{debt.tenantName}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(debt.totalAmount || 0)}
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(debt.totalAmount || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(debt.paidAmount || 0)}
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(debt.paidAmount || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(debt.remainingAmount || 0)}
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(debt.remainingAmount || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{debt.dueDate}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

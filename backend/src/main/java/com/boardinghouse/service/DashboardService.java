@@ -71,90 +71,50 @@ public class DashboardService {
         dto.setUnpaidAmount(unpaidAmount);
         dto.setOverdueInvoices(overdueCount);
 
-        // Revenue breakdown: Room vs Service for current month
-        // Based on contracts that have payments in current month
+        // Revenue breakdown: Room vs Service for current month active contracts
         BigDecimal roomRevenue = BigDecimal.ZERO;
         BigDecimal serviceRevenue = BigDecimal.ZERO;
         java.util.List<DashboardDto.RevenueDetailDto> details = new java.util.ArrayList<>();
 
-        // Get all payments made in current month
-        List<Payment> monthPayments = paymentRepository.findAll().stream()
-                .filter(p -> {
-                    LocalDate pd = p.getPaymentDate().toLocalDate();
-                    return !pd.isBefore(monthStart) && !pd.isAfter(monthEnd);
-                })
-                .collect(Collectors.toList());
+        List<Contract> activeContracts = contractRepository.findAllActiveOrderByEndDate();
 
-        // Group payments by contract via invoice
-        java.util.Map<Long, BigDecimal> contractPaidMap = new java.util.HashMap<>();
-        for (Payment p : monthPayments) {
-            Long contractId = p.getInvoice().getContract().getId();
-            contractPaidMap.merge(contractId, p.getPaidAmount(), BigDecimal::add);
-        }
-
-        // For each contract with payments this month, calculate room vs service split
-        for (java.util.Map.Entry<Long, BigDecimal> entry : contractPaidMap.entrySet()) {
-            Long contractId = entry.getKey();
-            BigDecimal paidThisMonth = entry.getValue();
-
-            Contract contract = contractRepository.findById(contractId).orElse(null);
-            if (contract == null) continue;
-
+        for (Contract contract : activeContracts) {
             long nights = ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate());
             BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate()
                     : (contract.getMonthlyRent() != null
-                        ? contract.getMonthlyRent().divide(BigDecimal.valueOf(30), 4, java.math.RoundingMode.HALF_UP)
+                        ? contract.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
                         : BigDecimal.ZERO);
             BigDecimal roomCost = dailyRate.multiply(BigDecimal.valueOf(nights));
-            BigDecimal charges = guestChargeRepository.sumAmountByContractId(contractId);
-            BigDecimal totalBill = roomCost.add(charges);
+            roomRevenue = roomRevenue.add(roomCost);
 
-            // Prorate paid amount between room and service
-            if (totalBill.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal roomRatio = roomCost.divide(totalBill, 4, java.math.RoundingMode.HALF_UP);
-                BigDecimal roomPaid = paidThisMonth.multiply(roomRatio).setScale(0, java.math.RoundingMode.HALF_UP);
-                BigDecimal servicePaid = paidThisMonth.subtract(roomPaid);
+            // Room detail row
+            DashboardDto.RevenueDetailDto rd = new DashboardDto.RevenueDetailDto();
+            rd.setDate(contract.getStartDate());
+            rd.setInvoiceCode(contract.getCode());
+            rd.setRoomCode(contract.getRoom().getCode());
+            rd.setTenantName(contract.getMainTenant().getFullName());
+            rd.setBoardingHouseName(contract.getRoom().getBoardingHouse().getName());
+            rd.setDescription("Room (" + nights + " nights × " + dailyRate.setScale(0, java.math.RoundingMode.HALF_UP) + ")");
+            rd.setCategory("RENT");
+            rd.setAmount(roomCost);
+            details.add(rd);
 
-                roomRevenue = roomRevenue.add(roomPaid);
-                serviceRevenue = serviceRevenue.add(servicePaid);
+            // Guest service charges as service revenue
+            List<com.boardinghouse.entity.GuestServiceCharge> gCharges =
+                    guestChargeRepository.findByContractIdOrderByChargeDateDesc(contract.getId());
+            for (com.boardinghouse.entity.GuestServiceCharge gc : gCharges) {
+                serviceRevenue = serviceRevenue.add(gc.getAmount());
 
-                // Add room detail row
-                if (roomPaid.compareTo(BigDecimal.ZERO) > 0) {
-                    DashboardDto.RevenueDetailDto d = new DashboardDto.RevenueDetailDto();
-                    d.setDate(contract.getStartDate());
-                    d.setInvoiceCode("SUM-" + contract.getCode());
-                    d.setRoomCode(contract.getRoom().getCode());
-                    d.setTenantName(contract.getMainTenant().getFullName());
-                    d.setBoardingHouseName(contract.getRoom().getBoardingHouse().getName());
-                    d.setDescription("Room (" + nights + " nights × " + dailyRate.setScale(0, java.math.RoundingMode.HALF_UP) + ")");
-                    d.setCategory("RENT");
-                    d.setAmount(roomCost);
-                    d.setPaidAmount(roomPaid);
-                    details.add(d);
-                }
-
-                // Add service detail rows from guest charges
-                if (servicePaid.compareTo(BigDecimal.ZERO) > 0) {
-                    List<com.boardinghouse.entity.GuestServiceCharge> gCharges =
-                            guestChargeRepository.findByContractIdOrderByChargeDateDesc(contractId);
-                    for (com.boardinghouse.entity.GuestServiceCharge gc : gCharges) {
-                        DashboardDto.RevenueDetailDto d = new DashboardDto.RevenueDetailDto();
-                        d.setDate(gc.getChargeDate());
-                        d.setInvoiceCode("SUM-" + contract.getCode());
-                        d.setRoomCode(contract.getRoom().getCode());
-                        d.setTenantName(contract.getMainTenant().getFullName());
-                        d.setBoardingHouseName(contract.getRoom().getBoardingHouse().getName());
-                        d.setDescription(gc.getDescription());
-                        d.setCategory("SERVICE");
-                        d.setAmount(gc.getAmount());
-                        // Prorate paid for this charge
-                        BigDecimal chargePaid = charges.compareTo(BigDecimal.ZERO) > 0
-                                ? gc.getAmount().divide(charges, 4, java.math.RoundingMode.HALF_UP).multiply(servicePaid).setScale(0, java.math.RoundingMode.HALF_UP)
-                                : BigDecimal.ZERO;
-                        d.setPaidAmount(chargePaid);
-                        details.add(d);
-                    }
-                }
+                DashboardDto.RevenueDetailDto sd = new DashboardDto.RevenueDetailDto();
+                sd.setDate(gc.getChargeDate());
+                sd.setInvoiceCode(contract.getCode());
+                sd.setRoomCode(contract.getRoom().getCode());
+                sd.setTenantName(contract.getMainTenant().getFullName());
+                sd.setBoardingHouseName(contract.getRoom().getBoardingHouse().getName());
+                sd.setDescription(gc.getDescription());
+                sd.setCategory("SERVICE");
+                sd.setAmount(gc.getAmount());
+                details.add(sd);
             }
         }
 

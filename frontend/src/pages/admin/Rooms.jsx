@@ -6,7 +6,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import BulkActionBar from '../../components/BulkActionBar'
 import { Plus, Edit, Trash2, Eye } from 'lucide-react'
 
-const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
 
 const Rooms = () => {
   const navigate = useNavigate()
@@ -202,7 +202,7 @@ const Rooms = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{room.floor || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{room.area || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(room.baseRent || 0)}
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(room.baseRent || 0)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                   {room.currentTenantName || <span className="text-gray-300">—</span>}

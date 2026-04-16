@@ -13,13 +13,12 @@ public class DashboardDto {
     private Long availableRooms;
     private Long maintenanceRooms;
     private BigDecimal monthlyRevenue;
-    private BigDecimal roomRevenue;       // tiền phòng tháng này
-    private BigDecimal serviceRevenue;    // tiền dịch vụ tháng này
+    private BigDecimal roomRevenue;
+    private BigDecimal serviceRevenue;
     private BigDecimal unpaidAmount;
     private Long overdueInvoices;
-    private List<RevenueDetailDto> revenueDetails; // chi tiết theo ngày
+    private List<RevenueDetailDto> revenueDetails;
 
-    // 3 cột ngày
     private DayActivityDto yesterday;
     private DayActivityDto today;
     private DayActivityDto tomorrow;
@@ -28,7 +27,7 @@ public class DashboardDto {
     public static class DayActivityDto {
         private List<GuestActivityDto> checkIns;
         private List<GuestActivityDto> checkOuts;
-        private List<GuestActivityDto> staying; // đang ở (không checkin/checkout ngày đó)
+        private List<GuestActivityDto> staying;
     }
 
     @Data
@@ -57,10 +56,9 @@ public class DashboardDto {
         private String roomCode;
         private String tenantName;
         private String boardingHouseName;
-        private String description;     // "Tiền phòng", "Điện", "Nước", etc.
+        private String description;
         private String category;        // RENT or SERVICE
         private BigDecimal amount;
-        private BigDecimal paidAmount;
         private Long invoiceId;
     }
 }
