@@ -181,10 +181,8 @@ public class DashboardService {
                 .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         g.setTotalPaid(paid);
 
-        BigDecimal invoiceTotal = invoiceRepository.findByContractId(c.getId()).stream()
-                .map(Invoice::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        // Debt = invoice total + guest charges - paid (consistent with Invoices page)
-        g.setTotalDebt(invoiceTotal.add(charges).subtract(paid));
+        // Debt = roomCost + guestCharges - paid (consistent with guest summary modal)
+        g.setTotalDebt(g.getTotalRoomCost().add(charges).subtract(paid));
 
         return g;
     }
