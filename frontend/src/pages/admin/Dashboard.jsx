@@ -624,7 +624,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
   const [selectedGuest, setSelectedGuest] = useState(null)
   const [revenueModal, setRevenueModal] = useState(null) // 'RENT' | 'SERVICE' | null
-  const [revenueModal, setRevenueModal] = useState(null) // 'RENT' | 'SERVICE' | null
 
   const fetchDashboard = () => {
     api.get('/dashboard').then(r => setDashboard(r.data)).catch(console.error).finally(() => setLoading(false))
