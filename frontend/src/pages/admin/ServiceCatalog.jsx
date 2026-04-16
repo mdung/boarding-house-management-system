@@ -11,39 +11,58 @@ const CATEGORIES = [
 
 const ServiceCatalog = () => {
   const [items, setItems] = useState([])
+  const [inventoryItems, setInventoryItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [formData, setFormData] = useState({
-    name: '', category: 'FOOD_DRINK', unit: '', defaultPrice: '', icon: '', isActive: true, sortOrder: 0,
+    name: '', category: 'FOOD_DRINK', unit: '', defaultPrice: '', icon: '', isActive: true, sortOrder: 0, inventoryItemId: null,
   })
 
   useEffect(() => { fetchData() }, [])
 
   const fetchData = async () => {
     try {
-      const r = await api.get('/service-catalog/all')
-      setItems(r.data)
+      const [catalogRes, inventoryRes] = await Promise.all([
+        api.get('/service-catalog/all'),
+        api.get('/inventory/items'),
+      ])
+      setItems(catalogRes.data)
+      setInventoryItems(inventoryRes.data)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
   const openAdd = () => {
     setEditing(null)
-    setFormData({ name: '', category: 'FOOD_DRINK', unit: '', defaultPrice: '', icon: '', isActive: true, sortOrder: 0 })
+    setFormData({ name: '', category: 'FOOD_DRINK', unit: '', defaultPrice: '', icon: '', isActive: true, sortOrder: 0, inventoryItemId: null })
     setShowModal(true)
   }
 
   const openEdit = (item) => {
     setEditing(item)
-    setFormData({ name: item.name, category: item.category, unit: item.unit || '', defaultPrice: item.defaultPrice, icon: item.icon || '', isActive: item.isActive, sortOrder: item.sortOrder || 0 })
+    setFormData({
+      name: item.name,
+      category: item.category,
+      unit: item.unit || '',
+      defaultPrice: item.defaultPrice,
+      icon: item.icon || '',
+      isActive: item.isActive,
+      sortOrder: item.sortOrder || 0,
+      inventoryItemId: item.inventoryItemId || null,
+    })
     setShowModal(true)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const payload = { ...formData, defaultPrice: parseFloat(formData.defaultPrice), sortOrder: parseInt(formData.sortOrder) }
+      const payload = {
+        ...formData,
+        defaultPrice: parseFloat(formData.defaultPrice),
+        sortOrder: parseInt(formData.sortOrder),
+        inventoryItemId: formData.inventoryItemId,
+      }
       if (editing) await api.put(`/service-catalog/${editing.id}`, payload)
       else await api.post('/service-catalog', payload)
       setShowModal(false)
@@ -83,6 +102,7 @@ const ServiceCatalog = () => {
                 <tr className="text-xs text-gray-500 uppercase bg-gray-50">
                   <th className="px-4 py-2 text-left">Name</th>
                   <th className="px-4 py-2 text-left">Unit</th>
+                  <th className="px-4 py-2 text-left">Inventory</th>
                   <th className="px-4 py-2 text-right">Default Price</th>
                   <th className="px-4 py-2 text-center">Status</th>
                   <th className="px-4 py-2"></th>
@@ -93,6 +113,7 @@ const ServiceCatalog = () => {
                   <tr key={item.id} className={`hover:bg-gray-50 ${!item.isActive ? 'opacity-50' : ''}`}>
                     <td className="px-4 py-2 text-sm font-medium">{item.name}</td>
                     <td className="px-4 py-2 text-sm text-gray-500">{item.unit || '-'}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500">{item.inventoryItemName || '-'}</td>
                     <td className="px-4 py-2 text-sm text-right">{fmt(item.defaultPrice)}</td>
                     <td className="px-4 py-2 text-center">
                       <span className={`px-2 py-0.5 text-xs rounded-full ${item.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -156,6 +177,17 @@ const ServiceCatalog = () => {
                     onChange={e => setFormData({...formData, sortOrder: e.target.value})}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Inventory Item</label>
+                <select value={formData.inventoryItemId || ''}
+                  onChange={e => setFormData({...formData, inventoryItemId: e.target.value ? Number(e.target.value) : null})}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">None</option>
+                  {inventoryItems.map(item => (
+                    <option key={item.id} value={item.id}>{item.name} ({item.quantityOnHand} {item.unit || 'pcs'})</option>
+                  ))}
+                </select>
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="isActive" checked={formData.isActive}

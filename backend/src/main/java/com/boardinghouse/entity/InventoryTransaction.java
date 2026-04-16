@@ -5,37 +5,26 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import com.boardinghouse.entity.InventoryItem;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "guest_service_charges")
+@Table(name = "inventory_transactions")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class GuestServiceCharge {
+public class InventoryTransaction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "contract_id", nullable = false)
-    private Contract contract;
+    @JoinColumn(name = "item_id", nullable = false)
+    private InventoryItem item;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false)
-    private Room room;
-
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private LocalDate chargeDate;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "inventory_item_id")
-    private InventoryItem inventoryItem;
-
-    @Column(nullable = false)
-    private String description; // "Bia Saigon x3", "Thuê xe máy", "Bữa ăn sáng"...
+    private InventoryTransactionType type;
 
     @Column(nullable = false)
     private BigDecimal quantity;
@@ -46,7 +35,7 @@ public class GuestServiceCharge {
     @Column(nullable = false)
     private BigDecimal amount;
 
+    private String reference;
     private String note;
-
     private LocalDate createdDate = LocalDate.now();
 }

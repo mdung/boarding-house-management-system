@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,15 +18,18 @@ public class DashboardService {
     private final PaymentRepository paymentRepository;
     private final ContractRepository contractRepository;
     private final GuestServiceChargeRepository guestChargeRepository;
+    private final InventoryItemRepository inventoryItemRepository;
 
     public DashboardService(RoomRepository roomRepository, InvoiceRepository invoiceRepository,
                             PaymentRepository paymentRepository, ContractRepository contractRepository,
-                            GuestServiceChargeRepository guestChargeRepository) {
+                            GuestServiceChargeRepository guestChargeRepository,
+                            InventoryItemRepository inventoryItemRepository) {
         this.roomRepository = roomRepository;
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.contractRepository = contractRepository;
         this.guestChargeRepository = guestChargeRepository;
+        this.inventoryItemRepository = inventoryItemRepository;
     }
 
     public DashboardDto getDashboard() {
@@ -38,47 +40,51 @@ public class DashboardService {
         dto.setAvailableRooms((long) roomRepository.findByStatus(RoomStatus.AVAILABLE).size());
         dto.setMaintenanceRooms((long) roomRepository.findByStatus(RoomStatus.MAINTENANCE).size());
 
-        // Monthly Revenue = sum of all payments made in the current month
-        YearMonth currentMonth = YearMonth.now();
-        LocalDate monthStart = currentMonth.atDay(1);
-        LocalDate monthEnd = currentMonth.atEndOfMonth();
-        BigDecimal monthlyRevenue = paymentRepository.findAll().stream()
-                .filter(p -> {
-                    LocalDate payDate = p.getPaymentDate().toLocalDate();
-                    return !payDate.isBefore(monthStart) && !payDate.isAfter(monthEnd);
-                })
-                .map(Payment::getPaidAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // Unpaid Amount = sum of (totalAmount - paidAmount) for all invoices where remaining > 0
-        BigDecimal unpaidAmount = BigDecimal.ZERO;
-        long overdueCount = 0;
         LocalDate today = LocalDate.now();
+
+        // Unpaid = sum of debt across all active contracts
+        // Debt per contract = (dailyRate × nights) + guestCharges - totalPaid
+        // This matches the red "Debt" numbers shown on guest cards
+        BigDecimal unpaidAmount = BigDecimal.ZERO;
+        List<Contract> allActive = contractRepository.findAllActiveOrderByEndDate();
+        for (Contract c : allActive) {
+            long nights = ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate());
+            BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
+                    : (c.getMonthlyRent() != null
+                        ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO);
+            BigDecimal roomCost = dailyRate.multiply(BigDecimal.valueOf(nights));
+            BigDecimal charges = guestChargeRepository.sumAmountByContractId(c.getId());
+            BigDecimal paid = invoiceRepository.findByContractId(c.getId()).stream()
+                    .flatMap(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream())
+                    .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal debt = roomCost.add(charges).subtract(paid);
+            if (debt.compareTo(BigDecimal.ZERO) > 0) {
+                unpaidAmount = unpaidAmount.add(debt);
+            }
+        }
+
+        // Overdue invoices = invoices with remaining > 0 and past due date
+        long overdueCount = 0;
         for (Invoice inv : invoiceRepository.findAll()) {
             BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
                     .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal remaining = inv.getTotalAmount().subtract(paid);
-            if (remaining.compareTo(BigDecimal.ZERO) > 0) {
-                unpaidAmount = unpaidAmount.add(remaining);
-                // Overdue = unpaid and past due date
-                if (inv.getDueDate() != null && inv.getDueDate().isBefore(today)) {
-                    overdueCount++;
-                }
+            if (remaining.compareTo(BigDecimal.ZERO) > 0 && inv.getDueDate() != null && inv.getDueDate().isBefore(today)) {
+                overdueCount++;
             }
         }
 
-        dto.setMonthlyRevenue(monthlyRevenue);
+        dto.setMonthlyRevenue(BigDecimal.ZERO); // hidden on frontend
         dto.setUnpaidAmount(unpaidAmount);
         dto.setOverdueInvoices(overdueCount);
 
-        // Revenue breakdown: Room vs Service for current month active contracts
+        // Revenue breakdown: Room vs Service for active contracts
         BigDecimal roomRevenue = BigDecimal.ZERO;
         BigDecimal serviceRevenue = BigDecimal.ZERO;
         java.util.List<DashboardDto.RevenueDetailDto> details = new java.util.ArrayList<>();
 
-        List<Contract> activeContracts = contractRepository.findAllActiveOrderByEndDate();
-
-        for (Contract contract : activeContracts) {
+        for (Contract contract : allActive) {
             long nights = ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate());
             BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate()
                     : (contract.getMonthlyRent() != null
@@ -125,6 +131,12 @@ public class DashboardService {
             return cmp != 0 ? cmp : a.getRoomCode().compareTo(b.getRoomCode());
         });
         dto.setRevenueDetails(details);
+
+        // Low stock items count
+        long lowStockCount = inventoryItemRepository.findByIsActiveTrueOrderByCategoryAscNameAsc().stream()
+                .filter(item -> item.getQuantityOnHand().compareTo(item.getReorderLevel()) <= 0)
+                .count();
+        dto.setLowStockItems(lowStockCount);
 
         dto.setYesterday(buildDayActivity(today.minusDays(1)));
         dto.setToday(buildDayActivity(today));

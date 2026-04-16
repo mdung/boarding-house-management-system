@@ -5,7 +5,7 @@ import eventBus, { EVENTS } from '../../services/eventBus'
 import {
   DoorOpen, Users, DollarSign, AlertCircle, LogIn, LogOut,
   BedDouble, CreditCard, X, ExternalLink, ShoppingCart, Receipt,
-  ChevronRight, Edit2, Save, Plus, CalendarDays
+  ChevronRight, Edit2, Save, Plus, CalendarDays, Package
 } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -635,9 +635,9 @@ const Dashboard = () => {
     { label: 'Total Rooms', value: dashboard?.totalRooms || 0, icon: DoorOpen, color: 'bg-blue-500', link: '/admin/rooms' },
     { label: 'Occupied', value: dashboard?.occupiedRooms || 0, icon: Users, color: 'bg-green-500', link: '/admin/tenants' },
     { label: 'Available', value: dashboard?.availableRooms || 0, icon: DoorOpen, color: 'bg-gray-400', link: '/admin/rooms' },
-    { label: 'Monthly Revenue', value: fmt(dashboard?.monthlyRevenue), icon: DollarSign, color: 'bg-emerald-600', link: '/admin/reports' },
-    { label: 'Unpaid', value: fmt(dashboard?.unpaidAmount), icon: DollarSign, color: 'bg-yellow-500', link: '/admin/invoices?status=NOT_PAID' },
+    { label: 'Unpaid', value: fmt(dashboard?.unpaidAmount), icon: DollarSign, color: 'bg-yellow-500', link: '/admin/tenants' },
     { label: 'Overdue Invoices', value: dashboard?.overdueInvoices || 0, icon: AlertCircle, color: 'bg-red-500', link: '/admin/invoices?status=PAST_DUE' },
+    { label: 'Low Stock', value: dashboard?.lowStockItems || 0, icon: Package, color: dashboard?.lowStockItems > 0 ? 'bg-red-500' : 'bg-gray-400', link: '/admin/inventory' },
   ]
 
   return (

@@ -17,6 +17,7 @@ public class DashboardDto {
     private BigDecimal serviceRevenue;
     private BigDecimal unpaidAmount;
     private Long overdueInvoices;
+    private Long lowStockItems;
     private List<RevenueDetailDto> revenueDetails;
 
     private DayActivityDto yesterday;

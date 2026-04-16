@@ -2,14 +2,18 @@ package com.boardinghouse.service;
 
 import com.boardinghouse.dto.GuestChargesSummaryDto;
 import com.boardinghouse.dto.GuestServiceChargeDto;
+import com.boardinghouse.dto.InventoryTransactionDto;
 import com.boardinghouse.entity.Contract;
 import com.boardinghouse.entity.GuestServiceCharge;
+import com.boardinghouse.entity.InventoryItem;
 import com.boardinghouse.entity.Payment;
 import com.boardinghouse.exception.ResourceNotFoundException;
 import com.boardinghouse.repository.ContractRepository;
 import com.boardinghouse.repository.GuestServiceChargeRepository;
+import com.boardinghouse.repository.InventoryItemRepository;
 import com.boardinghouse.repository.InvoiceRepository;
 import com.boardinghouse.repository.PaymentRepository;
+import com.boardinghouse.service.InventoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,15 +30,21 @@ public class GuestServiceChargeService {
     private final ContractRepository contractRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final InventoryService inventoryService;
+    private final InventoryItemRepository inventoryItemRepository;
 
     public GuestServiceChargeService(GuestServiceChargeRepository repository,
                                      ContractRepository contractRepository,
                                      InvoiceRepository invoiceRepository,
-                                     PaymentRepository paymentRepository) {
+                                     PaymentRepository paymentRepository,
+                                     InventoryService inventoryService,
+                                     InventoryItemRepository inventoryItemRepository) {
         this.repository = repository;
         this.contractRepository = contractRepository;
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
+        this.inventoryService = inventoryService;
+        this.inventoryItemRepository = inventoryItemRepository;
     }
 
     public List<GuestServiceChargeDto> getByContract(Long contractId) {
@@ -47,10 +57,33 @@ public class GuestServiceChargeService {
         Contract contract = contractRepository.findById(dto.getContractId())
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
+        InventoryItem inventoryItem = null;
+        if (dto.getInventoryItemId() != null) {
+            inventoryItem = inventoryItemRepository.findById(dto.getInventoryItemId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + dto.getInventoryItemId()));
+
+            if (dto.getUnitPrice() == null) {
+                dto.setUnitPrice(inventoryItem.getSalePrice());
+            }
+            if (dto.getDescription() == null || dto.getDescription().trim().isEmpty()) {
+                dto.setDescription(inventoryItem.getName());
+            }
+
+            InventoryTransactionDto transactionDto = new InventoryTransactionDto();
+            transactionDto.setItemId(dto.getInventoryItemId());
+            transactionDto.setType(com.boardinghouse.entity.InventoryTransactionType.SALE);
+            transactionDto.setQuantity(dto.getQuantity());
+            transactionDto.setUnitPrice(dto.getUnitPrice());
+            transactionDto.setReference("Guest charge " + dto.getContractId());
+            transactionDto.setNote("Automatic stock reduction for guest charge");
+            inventoryService.createTransaction(transactionDto);
+        }
+
         GuestServiceCharge charge = new GuestServiceCharge();
         charge.setContract(contract);
         charge.setRoom(contract.getRoom());
         charge.setChargeDate(dto.getChargeDate());
+        charge.setInventoryItem(inventoryItem);
         charge.setDescription(dto.getDescription());
         charge.setQuantity(dto.getQuantity());
         charge.setUnitPrice(dto.getUnitPrice());
@@ -62,9 +95,21 @@ public class GuestServiceChargeService {
 
     @Transactional
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Charge not found with id: " + id);
+        GuestServiceCharge charge = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Charge not found with id: " + id));
+
+        // Restore inventory stock if this charge was linked to an inventory item
+        if (charge.getInventoryItem() != null) {
+            InventoryTransactionDto returnDto = new InventoryTransactionDto();
+            returnDto.setItemId(charge.getInventoryItem().getId());
+            returnDto.setType(com.boardinghouse.entity.InventoryTransactionType.RETURN);
+            returnDto.setQuantity(charge.getQuantity());
+            returnDto.setUnitPrice(charge.getUnitPrice());
+            returnDto.setReference("Charge deleted #" + id);
+            returnDto.setNote("Stock restored from deleted guest charge");
+            inventoryService.createTransaction(returnDto);
         }
+
         repository.deleteById(id);
     }
 
@@ -133,6 +178,10 @@ public class GuestServiceChargeService {
         dto.setContractCode(c.getContract().getCode());
         dto.setRoomId(c.getRoom().getId());
         dto.setRoomCode(c.getRoom().getCode());
+        if (c.getInventoryItem() != null) {
+            dto.setInventoryItemId(c.getInventoryItem().getId());
+            dto.setInventoryItemName(c.getInventoryItem().getName());
+        }
         dto.setChargeDate(c.getChargeDate());
         dto.setDescription(c.getDescription());
         dto.setQuantity(c.getQuantity());

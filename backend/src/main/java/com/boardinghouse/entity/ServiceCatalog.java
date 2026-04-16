@@ -1,5 +1,7 @@
 package com.boardinghouse.entity;
 
+import com.boardinghouse.entity.InventoryItem;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -29,7 +31,9 @@ public class ServiceCatalog {
     private BigDecimal defaultPrice;
 
     private String icon; // emoji icon
-
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inventory_item_id")
+    private InventoryItem inventoryItem;
     private Boolean isActive = true;
 
     private Integer sortOrder = 0;

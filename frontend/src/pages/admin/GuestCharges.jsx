@@ -11,6 +11,7 @@ const GuestCharges = () => {
   const [searchParams] = useSearchParams()
   const [contracts, setContracts] = useState([])
   const [catalog, setCatalog] = useState([])
+  const [inventoryItems, setInventoryItems] = useState([])
   const [selectedContractId, setSelectedContractId] = useState('')
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -19,6 +20,7 @@ const GuestCharges = () => {
   const [formData, setFormData] = useState({
     chargeDate: new Date().toISOString().split('T')[0],
     catalogId: '',
+    inventoryItemId: '',
     description: '',
     quantity: '1',
     unitPrice: '',
@@ -28,6 +30,7 @@ const GuestCharges = () => {
   useEffect(() => {
     api.get('/contracts').then(r => setContracts(r.data)).catch(console.error)
     api.get('/service-catalog').then(r => setCatalog(r.data)).catch(console.error)
+    api.get('/inventory/items').then(r => setInventoryItems(r.data)).catch(console.error)
   }, [])
 
   // Auto-select contract from URL param (e.g. from dashboard modal)
@@ -57,6 +60,7 @@ const GuestCharges = () => {
     try {
       await api.post('/guest-charges', {
         contractId: parseInt(selectedContractId),
+        inventoryItemId: formData.inventoryItemId ? parseInt(formData.inventoryItemId) : undefined,
         chargeDate: formData.chargeDate,
         description: formData.description,
         quantity: parseFloat(formData.quantity),
@@ -64,7 +68,7 @@ const GuestCharges = () => {
         note: formData.note,
       })
       setShowModal(false)
-      setFormData({ chargeDate: new Date().toISOString().split('T')[0], catalogId: '', description: '', quantity: '1', unitPrice: '', note: '' })
+      setFormData({ chargeDate: new Date().toISOString().split('T')[0], catalogId: '', inventoryItemId: '', description: '', quantity: '1', unitPrice: '', note: '' })
       fetchSummary()
     } catch (e) {
       alert(e.response?.data?.message || 'Failed to save charge')
@@ -77,11 +81,27 @@ const GuestCharges = () => {
       setFormData(prev => ({
         ...prev,
         catalogId,
+        inventoryItemId: item.inventoryItemId ? item.inventoryItemId.toString() : '',
         description: item.name,
         unitPrice: item.defaultPrice.toString(),
       }))
     } else {
-      setFormData(prev => ({ ...prev, catalogId, description: '', unitPrice: '' }))
+      setFormData(prev => ({ ...prev, catalogId, description: '', unitPrice: '', inventoryItemId: '' }))
+    }
+  }
+
+  const handleInventorySelect = (inventoryItemId) => {
+    const item = inventoryItems.find(i => i.id === parseInt(inventoryItemId))
+    if (item) {
+      setFormData(prev => ({
+        ...prev,
+        inventoryItemId,
+        catalogId: '',
+        description: item.name,
+        unitPrice: item.salePrice?.toString() || '',
+      }))
+    } else {
+      setFormData(prev => ({ ...prev, inventoryItemId, description: '', unitPrice: '', catalogId: '' }))
     }
   }
 
@@ -110,7 +130,7 @@ const GuestCharges = () => {
             onClick={() => setShowModal(true)}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            <Plus className="w-4 h-4 mr-2" /> Add Service
+            <Plus className="w-4 h-4 mr-2" /> Add Charge
           </button>
         )}
       </div>
@@ -261,7 +281,7 @@ const GuestCharges = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add Service</h2>
+            <h2 className="text-xl font-bold mb-4">Create Guest Charge</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Date</label>
@@ -272,7 +292,7 @@ const GuestCharges = () => {
 
               {/* Catalog grouped by category */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select service</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Choose service or inventory item</label>
                 {Object.entries(CATEGORIES).map(([catKey, catLabel]) => {
                   const catItems = catalog.filter(c => c.category === catKey)
                   if (catItems.length === 0) return null
@@ -298,6 +318,27 @@ const GuestCharges = () => {
                     </div>
                   )
                 })}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select inventory item</label>
+                <select
+                  value={formData.inventoryItemId}
+                  onChange={e => handleInventorySelect(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">-- Choose inventory item --</option>
+                  {inventoryItems.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} {item.unit ? `(${item.unit})` : ''} · Stock {item.quantityOnHand || 0}
+                    </option>
+                  ))}
+                </select>
+                {formData.inventoryItemId && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    Available stock: {inventoryItems.find(i => i.id === parseInt(formData.inventoryItemId))?.quantityOnHand || 0}
+                  </p>
+                )}
               </div>
 
               {formData.description && (

@@ -1,24 +1,21 @@
 package com.boardinghouse.dto;
 
+import com.boardinghouse.entity.InventoryTransactionType;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
-public class GuestServiceChargeDto {
+public class InventoryTransactionDto {
     private Long id;
-    private Long contractId;
-    private String contractCode;
-    private Long roomId;
-    private String roomCode;
-    private Long inventoryItemId;
-    private String inventoryItemName;
-    private LocalDate chargeDate;
-    private String description;
+    private Long itemId;
+    private String itemName;
+    private InventoryTransactionType type;
     private BigDecimal quantity;
     private BigDecimal unitPrice;
     private BigDecimal amount;
+    private String reference;
     private String note;
     private LocalDate createdDate;
 }

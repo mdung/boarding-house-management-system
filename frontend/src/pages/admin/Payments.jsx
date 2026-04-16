@@ -76,7 +76,7 @@ const Payments = () => {
         ...formData,
         invoiceId: parseInt(formData.invoiceId),
         paidAmount: parseFloat(formData.paidAmount),
-        paymentDate: formData.paymentDate || new Date().toISOString(),
+        paymentDate: formData.paymentDate ? formData.paymentDate + 'T00:00:00' : new Date().toISOString(),
       })
       setShowModal(false)
       setSelectedInvoice(null)

@@ -13,4 +13,6 @@ public class ServiceCatalogDto {
     private String icon;
     private Boolean isActive;
     private Integer sortOrder;
+    private Long inventoryItemId;
+    private String inventoryItemName;
 }

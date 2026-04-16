@@ -1,8 +1,10 @@
 package com.boardinghouse.service;
 
 import com.boardinghouse.dto.ServiceCatalogDto;
+import com.boardinghouse.entity.InventoryItem;
 import com.boardinghouse.entity.ServiceCatalog;
 import com.boardinghouse.exception.ResourceNotFoundException;
+import com.boardinghouse.repository.InventoryItemRepository;
 import com.boardinghouse.repository.ServiceCatalogRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,9 +15,12 @@ import java.util.stream.Collectors;
 @Service
 public class ServiceCatalogService {
     private final ServiceCatalogRepository repository;
+    private final InventoryItemRepository inventoryItemRepository;
 
-    public ServiceCatalogService(ServiceCatalogRepository repository) {
+    public ServiceCatalogService(ServiceCatalogRepository repository,
+                                 InventoryItemRepository inventoryItemRepository) {
         this.repository = repository;
+        this.inventoryItemRepository = inventoryItemRepository;
     }
 
     public List<ServiceCatalogDto> getAll() {
@@ -61,6 +66,13 @@ public class ServiceCatalogService {
         s.setIcon(dto.getIcon());
         s.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : true);
         s.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
+        if (dto.getInventoryItemId() != null) {
+            InventoryItem inventoryItem = inventoryItemRepository.findById(dto.getInventoryItemId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + dto.getInventoryItemId()));
+            s.setInventoryItem(inventoryItem);
+        } else {
+            s.setInventoryItem(null);
+        }
         return s;
     }
 
@@ -74,6 +86,10 @@ public class ServiceCatalogService {
         dto.setIcon(s.getIcon());
         dto.setIsActive(s.getIsActive());
         dto.setSortOrder(s.getSortOrder());
+        if (s.getInventoryItem() != null) {
+            dto.setInventoryItemId(s.getInventoryItem().getId());
+            dto.setInventoryItemName(s.getInventoryItem().getName());
+        }
         return dto;
     }
 }
