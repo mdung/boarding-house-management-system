@@ -190,6 +190,7 @@ public class DashboardService {
         g.setCheckOutDate(c.getEndDate());
         g.setActivityType(type);
         g.setContractStatus(c.getStatus().name());
+        g.setRoomReleased(c.getRoom().getStatus() == RoomStatus.AVAILABLE);
 
         // Daily rate & total days
         BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()

@@ -419,7 +419,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
 
         {/* Actions */}
         <div className="px-6 py-4 border-t border-gray-100 flex gap-2">
-          {guest.contractStatus === 'ACTIVE' && (
+          {guest.contractStatus === 'ACTIVE' && !guest.roomReleased && (
             <button
               onClick={() => setShowCheckoutConfirm(true)}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-50 text-orange-700 text-sm font-medium rounded-lg hover:bg-orange-100 transition-colors border border-orange-200"
@@ -427,7 +427,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
               <LogOut className="w-4 h-4" /> Check Out
             </button>
           )}
-          {guest.contractStatus === 'ACTIVE' && (
+          {guest.contractStatus === 'ACTIVE' && !guest.roomReleased && (
             <button
               onClick={() => { onClose(); navigate(`/admin/guest-charges?contractId=${guest.contractId}`) }}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-100 transition-colors"
@@ -435,11 +435,16 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
               <ShoppingCart className="w-4 h-4" /> Add Service
             </button>
           )}
+          {guest.roomReleased && (
+            <div className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-500 text-sm font-medium rounded-lg border border-gray-200">
+              <LogOut className="w-4 h-4" /> Checked Out
+            </div>
+          )}
           <button
             onClick={() => { onClose(); navigate(`/admin/tenants/${guest.tenantId}/detail`) }}
-            className={`flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors ${guest.contractStatus !== 'ACTIVE' ? 'flex-1' : ''}`}
+            className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
           >
-            <ExternalLink className="w-4 h-4" /> {guest.contractStatus !== 'ACTIVE' ? 'View Details' : ''}
+            <ExternalLink className="w-4 h-4" />
           </button>
         </div>
 

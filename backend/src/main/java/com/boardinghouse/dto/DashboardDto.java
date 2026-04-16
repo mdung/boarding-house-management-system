@@ -50,6 +50,7 @@ public class DashboardDto {
         private BigDecimal totalDebt;
         private String activityType; // CHECKIN, CHECKOUT, STAYING
         private String contractStatus; // ACTIVE, EXPIRED, TERMINATED
+        private boolean roomReleased; // true if room is AVAILABLE (already checked out)
     }
 
     @Data
