@@ -19,20 +19,26 @@ public class DashboardService {
     private final ContractRepository contractRepository;
     private final GuestServiceChargeRepository guestChargeRepository;
     private final InventoryItemRepository inventoryItemRepository;
+    private final ContractService contractService;
 
     public DashboardService(RoomRepository roomRepository, InvoiceRepository invoiceRepository,
                             PaymentRepository paymentRepository, ContractRepository contractRepository,
                             GuestServiceChargeRepository guestChargeRepository,
-                            InventoryItemRepository inventoryItemRepository) {
+                            InventoryItemRepository inventoryItemRepository,
+                            ContractService contractService) {
         this.roomRepository = roomRepository;
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.contractRepository = contractRepository;
         this.guestChargeRepository = guestChargeRepository;
         this.inventoryItemRepository = inventoryItemRepository;
+        this.contractService = contractService;
     }
 
     public DashboardDto getDashboard() {
+        // Auto-expire contracts where endDate < today → free rooms
+        contractService.autoExpireContracts();
+
         DashboardDto dto = new DashboardDto();
 
         dto.setTotalRooms((long) roomRepository.findAll().size());

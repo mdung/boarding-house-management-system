@@ -26,7 +26,29 @@ public class ContractService {
         this.tenantRepository = tenantRepository;
     }
 
+    @Transactional
+    public void autoExpireContracts() {
+        java.time.LocalDate today = java.time.LocalDate.now();
+        List<Contract> activeContracts = repository.findByStatus(ContractStatus.ACTIVE);
+        for (Contract c : activeContracts) {
+            if (c.getEndDate().isBefore(today)) {
+                c.setStatus(ContractStatus.EXPIRED);
+                repository.save(c);
+                // Free the room
+                Room room = c.getRoom();
+                // Only set AVAILABLE if no other active contract uses this room
+                boolean otherActive = repository.findByRoomId(room.getId()).stream()
+                        .anyMatch(other -> other.getStatus() == ContractStatus.ACTIVE && !other.getId().equals(c.getId()));
+                if (!otherActive) {
+                    room.setStatus(RoomStatus.AVAILABLE);
+                    roomRepository.save(room);
+                }
+            }
+        }
+    }
+
     public List<ContractDto> getAll() {
+        autoExpireContracts();
         return repository.findAll().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
