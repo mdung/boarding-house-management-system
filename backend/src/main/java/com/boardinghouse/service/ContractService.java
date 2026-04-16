@@ -29,22 +29,13 @@ public class ContractService {
     @Transactional
     public void autoExpireContracts() {
         java.time.LocalDate today = java.time.LocalDate.now();
-        java.time.LocalTime now = java.time.LocalTime.now();
-        java.time.LocalTime noon = java.time.LocalTime.of(12, 0);
+        java.time.LocalDate yesterday = today.minusDays(1);
 
         List<Contract> activeContracts = repository.findByStatus(ContractStatus.ACTIVE);
         for (Contract c : activeContracts) {
-            boolean shouldExpire = false;
-
+            // Only expire contracts where endDate is BEFORE today (not today itself)
+            // This keeps today's checkouts visible on Dashboard
             if (c.getEndDate().isBefore(today)) {
-                // Past checkout date → always expire
-                shouldExpire = true;
-            } else if (c.getEndDate().equals(today) && now.isAfter(noon)) {
-                // Checkout date is today and it's past 12:00 PM → auto expire
-                shouldExpire = true;
-            }
-
-            if (shouldExpire) {
                 c.setStatus(ContractStatus.EXPIRED);
                 repository.save(c);
                 // Free the room if no other active contract uses it
@@ -60,8 +51,9 @@ public class ContractService {
     }
 
     /**
-     * Manual early checkout - admin marks guest as checked out immediately.
-     * Expires the contract and frees the room.
+     * Manual early checkout - releases the room immediately.
+     * Contract stays ACTIVE so guest still shows on Dashboard/Calendar.
+     * Only the room status changes to AVAILABLE.
      */
     @Transactional
     public ContractDto manualCheckout(Long id) {
@@ -77,18 +69,12 @@ public class ContractService {
         if (contract.getEndDate().isAfter(today)) {
             contract.setEndDate(today);
         }
-
-        contract.setStatus(ContractStatus.EXPIRED);
         repository.save(contract);
 
-        // Free the room
+        // Free the room so it can be assigned to new guests
         Room room = contract.getRoom();
-        boolean otherActive = repository.findByRoomId(room.getId()).stream()
-                .anyMatch(other -> other.getStatus() == ContractStatus.ACTIVE && !other.getId().equals(contract.getId()));
-        if (!otherActive) {
-            room.setStatus(RoomStatus.AVAILABLE);
-            roomRepository.save(room);
-        }
+        room.setStatus(RoomStatus.AVAILABLE);
+        roomRepository.save(room);
 
         return toDto(contract);
     }

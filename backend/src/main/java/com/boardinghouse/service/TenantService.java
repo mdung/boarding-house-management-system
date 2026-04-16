@@ -131,8 +131,16 @@ public class TenantService {
         dto.setStatus(tenant.getStatus());
 
         try {
-            Optional<Contract> activeContract = contractRepository.findActiveByMainTenantId(tenant.getId());
-            activeContract.ifPresent(c -> {
+            // Find most recent contract: prefer ACTIVE, fallback to most recent any status
+            List<Contract> allContracts = contractRepository.findByMainTenantId(tenant.getId());
+            Optional<Contract> displayContract = allContracts.stream()
+                    .filter(c -> c.getStatus() == ContractStatus.ACTIVE)
+                    .max(java.util.Comparator.comparing(Contract::getStartDate));
+            if (displayContract.isEmpty()) {
+                displayContract = allContracts.stream()
+                        .max(java.util.Comparator.comparing(Contract::getEndDate));
+            }
+            displayContract.ifPresent(c -> {
                 dto.setActiveContractId(c.getId());
                 dto.setActiveRoomCode(c.getRoom().getCode());
                 dto.setCheckInDate(c.getStartDate());

@@ -48,12 +48,12 @@ public class DashboardService {
 
         LocalDate today = LocalDate.now();
 
-        // Unpaid = sum of debt across all active contracts
+        // Unpaid = sum of debt across ALL contracts (including expired)
         // Debt per contract = (dailyRate × nights) + guestCharges - totalPaid
-        // This matches the red "Debt" numbers shown on guest cards
+        // This matches the red "Debt" numbers shown on guest cards and tenant list
         BigDecimal unpaidAmount = BigDecimal.ZERO;
-        List<Contract> allActive = contractRepository.findAllActiveOrderByEndDate();
-        for (Contract c : allActive) {
+        List<Contract> allContracts = contractRepository.findAll();
+        for (Contract c : allContracts) {
             long nights = ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate());
             BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
                     : (c.getMonthlyRent() != null
@@ -90,7 +90,8 @@ public class DashboardService {
         BigDecimal serviceRevenue = BigDecimal.ZERO;
         java.util.List<DashboardDto.RevenueDetailDto> details = new java.util.ArrayList<>();
 
-        for (Contract contract : allActive) {
+        List<Contract> activeContracts = contractRepository.findAllActiveOrderByEndDate();
+        for (Contract contract : activeContracts) {
             long nights = ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate());
             BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate()
                     : (contract.getMonthlyRent() != null
