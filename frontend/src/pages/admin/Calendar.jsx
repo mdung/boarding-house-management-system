@@ -8,18 +8,18 @@ import {
   Building2, DollarSign, Users, Clock
 } from 'lucide-react'
 
-const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
-const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '-'
+const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US') : '-'
 
 const EVENT_CONFIG = {
-  CHECKIN:      { icon: LogIn, color: 'bg-green-500', light: 'bg-green-50 border-green-200 text-green-800', label: 'Nhận phòng', dot: 'bg-green-500' },
-  CHECKOUT:     { icon: LogOut, color: 'bg-orange-500', light: 'bg-orange-50 border-orange-200 text-orange-800', label: 'Trả phòng', dot: 'bg-orange-500' },
-  INVOICE_DUE:  { icon: Receipt, color: 'bg-blue-500', light: 'bg-blue-50 border-blue-200 text-blue-800', label: 'Hạn thanh toán', dot: 'bg-blue-500' },
-  PAYMENT:      { icon: CreditCard, color: 'bg-emerald-500', light: 'bg-emerald-50 border-emerald-200 text-emerald-800', label: 'Đã thanh toán', dot: 'bg-emerald-500' },
-  OVERDUE:      { icon: AlertTriangle, color: 'bg-red-500', light: 'bg-red-50 border-red-200 text-red-800', label: 'Quá hạn', dot: 'bg-red-500' },
+  CHECKIN:      { icon: LogIn, color: 'bg-green-500', light: 'bg-green-50 border-green-200 text-green-800', label: 'Check-in', dot: 'bg-green-500' },
+  CHECKOUT:     { icon: LogOut, color: 'bg-orange-500', light: 'bg-orange-50 border-orange-200 text-orange-800', label: 'Check-out', dot: 'bg-orange-500' },
+  INVOICE_DUE:  { icon: Receipt, color: 'bg-blue-500', light: 'bg-blue-50 border-blue-200 text-blue-800', label: 'Payment Due', dot: 'bg-blue-500' },
+  PAYMENT:      { icon: CreditCard, color: 'bg-emerald-500', light: 'bg-emerald-50 border-emerald-200 text-emerald-800', label: 'Paid', dot: 'bg-emerald-500' },
+  OVERDUE:      { icon: AlertTriangle, color: 'bg-red-500', light: 'bg-red-50 border-red-200 text-red-800', label: 'Overdue', dot: 'bg-red-500' },
 }
 
-const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 const SuperCalendar = () => {
   const navigate = useNavigate()
@@ -120,7 +120,7 @@ const SuperCalendar = () => {
 
   const goToday = () => setCurrentDate(new Date())
   const todayKey = dateKey(new Date())
-  const monthLabel = currentDate.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+  const monthLabel = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const weekLabel = days.length ? `${fmtDate(dateKey(days[0]))} — ${fmtDate(dateKey(days[days.length - 1]))}` : ''
 
   // --- Sub-components ---
@@ -151,8 +151,8 @@ const SuperCalendar = () => {
         {(event.amount || event.remainingAmount) ? (
           <p className="text-xs mt-0.5 opacity-75">
             {event.type === 'PAYMENT' ? `+${fmt(event.amount)}` :
-             event.remainingAmount > 0 ? `Còn ${fmt(event.remainingAmount)}` :
-             event.invoiceStatus === 'PAID' ? '✓ Đã trả' : fmt(event.amount)}
+             event.remainingAmount > 0 ? `Remaining ${fmt(event.remainingAmount)}` :
+             event.invoiceStatus === 'PAID' ? '✓ Paid' : fmt(event.amount)}
           </p>
         ) : null}
       </button>
@@ -184,23 +184,23 @@ const SuperCalendar = () => {
           {/* Body */}
           <div className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <InfoItem icon={Users} label="Khách thuê" value={ev.tenantName} />
-              <InfoItem icon={Building2} label="Phòng" value={ev.roomCode} />
-              <InfoItem icon={Building2} label="Nhà trọ" value={ev.boardingHouseName} />
-              <InfoItem icon={Clock} label="Hợp đồng" value={`${fmtDate(ev.checkInDate)} → ${fmtDate(ev.checkOutDate)}`} />
+              <InfoItem icon={Users} label="Tenant" value={ev.tenantName} />
+              <InfoItem icon={Building2} label="Room" value={ev.roomCode} />
+              <InfoItem icon={Building2} label="Property" value={ev.boardingHouseName} />
+              <InfoItem icon={Clock} label="Contract" value={`${fmtDate(ev.checkInDate)} → ${fmtDate(ev.checkOutDate)}`} />
             </div>
             {(ev.type === 'INVOICE_DUE' || ev.type === 'OVERDUE' || ev.type === 'PAYMENT') && (
               <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <p className="text-sm font-medium text-gray-700">Thông tin hóa đơn</p>
-                {ev.invoiceCode && <p className="text-sm text-gray-600">Mã: {ev.invoiceCode}</p>}
-                {ev.amount > 0 && <p className="text-sm text-gray-600">Tổng: {fmt(ev.amount)}</p>}
-                {ev.paidAmount > 0 && <p className="text-sm text-green-600">Đã trả: {fmt(ev.paidAmount)}</p>}
-                {ev.remainingAmount > 0 && <p className="text-sm text-red-600 font-medium">Còn nợ: {fmt(ev.remainingAmount)}</p>}
+                <p className="text-sm font-medium text-gray-700">Invoice Info</p>
+                {ev.invoiceCode && <p className="text-sm text-gray-600">Code: {ev.invoiceCode}</p>}
+                {ev.amount > 0 && <p className="text-sm text-gray-600">Total: {fmt(ev.amount)}</p>}
+                {ev.paidAmount > 0 && <p className="text-sm text-green-600">Paid: {fmt(ev.paidAmount)}</p>}
+                {ev.remainingAmount > 0 && <p className="text-sm text-red-600 font-medium">Remaining: {fmt(ev.remainingAmount)}</p>}
               </div>
             )}
             {(ev.type === 'CHECKIN' || ev.type === 'CHECKOUT') && ev.totalDebt > 0 && (
               <div className="bg-red-50 rounded-xl p-4">
-                <p className="text-sm text-red-700 font-medium">Tổng nợ: {fmt(ev.totalDebt)}</p>
+                <p className="text-sm text-red-700 font-medium">Total Debt: {fmt(ev.totalDebt)}</p>
               </div>
             )}
             {/* Action buttons */}
@@ -208,19 +208,19 @@ const SuperCalendar = () => {
               {ev.tenantId && (
                 <button onClick={() => { setSelectedEvent(null); navigate(`/admin/tenants/${ev.tenantId}/detail`) }}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium hover:bg-blue-100 transition-colors">
-                  <Eye className="w-4 h-4" /> Xem khách
+                  <Eye className="w-4 h-4" /> View Tenant
                 </button>
               )}
               {ev.contractId && (
                 <button onClick={() => { setSelectedEvent(null); navigate(`/admin/contracts/${ev.contractId}/detail`) }}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-50 text-purple-700 rounded-xl text-sm font-medium hover:bg-purple-100 transition-colors">
-                  <ExternalLink className="w-4 h-4" /> Hợp đồng
+                  <ExternalLink className="w-4 h-4" /> Contract
                 </button>
               )}
               {ev.invoiceId && (
                 <button onClick={() => { setSelectedEvent(null); navigate(`/admin/invoices/${ev.invoiceId}/detail`) }}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-medium hover:bg-emerald-100 transition-colors">
-                  <Receipt className="w-4 h-4" /> Hóa đơn
+                  <Receipt className="w-4 h-4" /> Invoice
                 </button>
               )}
             </div>
@@ -245,14 +245,14 @@ const SuperCalendar = () => {
     if (!selectedDay) return null
     const dayEvents = eventsByDate[selectedDay] || []
     const dayDate = new Date(selectedDay + 'T00:00:00')
-    const dayLabel = dayDate.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
+    const dayLabel = dayDate.toLocaleDateString('en-US', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
     return (
       <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setSelectedDay(null)}>
         <div className="bg-white w-full max-w-md h-full shadow-2xl overflow-y-auto" onClick={e => e.stopPropagation()}>
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
             <div>
               <h3 className="font-bold text-lg text-gray-900">{dayLabel}</h3>
-              <p className="text-sm text-gray-500">{dayEvents.length} sự kiện</p>
+              <p className="text-sm text-gray-500">{dayEvents.length} events</p>
             </div>
             <button onClick={() => setSelectedDay(null)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
               <X className="w-5 h-5 text-gray-500" />
@@ -260,7 +260,7 @@ const SuperCalendar = () => {
           </div>
           <div className="p-4 space-y-3">
             {dayEvents.length === 0 && (
-              <p className="text-center text-gray-400 py-12">Không có sự kiện</p>
+              <p className="text-center text-gray-400 py-12">No events</p>
             )}
             {dayEvents.map((ev, i) => (
               <EventPill key={`${ev.type}-${ev.contractId}-${ev.invoiceId}-${i}`} event={ev} compact={false} />
@@ -281,20 +281,20 @@ const SuperCalendar = () => {
             <CalIcon className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Lịch quản lý</h1>
-            <p className="text-sm text-gray-500">Theo dõi check-in, check-out, thanh toán</p>
+            <h1 className="text-2xl font-bold text-gray-900">Management Calendar</h1>
+            <p className="text-sm text-gray-500">Track check-ins, check-outs, payments</p>
           </div>
         </div>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <SummaryCard label="Nhận phòng" value={summary.checkins} color="text-green-600" bg="bg-green-50" icon={LogIn} />
-        <SummaryCard label="Trả phòng" value={summary.checkouts} color="text-orange-600" bg="bg-orange-50" icon={LogOut} />
-        <SummaryCard label="Hạn thanh toán" value={summary.invoiceDue} color="text-blue-600" bg="bg-blue-50" icon={Receipt} />
-        <SummaryCard label="Quá hạn" value={summary.overdue} color="text-red-600" bg="bg-red-50" icon={AlertTriangle} />
-        <SummaryCard label="Chưa thu" value={fmt(summary.unpaidTotal)} color="text-red-600" bg="bg-red-50" icon={DollarSign} small />
-        <SummaryCard label="Đã thu" value={fmt(summary.paidTotal)} color="text-emerald-600" bg="bg-emerald-50" icon={CreditCard} small />
+        <SummaryCard label="Check-in" value={summary.checkins} color="text-green-600" bg="bg-green-50" icon={LogIn} />
+        <SummaryCard label="Check-out" value={summary.checkouts} color="text-orange-600" bg="bg-orange-50" icon={LogOut} />
+        <SummaryCard label="Payment Due" value={summary.invoiceDue} color="text-blue-600" bg="bg-blue-50" icon={Receipt} />
+        <SummaryCard label="Overdue" value={summary.overdue} color="text-red-600" bg="bg-red-50" icon={AlertTriangle} />
+        <SummaryCard label="Unpaid" value={fmt(summary.unpaidTotal)} color="text-red-600" bg="bg-red-50" icon={DollarSign} small />
+        <SummaryCard label="Collected" value={fmt(summary.paidTotal)} color="text-emerald-600" bg="bg-emerald-50" icon={CreditCard} small />
       </div>
 
       {/* Controls bar */}
@@ -305,7 +305,7 @@ const SuperCalendar = () => {
             <ChevronLeft className="w-5 h-5 text-gray-600" />
           </button>
           <button onClick={goToday} className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-            Hôm nay
+            Today
           </button>
           <button onClick={() => nav(1)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <ChevronRight className="w-5 h-5 text-gray-600" />
@@ -321,13 +321,13 @@ const SuperCalendar = () => {
             <Filter className="w-4 h-4 text-gray-400" />
             <select value={filterType} onChange={e => setFilterType(e.target.value)}
               className="text-sm border rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="ALL">Tất cả</option>
+              <option value="ALL">All</option>
               {Object.entries(EVENT_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
             {houses.length > 1 && (
               <select value={filterHouse} onChange={e => setFilterHouse(e.target.value)}
                 className="text-sm border rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="ALL">Tất cả nhà trọ</option>
+                <option value="ALL">All properties</option>
                 {houses.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
             )}
@@ -336,11 +336,11 @@ const SuperCalendar = () => {
           <div className="flex bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => setViewMode('month')}
               className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'month' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-              Tháng
+              Month
             </button>
             <button onClick={() => setViewMode('week')}
               className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'week' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-              Tuần
+              Week
             </button>
           </div>
         </div>
@@ -350,7 +350,7 @@ const SuperCalendar = () => {
       {loading ? (
         <div className="bg-white rounded-xl border shadow-sm p-12 text-center text-gray-400">
           <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3" />
-          Đang tải lịch...
+          Loading calendar...
         </div>
       ) : viewMode === 'month' ? (
         /* MONTH VIEW */
@@ -404,7 +404,7 @@ const SuperCalendar = () => {
                     {overflow > 0 && (
                       <button onClick={(e) => { e.stopPropagation(); setSelectedDay(key) }}
                         className="w-full text-center text-xs text-blue-600 font-medium hover:text-blue-800 py-0.5">
-                        +{overflow} thêm
+                        +{overflow} more
                       </button>
                     )}
                   </div>
@@ -421,7 +421,7 @@ const SuperCalendar = () => {
               const key = dateKey(day)
               const isToday = key === todayKey
               const dayEvts = eventsByDate[key] || []
-              const dayName = day.toLocaleDateString('vi-VN', { weekday: 'short' })
+              const dayName = day.toLocaleDateString('en-US', { weekday: 'short' })
               return (
                 <div key={key} className={`min-h-[400px] ${isToday ? 'bg-blue-50/30' : ''}`}>
                   {/* Day header */}
@@ -431,7 +431,7 @@ const SuperCalendar = () => {
                       {day.getDate()}
                     </p>
                     {dayEvts.length > 0 && (
-                      <p className="text-xs text-gray-400 mt-1">{dayEvts.length} sự kiện</p>
+                      <p className="text-xs text-gray-400 mt-1">{dayEvts.length} events</p>
                     )}
                   </div>
                   {/* Events */}

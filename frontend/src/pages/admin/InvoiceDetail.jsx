@@ -52,7 +52,7 @@ const InvoiceDetail = () => {
                 className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
               >
                 <DollarSign className="w-4 h-4 mr-2" />
-                Thanh toán
+                Make Payment
               </button>
             )}
             <button
@@ -123,10 +123,10 @@ const InvoiceDetail = () => {
                   <td className="px-6 py-4 text-sm text-gray-500">{item.newIndex || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{item.quantity || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {item.unitPrice ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.unitPrice) : '-'}
+                    {item.unitPrice ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.unitPrice) : '-'}
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.amount || 0)}
+                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.amount || 0)}
                   </td>
                 </tr>
               ))}
@@ -135,19 +135,19 @@ const InvoiceDetail = () => {
               <tr>
                 <td colSpan="6" className="px-6 py-4 text-right text-sm font-medium text-gray-900">Total Amount:</td>
                 <td className="px-6 py-4 text-sm font-bold text-gray-900">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount || 0)}
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount || 0)}
                 </td>
               </tr>
               <tr>
                 <td colSpan="6" className="px-6 py-4 text-right text-sm font-medium text-gray-900">Paid Amount:</td>
                 <td className="px-6 py-4 text-sm font-medium text-green-600">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.paidAmount || 0)}
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.paidAmount || 0)}
                 </td>
               </tr>
               <tr>
                 <td colSpan="6" className="px-6 py-4 text-right text-sm font-medium text-gray-900">Remaining:</td>
                 <td className="px-6 py-4 text-sm font-bold text-red-600">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.remainingAmount || 0)}
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.remainingAmount || 0)}
                 </td>
               </tr>
             </tfoot>
@@ -174,7 +174,7 @@ const InvoiceDetail = () => {
                       {new Date(payment.paymentDate).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(payment.paidAmount || 0)}
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(payment.paidAmount || 0)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{payment.method}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{payment.transactionCode || '-'}</td>

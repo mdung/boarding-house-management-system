@@ -71,6 +71,55 @@ public class DashboardService {
         dto.setUnpaidAmount(unpaidAmount);
         dto.setOverdueInvoices(overdueCount);
 
+        // Revenue breakdown by RENT vs SERVICE from current month invoices
+        List<Invoice> currentMonthInvoices = invoiceRepository.findByPeriodMonthAndPeriodYear(
+                currentMonth.getMonthValue(), currentMonth.getYear());
+
+        BigDecimal roomRevenue = BigDecimal.ZERO;
+        BigDecimal serviceRevenue = BigDecimal.ZERO;
+        java.util.List<DashboardDto.RevenueDetailDto> details = new java.util.ArrayList<>();
+
+        for (Invoice inv : currentMonthInvoices) {
+            // Calculate payment ratio for this invoice to prorate paid amounts
+            BigDecimal invPaid = paymentRepository.findByInvoiceId(inv.getId()).stream()
+                    .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal payRatio = inv.getTotalAmount().compareTo(BigDecimal.ZERO) > 0
+                    ? invPaid.divide(inv.getTotalAmount(), 4, java.math.RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+            if (payRatio.compareTo(BigDecimal.ONE) > 0) payRatio = BigDecimal.ONE;
+
+            for (InvoiceItem item : inv.getItems()) {
+                if (item.getAmount() == null || item.getAmount().compareTo(BigDecimal.ZERO) == 0) continue;
+
+                if (item.getType() == InvoiceItemType.RENT) {
+                    roomRevenue = roomRevenue.add(item.getAmount());
+                } else {
+                    serviceRevenue = serviceRevenue.add(item.getAmount());
+                }
+
+                DashboardDto.RevenueDetailDto detail = new DashboardDto.RevenueDetailDto();
+                detail.setDate(inv.getCreatedDate());
+                detail.setInvoiceCode(inv.getCode());
+                detail.setRoomCode(inv.getRoom().getCode());
+                detail.setTenantName(inv.getContract().getMainTenant().getFullName());
+                detail.setBoardingHouseName(inv.getRoom().getBoardingHouse().getName());
+                detail.setDescription(item.getDescription());
+                detail.setCategory(item.getType() == InvoiceItemType.RENT ? "RENT" : "SERVICE");
+                detail.setAmount(item.getAmount());
+                detail.setPaidAmount(item.getAmount().multiply(payRatio).setScale(0, java.math.RoundingMode.HALF_UP));
+                detail.setInvoiceId(inv.getId());
+                details.add(detail);
+            }
+        }
+
+        dto.setRoomRevenue(roomRevenue);
+        dto.setServiceRevenue(serviceRevenue);
+        details.sort((a, b) -> {
+            int cmp = a.getDate().compareTo(b.getDate());
+            return cmp != 0 ? cmp : a.getRoomCode().compareTo(b.getRoomCode());
+        });
+        dto.setRevenueDetails(details);
+
         dto.setYesterday(buildDayActivity(today.minusDays(1)));
         dto.setToday(buildDayActivity(today));
         dto.setTomorrow(buildDayActivity(today.plusDays(1)));

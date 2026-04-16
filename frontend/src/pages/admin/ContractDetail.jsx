@@ -75,28 +75,28 @@ const ContractDetail = () => {
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-2">Monthly Rent</h3>
             <p className="text-lg">
-              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(contract.monthlyRent || 0)}
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(contract.monthlyRent || 0)}
             </p>
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-2">Deposit</h3>
             <p className="text-lg">
-              {contract.deposit ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(contract.deposit) : '-'}
+              {contract.deposit ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(contract.deposit) : '-'}
             </p>
           </div>
         </div>
 
         <div className="border-t pt-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Khách thuê chính</h2>
+          <h2 className="text-xl font-semibold mb-4">Main Tenant</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-600">Tên</p>
+              <p className="text-sm text-gray-600">Name</p>
               <button onClick={() => navigate(`/admin/tenants/${contract.mainTenantId}/detail`)} className="font-medium text-blue-600 hover:underline">
                 {contract.mainTenantName}
               </button>
             </div>
             <div>
-              <p className="text-sm text-gray-600">SĐT</p>
+              <p className="text-sm text-gray-600">Phone</p>
               <p className="font-medium">{contract.mainTenantPhone}</p>
             </div>
             <div>
@@ -122,16 +122,16 @@ const ContractDetail = () => {
 
         {contract.invoices && contract.invoices.length > 0 && (
           <div className="border-t pt-6">
-            <h2 className="text-xl font-semibold mb-4">Hóa đơn</h2>
+            <h2 className="text-xl font-semibold mb-4">Invoices</h2>
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã HĐ</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kỳ</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng tiền</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Đã trả</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Còn lại</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice Code</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Paid</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Remaining</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3"></th>
                 </tr>
               </thead>
@@ -145,13 +145,13 @@ const ContractDetail = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{invoice.periodMonth}/{invoice.periodYear}</td>
                     <td className="px-6 py-4 text-sm text-right text-gray-700">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount || 0)}
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount || 0)}
                     </td>
                     <td className="px-6 py-4 text-sm text-right text-green-600">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.paidAmount || 0)}
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.paidAmount || 0)}
                     </td>
                     <td className="px-6 py-4 text-sm text-right font-medium text-red-600">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.remainingAmount || 0)}
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.remainingAmount || 0)}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs rounded-full ${
@@ -165,7 +165,7 @@ const ContractDetail = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       {invoice.status !== 'PAID' && (
-                        <button onClick={() => navigate(`/admin/payments?invoiceId=${invoice.id}`)} className="text-green-600 hover:text-green-800" title="Thanh toán">
+                        <button onClick={() => navigate(`/admin/payments?invoiceId=${invoice.id}`)} className="text-green-600 hover:text-green-800" title="Pay">
                           <DollarSign className="w-4 h-4" />
                         </button>
                       )}

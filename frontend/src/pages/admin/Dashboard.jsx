@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
-const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '-'
+const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US') : '-'
 const toISO = (d) => d ? d.split('T')[0] : ''
 
 const activityBadge = (type) => {
@@ -292,7 +292,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
                         <p className="text-sm font-semibold text-green-700">{fmt(p.paidAmount)}</p>
                         <p className="text-xs text-gray-400">
                           {p.method === 'CASH' ? '💵 Cash' : p.method === 'BANK_TRANSFER' ? '🏦 Bank Transfer' : p.method === 'MOMO' ? '📱 MoMo' : p.method}
-                          {p.paymentDate && ` · ${new Date(p.paymentDate).toLocaleDateString('vi-VN')}`}
+                          {p.paymentDate && ` · ${new Date(p.paymentDate).toLocaleDateString('en-US')}`}
                           {p.note && ` · ${p.note}`}
                         </p>
                       </div>
@@ -491,12 +491,139 @@ const DayColumn = ({ label, dateLabel, data, onSelect, highlight }) => {
   )
 }
 
+// ─── Revenue Detail Modal ─────────────────────────────────────────────────────
+const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
+  const [filterDate, setFilterDate] = useState('ALL')
+  const isRent = category === 'RENT'
+  const title = isRent ? 'Room Revenue Details' : 'Service Revenue Details'
+  const color = isRent ? 'blue' : 'purple'
+
+  const bgHeader = isRent ? 'bg-blue-50' : 'bg-purple-50'
+  const textHeader = isRent ? 'text-blue-800' : 'text-purple-800'
+  const iconColor = isRent ? 'text-blue-600' : 'text-purple-600'
+  const activeBtn = isRent ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+  const itemBg = isRent ? 'bg-blue-100' : 'bg-purple-100'
+
+  const filtered = details.filter(d => d.category === category)
+  const dates = [...new Set(filtered.map(d => d.date))].sort()
+  const shown = filterDate === 'ALL' ? filtered : filtered.filter(d => d.date === filterDate)
+
+  // Group by date
+  const grouped = {}
+  shown.forEach(d => {
+    if (!grouped[d.date]) grouped[d.date] = []
+    grouped[d.date].push(d)
+  })
+
+  const total = shown.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
+  const totalPaid = shown.reduce((s, d) => s + (parseFloat(d.paidAmount) || 0), 0)
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className={`px-6 py-4 border-b flex items-center justify-between ${bgHeader} rounded-t-2xl`}>
+          <div className="flex items-center gap-3">
+            {isRent
+              ? <BedDouble className={`w-6 h-6 ${iconColor}`} />
+              : <Receipt className={`w-6 h-6 ${iconColor}`} />}
+            <div>
+              <h2 className={`text-lg font-bold ${textHeader}`}>{title}</h2>
+              <p className="text-sm text-gray-500">{shown.length} items · Total {fmt(total)}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/60 rounded-xl transition-colors">
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Filter */}
+        <div className="px-6 py-3 border-b flex items-center gap-3 flex-wrap">
+          <span className="text-xs text-gray-500">Filter by date:</span>
+          <div className="flex gap-1.5 flex-wrap">
+            <button onClick={() => setFilterDate('ALL')}
+              className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${filterDate === 'ALL' ? activeBtn : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              All
+            </button>
+            {dates.map(d => (
+              <button key={d} onClick={() => setFilterDate(d)}
+                className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${filterDate === d ? activeBtn : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                {fmtDate(d)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {Object.entries(grouped).map(([date, items]) => (
+            <div key={date}>
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarDays className="w-4 h-4 text-gray-400" />
+                <span className="text-sm font-semibold text-gray-700">{fmtDate(date)}</span>
+                <span className="text-xs text-gray-400">({items.length} items · {fmt(items.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0))})</span>
+              </div>
+              <div className="space-y-1.5 ml-6">
+                {items.map((item, i) => (
+                  <div key={`${item.invoiceCode}-${i}`}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${itemBg}`}>
+                        {isRent
+                          ? <BedDouble className={`w-4 h-4 ${iconColor}`} />
+                          : <Receipt className={`w-4 h-4 ${iconColor}`} />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{item.description}</p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {item.roomCode} · {item.tenantName} · {item.boardingHouseName}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gray-800">{fmt(item.amount)}</p>
+                        <p className={`text-xs ${parseFloat(item.paidAmount) >= parseFloat(item.amount) ? 'text-green-600' : 'text-orange-500'}`}>
+                          {parseFloat(item.paidAmount) >= parseFloat(item.amount) ? '✓ Collected' : `Collected ${fmt(item.paidAmount)}`}
+                        </p>
+                      </div>
+                      {item.invoiceId && (
+                        <button onClick={() => { onClose(); navigate(`/admin/invoices/${item.invoiceId}/detail`) }}
+                          className="p-1.5 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          {shown.length === 0 && (
+            <p className="text-center text-gray-400 py-12">No data</p>
+          )}
+        </div>
+
+        {/* Footer summary */}
+        <div className="px-6 py-3 border-t bg-gray-50 rounded-b-2xl flex items-center justify-between">
+          <span className="text-sm text-gray-500">Grand Total</span>
+          <div className="text-right">
+            <span className="text-lg font-bold text-gray-800">{fmt(total)}</span>
+            <span className="text-sm text-gray-400 ml-2">(collected {fmt(totalPaid)})</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 const Dashboard = () => {
   const navigate = useNavigate()
   const [dashboard, setDashboard] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedGuest, setSelectedGuest] = useState(null)
+  const [revenueModal, setRevenueModal] = useState(null) // 'RENT' | 'SERVICE' | null
 
   const fetchDashboard = () => {
     api.get('/dashboard').then(r => setDashboard(r.data)).catch(console.error).finally(() => setLoading(false))
@@ -510,7 +637,7 @@ const Dashboard = () => {
   const today = new Date()
   const fmtDay = (offset) => {
     const d = new Date(today); d.setDate(d.getDate() + offset)
-    return d.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' })
+    return d.toLocaleDateString('en-US', { weekday: 'long', day: '2-digit', month: '2-digit' })
   }
 
   const stats = [
@@ -527,7 +654,7 @@ const Dashboard = () => {
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
         {stats.map((s, i) => {
           const Icon = s.icon
           return (
@@ -541,6 +668,40 @@ const Dashboard = () => {
             </div>
           )
         })}
+      </div>
+
+      {/* Revenue breakdown cards */}
+      <div className="grid grid-cols-2 gap-3 mb-8">
+        <div onClick={() => setRevenueModal('RENT')}
+          className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-100 rounded-xl p-4 cursor-pointer hover:border-blue-300 hover:shadow-md transition-all group">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <BedDouble className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Room Revenue This Month</p>
+                <p className="text-2xl font-bold text-blue-700">{fmt(dashboard?.roomRevenue)}</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-blue-300 group-hover:text-blue-500 transition-colors" />
+          </div>
+        </div>
+        <div onClick={() => setRevenueModal('SERVICE')}
+          className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-100 rounded-xl p-4 cursor-pointer hover:border-purple-300 hover:shadow-md transition-all group">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <Receipt className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Service Revenue This Month</p>
+                <p className="text-2xl font-bold text-purple-700">{fmt(dashboard?.serviceRevenue)}</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-purple-300 group-hover:text-purple-500 transition-colors" />
+          </div>
+        </div>
       </div>
 
       {/* Day columns */}
@@ -559,6 +720,16 @@ const Dashboard = () => {
         <GuestDetailModal
           guest={selectedGuest}
           onClose={() => setSelectedGuest(null)}
+          navigate={navigate}
+        />
+      )}
+
+      {/* Revenue detail modal */}
+      {revenueModal && (
+        <RevenueDetailModal
+          category={revenueModal}
+          details={dashboard?.revenueDetails || []}
+          onClose={() => setRevenueModal(null)}
           navigate={navigate}
         />
       )}
