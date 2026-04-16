@@ -29,24 +29,34 @@ public class ContractService {
     @Transactional
     public void autoExpireContracts() {
         java.time.LocalDate today = java.time.LocalDate.now();
-        java.time.LocalDate yesterday = today.minusDays(1);
+        java.time.LocalTime now = java.time.LocalTime.now();
+        java.time.LocalTime noon = java.time.LocalTime.of(12, 0);
 
         List<Contract> activeContracts = repository.findByStatus(ContractStatus.ACTIVE);
         for (Contract c : activeContracts) {
-            // Only expire contracts where endDate is BEFORE today (not today itself)
-            // This keeps today's checkouts visible on Dashboard
             if (c.getEndDate().isBefore(today)) {
+                // Past checkout date → expire contract + free room
                 c.setStatus(ContractStatus.EXPIRED);
                 repository.save(c);
-                // Free the room if no other active contract uses it
-                Room room = c.getRoom();
-                boolean otherActive = repository.findByRoomId(room.getId()).stream()
-                        .anyMatch(other -> other.getStatus() == ContractStatus.ACTIVE && !other.getId().equals(c.getId()));
-                if (!otherActive) {
-                    room.setStatus(RoomStatus.AVAILABLE);
-                    roomRepository.save(room);
-                }
+                freeRoomIfNoOtherActive(c);
+            } else if (c.getEndDate().equals(today) && now.isAfter(noon)) {
+                // Checkout today + past 12:00 PM → just free room, keep contract ACTIVE
+                // (contract stays ACTIVE so guest still shows on Dashboard)
+                freeRoomIfNoOtherActive(c);
             }
+        }
+    }
+
+    private void freeRoomIfNoOtherActive(Contract c) {
+        Room room = c.getRoom();
+        if (room.getStatus() == RoomStatus.AVAILABLE) return; // already free
+        boolean otherActive = repository.findByRoomId(room.getId()).stream()
+                .anyMatch(other -> other.getStatus() == ContractStatus.ACTIVE
+                        && !other.getId().equals(c.getId())
+                        && !other.getEndDate().isBefore(java.time.LocalDate.now()));
+        if (!otherActive) {
+            room.setStatus(RoomStatus.AVAILABLE);
+            roomRepository.save(room);
         }
     }
 
