@@ -35,13 +35,15 @@ public class ContractService {
         List<Contract> activeContracts = repository.findByStatus(ContractStatus.ACTIVE);
         for (Contract c : activeContracts) {
             if (c.getEndDate().isBefore(today)) {
-                // Past checkout date → expire contract + free room
+                // Past checkout date → only expire contract status
+                // Room stays OCCUPIED until admin manually checks out
+                // This prevents room from showing as available while guest hasn't left
                 c.setStatus(ContractStatus.EXPIRED);
                 repository.save(c);
-                freeRoomIfNoOtherActive(c);
             } else if (c.getEndDate().equals(today) && now.isAfter(noon)) {
-                // Checkout today + past 12:00 PM → just free room, keep contract ACTIVE
-                // (contract stays ACTIVE so guest still shows on Dashboard)
+                // Checkout today + past 12:00 PM → release room, expire contract
+                c.setStatus(ContractStatus.EXPIRED);
+                repository.save(c);
                 freeRoomIfNoOtherActive(c);
             }
         }
@@ -70,8 +72,8 @@ public class ContractService {
         Contract contract = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + id));
 
-        if (contract.getStatus() != ContractStatus.ACTIVE) {
-            throw new BadRequestException("Contract is not active");
+        if (contract.getStatus() != ContractStatus.ACTIVE && contract.getStatus() != ContractStatus.EXPIRED) {
+            throw new BadRequestException("Contract cannot be checked out");
         }
 
         // Set end date to today if checking out early

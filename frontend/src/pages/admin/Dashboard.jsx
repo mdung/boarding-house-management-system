@@ -419,15 +419,15 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
 
         {/* Actions */}
         <div className="px-6 py-4 border-t border-gray-100 flex gap-2">
-          {guest.contractStatus === 'ACTIVE' && !guest.roomReleased && (
+          {!guest.roomReleased && (
             <button
               onClick={() => setShowCheckoutConfirm(true)}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-50 text-orange-700 text-sm font-medium rounded-lg hover:bg-orange-100 transition-colors border border-orange-200"
             >
-              <LogOut className="w-4 h-4" /> Check Out
+              <LogOut className="w-4 h-4" /> {guest.contractStatus === 'EXPIRED' ? 'Release Room' : 'Check Out'}
             </button>
           )}
-          {guest.contractStatus === 'ACTIVE' && !guest.roomReleased && (
+          {!guest.roomReleased && guest.contractStatus === 'ACTIVE' && (
             <button
               onClick={() => { onClose(); navigate(`/admin/guest-charges?contractId=${guest.contractId}`) }}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-100 transition-colors"
