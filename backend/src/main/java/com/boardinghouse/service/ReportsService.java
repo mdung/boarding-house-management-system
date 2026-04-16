@@ -49,18 +49,19 @@ public class ReportsService {
                     Integer month = entry.getKey();
                     List<Invoice> monthInvoices = entry.getValue();
 
+                    // Revenue = all payments received for invoices in this period
                     BigDecimal totalRevenue = monthInvoices.stream()
-                            .filter(inv -> inv.getStatus() == PaymentStatus.PAID)
-                            .map(inv -> {
-                                BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
-                                        .map(p -> p.getPaidAmount())
-                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                                return paid;
-                            })
+                            .map(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream()
+                                    .map(p -> p.getPaidAmount())
+                                    .reduce(BigDecimal.ZERO, BigDecimal::add))
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                     long paidCount = monthInvoices.stream()
-                            .filter(inv -> inv.getStatus() == PaymentStatus.PAID)
+                            .filter(inv -> {
+                                BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
+                                        .map(p -> p.getPaidAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                                return paid.compareTo(inv.getTotalAmount()) >= 0;
+                            })
                             .count();
 
                     RevenueByMonthDto dto = new RevenueByMonthDto();
@@ -92,17 +93,17 @@ public class ReportsService {
                     List<Invoice> houseInvoices = entry.getValue();
 
                     BigDecimal totalRevenue = houseInvoices.stream()
-                            .filter(inv -> inv.getStatus() == PaymentStatus.PAID)
-                            .map(inv -> {
-                                BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
-                                        .map(p -> p.getPaidAmount())
-                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                                return paid;
-                            })
+                            .map(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream()
+                                    .map(p -> p.getPaidAmount())
+                                    .reduce(BigDecimal.ZERO, BigDecimal::add))
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                     long paidCount = houseInvoices.stream()
-                            .filter(inv -> inv.getStatus() == PaymentStatus.PAID)
+                            .filter(inv -> {
+                                BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
+                                        .map(p -> p.getPaidAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                                return paid.compareTo(inv.getTotalAmount()) >= 0;
+                            })
                             .count();
 
                     RevenueByBoardingHouseDto dto = new RevenueByBoardingHouseDto();
@@ -138,16 +139,19 @@ public class ReportsService {
     }
 
     public List<OutstandingDebtDto> getOutstandingDebts() {
-        List<Invoice> unpaidInvoices = invoiceRepository.findAll().stream()
-                .filter(inv -> inv.getStatus() != PaymentStatus.PAID)
-                .collect(Collectors.toList());
-
-        return unpaidInvoices.stream()
+        return invoiceRepository.findAll().stream()
                 .map(invoice -> {
                     BigDecimal paidAmount = paymentRepository.findByInvoiceId(invoice.getId()).stream()
                             .map(p -> p.getPaidAmount())
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
                     BigDecimal remainingAmount = invoice.getTotalAmount().subtract(paidAmount);
+                    return new Object[]{ invoice, paidAmount, remainingAmount };
+                })
+                .filter(arr -> ((BigDecimal) arr[2]).compareTo(BigDecimal.ZERO) > 0)
+                .map(arr -> {
+                    Invoice invoice = (Invoice) arr[0];
+                    BigDecimal paidAmount = (BigDecimal) arr[1];
+                    BigDecimal remainingAmount = (BigDecimal) arr[2];
 
                     long daysOverdue = 0;
                     if (invoice.getDueDate().isBefore(LocalDate.now())) {

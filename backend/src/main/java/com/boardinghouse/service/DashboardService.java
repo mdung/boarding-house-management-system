@@ -38,28 +38,39 @@ public class DashboardService {
         dto.setAvailableRooms((long) roomRepository.findByStatus(RoomStatus.AVAILABLE).size());
         dto.setMaintenanceRooms((long) roomRepository.findByStatus(RoomStatus.MAINTENANCE).size());
 
+        // Monthly Revenue = sum of all payments made in the current month
         YearMonth currentMonth = YearMonth.now();
-        BigDecimal monthlyRevenue = invoiceRepository.findAll().stream()
-                .filter(inv -> inv.getPeriodYear() == currentMonth.getYear()
-                        && inv.getPeriodMonth() == currentMonth.getMonthValue())
-                .flatMap(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream())
+        LocalDate monthStart = currentMonth.atDay(1);
+        LocalDate monthEnd = currentMonth.atEndOfMonth();
+        BigDecimal monthlyRevenue = paymentRepository.findAll().stream()
+                .filter(p -> {
+                    LocalDate payDate = p.getPaymentDate().toLocalDate();
+                    return !payDate.isBefore(monthStart) && !payDate.isAfter(monthEnd);
+                })
                 .map(Payment::getPaidAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal unpaidAmount = invoiceRepository.findAll().stream()
-                .filter(inv -> inv.getStatus() == PaymentStatus.UNPAID
-                        || inv.getStatus() == PaymentStatus.PARTIALLY_PAID
-                        || inv.getStatus() == PaymentStatus.OVERDUE)
-                .map(inv -> inv.getTotalAmount().subtract(
-                        paymentRepository.findByInvoiceId(inv.getId()).stream()
-                                .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add)))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Unpaid Amount = sum of (totalAmount - paidAmount) for all invoices where remaining > 0
+        BigDecimal unpaidAmount = BigDecimal.ZERO;
+        long overdueCount = 0;
+        LocalDate today = LocalDate.now();
+        for (Invoice inv : invoiceRepository.findAll()) {
+            BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
+                    .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal remaining = inv.getTotalAmount().subtract(paid);
+            if (remaining.compareTo(BigDecimal.ZERO) > 0) {
+                unpaidAmount = unpaidAmount.add(remaining);
+                // Overdue = unpaid and past due date
+                if (inv.getDueDate() != null && inv.getDueDate().isBefore(today)) {
+                    overdueCount++;
+                }
+            }
+        }
 
         dto.setMonthlyRevenue(monthlyRevenue);
         dto.setUnpaidAmount(unpaidAmount);
-        dto.setOverdueInvoices((long) invoiceRepository.findByStatus(PaymentStatus.OVERDUE).size());
+        dto.setOverdueInvoices(overdueCount);
 
-        LocalDate today = LocalDate.now();
         dto.setYesterday(buildDayActivity(today.minusDays(1)));
         dto.setToday(buildDayActivity(today));
         dto.setTomorrow(buildDayActivity(today.plusDays(1)));
@@ -122,8 +133,9 @@ public class DashboardService {
         g.setTotalPaid(paid);
 
         BigDecimal invoiceTotal = invoiceRepository.findByContractId(c.getId()).stream()
-                .map(inv -> inv.getTotalAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
-        g.setTotalDebt(g.getTotalRoomCost().add(charges).subtract(paid));
+                .map(Invoice::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Debt = invoice total + guest charges - paid (consistent with Invoices page)
+        g.setTotalDebt(invoiceTotal.add(charges).subtract(paid));
 
         return g;
     }
