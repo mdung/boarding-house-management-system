@@ -85,13 +85,14 @@ public class DashboardService {
         dto.setUnpaidAmount(unpaidAmount);
         dto.setOverdueInvoices(overdueCount);
 
-        // Revenue breakdown: Room vs Service for active contracts
+        // Revenue breakdown: Room vs Service for ALL contracts (including expired/checked-out)
         BigDecimal roomRevenue = BigDecimal.ZERO;
         BigDecimal serviceRevenue = BigDecimal.ZERO;
         java.util.List<DashboardDto.RevenueDetailDto> details = new java.util.ArrayList<>();
 
-        List<Contract> activeContracts = contractRepository.findAllActiveOrderByEndDate();
-        for (Contract contract : activeContracts) {
+        for (Contract contract : allContracts) {
+            if (contract.getStatus() == ContractStatus.DRAFT) continue;
+
             long nights = Math.max(1, ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate()));
             BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate()
                     : (contract.getMonthlyRent() != null
