@@ -11,14 +11,14 @@ const fmt = (n) => n != null ? new Intl.NumberFormat('vi-VN', { style: 'currency
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '-'
 
 const getGuestStatus = (t) => {
-  if (!t.checkOutDate) return { label: 'Đang ở', cls: 'bg-green-100 text-green-800' }
+  if (!t.checkOutDate) return { label: 'Staying', cls: 'bg-green-100 text-green-800' }
   const today = new Date(); today.setHours(0,0,0,0)
   const out = new Date(t.checkOutDate + 'T00:00:00')
   const diff = Math.round((out - today) / 86400000)
-  if (diff < 0)  return { label: 'Đã trả phòng', cls: 'bg-gray-100 text-gray-600' }
-  if (diff === 0) return { label: 'Trả phòng hôm nay', cls: 'bg-orange-100 text-orange-700' }
-  if (diff === 1) return { label: 'Trả phòng ngày mai', cls: 'bg-yellow-100 text-yellow-700' }
-  return { label: 'Đang ở', cls: 'bg-green-100 text-green-800' }
+  if (diff < 0)  return { label: 'Checked out', cls: 'bg-gray-100 text-gray-600' }
+  if (diff === 0) return { label: 'Checking out today', cls: 'bg-orange-100 text-orange-700' }
+  if (diff === 1) return { label: 'Checking out tomorrow', cls: 'bg-yellow-100 text-yellow-700' }
+  return { label: 'Staying', cls: 'bg-green-100 text-green-800' }
 }
 
 const debtColor = (debt, checkOut) => {
@@ -34,9 +34,9 @@ const checkoutBadge = (checkOut) => {
   const today = new Date(); today.setHours(0,0,0,0)
   const out = new Date(checkOut)
   const diff = Math.round((out - today) / 86400000)
-  if (diff < 0) return <span className="ml-1 px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded">Quá hạn</span>
-  if (diff === 0) return <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded">Hôm nay</span>
-  if (diff === 1) return <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded">Ngày mai</span>
+  if (diff < 0) return <span className="ml-1 px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded">Overdue</span>
+  if (diff === 0) return <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded">Today</span>
+  if (diff === 1) return <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded">Tomorrow</span>
   return null
 }
 
@@ -104,7 +104,7 @@ const Tenants = () => {
         // Create contract if room selected
         if (formData.roomId && formData.checkInDate && formData.checkOutDate) {
           if (formData.checkOutDate <= formData.checkInDate) {
-            showToast('Ngày trả phòng phải sau ngày nhận phòng', 'error')
+            showToast('Check-out date must be after check-in date', 'error')
             return
           }
           const room = availableRooms.find(r => r.id === parseInt(formData.roomId))
@@ -124,15 +124,15 @@ const Tenants = () => {
       }
       setShowModal(false)
       fetchData()
-      showToast(editing ? 'Cập nhật thành công' : 'Thêm khách thành công', 'success')
+      showToast(editing ? 'Updated successfully' : 'Guest added successfully', 'success')
     } catch (e) {
-      showToast(e.response?.data?.message || 'Lỗi khi lưu', 'error')
+      showToast(e.response?.data?.message || 'Error saving', 'error')
     }
   }
 
   const handleDelete = async (id) => {
-    try { await api.delete(`/tenants/${id}`); fetchData(); showToast('Đã xóa khách', 'success') }
-    catch (e) { showToast(e.response?.data?.message || 'Không thể xóa', 'error') }
+    try { await api.delete(`/tenants/${id}`); fetchData(); showToast('Guest deleted', 'success') }
+    catch (e) { showToast(e.response?.data?.message || 'Cannot delete', 'error') }
   }
 
   const toggleSelect = (id) => {
@@ -152,7 +152,7 @@ const Tenants = () => {
     }
     setSelected(new Set())
     fetchData()
-    showToast(`Đã xóa ${ok} khách${fail > 0 ? `, ${fail} không thể xóa (có hợp đồng active)` : ''}`, fail > 0 ? 'warning' : 'success')
+    showToast(`Deleted ${ok} guests${fail > 0 ? `, ${fail} could not be deleted (have active contracts)` : ''}`, fail > 0 ? 'warning' : 'success')
   }
 
   if (loading) return <div>Loading...</div>
@@ -160,9 +160,9 @@ const Tenants = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Khách thuê</h1>
+        <h1 className="text-3xl font-bold">Tenants</h1>
         <button onClick={openAdd} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" /> Thêm khách mới
+          <Plus className="w-4 h-4 mr-2" /> Add New Guest
         </button>
       </div>
 
@@ -174,13 +174,13 @@ const Tenants = () => {
                 <input type="checkbox" checked={selected.size === tenants.length && tenants.length > 0}
                   onChange={toggleSelectAll} className="rounded" />
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên khách</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SĐT</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phòng</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guest Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check-in</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check-out</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Còn nợ</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Outstanding Debt</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
@@ -218,7 +218,7 @@ const Tenants = () => {
                       {fmt(t.totalDebt)}
                     </span>
                   ) : t.totalDebt === 0 ? (
-                    <span className="text-green-600 text-xs">Đã thanh toán</span>
+                    <span className="text-green-600 text-xs">Paid</span>
                   ) : '-'}
                 </td>
                 <td className="px-4 py-3">
@@ -241,23 +241,23 @@ const Tenants = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">{editing ? 'Sửa thông tin khách' : 'Thêm khách mới'}</h2>
+            <h2 className="text-xl font-bold mb-4">{editing ? 'Edit Guest Info' : 'Add New Guest'}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Họ tên *</label>
+                <label className="block text-sm font-medium text-gray-700">Full Name *</label>
                 <input required type="text" value={formData.fullName}
                   onChange={e => setFormData({...formData, fullName: e.target.value})}
                   className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Số điện thoại *</label>
+                  <label className="block text-sm font-medium text-gray-700">Phone Number *</label>
                   <input required type="text" value={formData.phone}
                     onChange={e => setFormData({...formData, phone: e.target.value})}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">CCCD/CMND</label>
+                  <label className="block text-sm font-medium text-gray-700">ID Number</label>
                   <input type="text" value={formData.identityNumber}
                     onChange={e => setFormData({...formData, identityNumber: e.target.value})}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -270,7 +270,7 @@ const Tenants = () => {
                   className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Địa chỉ thường trú</label>
+                <label className="block text-sm font-medium text-gray-700">Permanent Address</label>
                 <input type="text" value={formData.permanentAddress}
                   onChange={e => setFormData({...formData, permanentAddress: e.target.value})}
                   className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -279,10 +279,10 @@ const Tenants = () => {
               {!editing && (
                 <>
                   <div className="border-t pt-3 mt-3">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Thông tin phòng (tùy chọn)</p>
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Room Information (optional)</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Chọn phòng</label>
+                    <label className="block text-sm font-medium text-gray-700">Select Room</label>
                     <select value={formData.roomId}
                       onChange={e => {
                         const room = availableRooms.find(r => r.id === parseInt(e.target.value))
@@ -290,7 +290,7 @@ const Tenants = () => {
                         setFormData({...formData, roomId: e.target.value, monthlyRent: daily})
                       }}
                       className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
-                      <option value="">-- Chưa chọn phòng --</option>
+                      <option value="">-- No room selected --</option>
                       {availableRooms.map(r => (
                         <option key={r.id} value={r.id}>
                           {r.code} — {r.boardingHouseName} — {fmt(r.baseRent)}/tháng
@@ -302,13 +302,13 @@ const Tenants = () => {
                     <>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Ngày nhận phòng *</label>
+                          <label className="block text-sm font-medium text-gray-700">Check-in Date *</label>
                           <input required type="date" value={formData.checkInDate}
                             onChange={e => setFormData({...formData, checkInDate: e.target.value})}
                             className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Ngày trả phòng *</label>
+                          <label className="block text-sm font-medium text-gray-700">Check-out Date *</label>
                           <input required type="date" value={formData.checkOutDate}
                             onChange={e => setFormData({...formData, checkOutDate: e.target.value})}
                             className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -316,13 +316,13 @@ const Tenants = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Giá thuê/ngày (VND)</label>
+                          <label className="block text-sm font-medium text-gray-700">Daily Rate (VND)</label>
                           <input type="number" value={formData.monthlyRent}
                             onChange={e => setFormData({...formData, monthlyRent: e.target.value})}
                             className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Tiền cọc</label>
+                          <label className="block text-sm font-medium text-gray-700">Deposit</label>
                           <input type="number" value={formData.deposit}
                             onChange={e => setFormData({...formData, deposit: e.target.value})}
                             className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -334,8 +334,8 @@ const Tenants = () => {
               )}
 
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-md">Hủy</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Lưu</button>
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
               </div>
             </form>
           </div>
@@ -344,10 +344,10 @@ const Tenants = () => {
 
       <ConfirmDialog
         isOpen={!!confirmDelete}
-        title="Xóa khách"
-        message="Bạn có chắc muốn xóa khách này?"
-        confirmText="Xóa"
-        cancelText="Hủy"
+        title="Delete Guest"
+        message="Are you sure you want to delete this guest?"
+        confirmText="Delete"
+        cancelText="Cancel"
         danger
         onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
         onCancel={() => setConfirmDelete(null)}
@@ -355,9 +355,9 @@ const Tenants = () => {
 
       <ConfirmDialog
         isOpen={confirmBulkDelete}
-        title={`Xóa ${selected.size} khách`}
-        message={`Xóa ${selected.size} khách đã chọn? Khách có hợp đồng active sẽ không thể xóa.`}
-        confirmText="Xóa" cancelText="Hủy" danger
+        title={`Delete ${selected.size} guests`}
+        message={`Delete ${selected.size} selected guests? Guests with active contracts cannot be deleted.`}
+        confirmText="Delete" cancelText="Cancel" danger
         onConfirm={() => { handleBulkDelete(); setConfirmBulkDelete(false) }}
         onCancel={() => setConfirmBulkDelete(false)}
       />

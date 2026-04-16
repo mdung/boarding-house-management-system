@@ -50,9 +50,9 @@ const ServiceTypes = () => {
       setEditing(null)
       setFormData({ name: '', category: 'ELECTRICITY', unit: '', pricePerUnit: '', isActive: true })
       fetchServiceTypes()
-      showToast(editing ? 'Cập nhật thành công' : 'Thêm loại dịch vụ thành công', 'success')
+      showToast(editing ? 'Updated successfully' : 'Service type added successfully', 'success')
     } catch (error) {
-      showToast(error.response?.data?.message || 'Lỗi khi lưu', 'error')
+      showToast(error.response?.data?.message || 'Error saving', 'error')
     }
   }
 
@@ -72,9 +72,9 @@ const ServiceTypes = () => {
     try {
       await api.delete(`/service-types/${id}`)
       fetchServiceTypes()
-      showToast('Đã xóa loại dịch vụ', 'success')
+      showToast('Service type deleted', 'success')
     } catch (error) {
-      showToast(error.response?.data?.message || 'Không thể xóa', 'error')
+      showToast(error.response?.data?.message || 'Cannot delete', 'error')
     }
   }
 
@@ -222,10 +222,10 @@ const ServiceTypes = () => {
 
       <ConfirmDialog
         isOpen={!!confirmDelete}
-        title="Xóa loại dịch vụ"
-        message="Bạn có chắc muốn xóa loại dịch vụ này?"
-        confirmText="Xóa"
-        cancelText="Hủy"
+        title="Delete Service Type"
+        message="Are you sure you want to delete this service type?"
+        confirmText="Delete"
+        cancelText="Cancel"
         danger
         onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
         onCancel={() => setConfirmDelete(null)}

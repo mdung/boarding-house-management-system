@@ -46,9 +46,9 @@ const BoardingHouses = () => {
       setEditing(null)
       setFormData({ name: '', address: '', description: '', numberOfFloors: '', notes: '' })
       fetchHouses()
-      showToast(editing ? 'Cập nhật thành công' : 'Thêm nhà trọ thành công', 'success')
+      showToast(editing ? 'Updated successfully' : 'Boarding house added successfully', 'success')
     } catch (error) {
-      showToast(error.response?.data?.message || 'Lỗi khi lưu', 'error')
+      showToast(error.response?.data?.message || 'Error saving', 'error')
     }
   }
 
@@ -68,9 +68,9 @@ const BoardingHouses = () => {
     try {
       await api.delete(`/boarding-houses/${id}`)
       fetchHouses()
-      showToast('Đã xóa nhà trọ', 'success')
+      showToast('Boarding house deleted', 'success')
     } catch (error) {
-      showToast(error.response?.data?.message || 'Không thể xóa', 'error')
+      showToast(error.response?.data?.message || 'Cannot delete', 'error')
     }
   }
 
@@ -100,9 +100,9 @@ const BoardingHouses = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Address</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Floors</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Phòng</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Có khách</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Trống</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Rooms</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Occupied</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Available</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
@@ -207,10 +207,10 @@ const BoardingHouses = () => {
 
       <ConfirmDialog
         isOpen={!!confirmDelete}
-        title="Xóa nhà trọ"
-        message="Bạn có chắc muốn xóa nhà trọ này? Tất cả phòng liên quan cũng sẽ bị ảnh hưởng."
-        confirmText="Xóa"
-        cancelText="Hủy"
+        title="Delete Boarding House"
+        message="Are you sure you want to delete this boarding house? All associated rooms will also be affected."
+        confirmText="Delete"
+        cancelText="Cancel"
         danger
         onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
         onCancel={() => setConfirmDelete(null)}

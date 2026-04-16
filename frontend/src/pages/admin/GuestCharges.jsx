@@ -86,7 +86,7 @@ const GuestCharges = () => {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Xóa khoản phí này?')) return
+    if (!confirm('Delete this charge?')) return
     await api.delete(`/guest-charges/${id}`)
     fetchSummary()
   }
@@ -110,40 +110,40 @@ const GuestCharges = () => {
             onClick={() => setShowModal(true)}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            <Plus className="w-4 h-4 mr-2" /> Thêm dịch vụ
+            <Plus className="w-4 h-4 mr-2" /> Add Service
           </button>
         )}
       </div>
 
       {/* Contract selector */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Chọn hợp đồng / phòng</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Select contract / room</label>
         <select
           value={selectedContractId}
           onChange={e => setSelectedContractId(e.target.value)}
           className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md"
         >
-          <option value="">-- Chọn hợp đồng --</option>
+          <option value="">-- Select contract --</option>
           {contracts.filter(c => c.status === 'ACTIVE').map(c => (
             <option key={c.id} value={c.id}>
-              {c.code} — Phòng {c.roomCode} — {c.mainTenantName}
+              {c.code} — Room {c.roomCode} — {c.mainTenantName}
             </option>
           ))}
         </select>
       </div>
 
-      {loading && <div className="text-center py-8 text-gray-500">Đang tải...</div>}
+      {loading && <div className="text-center py-8 text-gray-500">Loading...</div>}
 
       {summary && !loading && (
         <>
           {/* Contract info bar */}
           <div className="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap gap-6 text-sm">
             <div>
-              <span className="text-gray-500">Khách:</span>
+              <span className="text-gray-500">Guest:</span>
               <span className="font-semibold ml-1">{summary.tenantName}</span>
             </div>
             <div>
-              <span className="text-gray-500">Phòng:</span>
+              <span className="text-gray-500">Room:</span>
               <span className="font-semibold ml-1">{summary.roomCode}</span>
             </div>
             <div>
@@ -155,16 +155,16 @@ const GuestCharges = () => {
               <span className="font-semibold ml-1">{summary.checkOutDate ? new Date(summary.checkOutDate + 'T00:00:00').toLocaleDateString('vi-VN') : '-'}</span>
             </div>
             <div>
-              <span className="text-gray-500">Số đêm:</span>
-              <span className="font-bold text-blue-600 ml-1">{summary.totalNights} đêm</span>
+              <span className="text-gray-500">Nights:</span>
+              <span className="font-bold text-blue-600 ml-1">{summary.totalNights} nights</span>
             </div>
             <div>
-              <span className="text-gray-500">Đơn giá:</span>
-              <span className="font-semibold ml-1">{fmt(summary.dailyRate)}/đêm</span>
+              <span className="text-gray-500">Unit price:</span>
+              <span className="font-semibold ml-1">{fmt(summary.dailyRate)}/night</span>
             </div>
             {summary.deposit > 0 && (
               <div>
-                <span className="text-gray-500">Tiền cọc:</span>
+                <span className="text-gray-500">Deposit:</span>
                 <span className="font-semibold text-blue-600 ml-1">{fmt(summary.deposit)}</span>
               </div>
             )}
@@ -173,34 +173,34 @@ const GuestCharges = () => {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-xs text-gray-500">Tiền phòng</p>
+              <p className="text-xs text-gray-500">Room charge</p>
               <p className="text-lg font-bold text-gray-700">{fmt(summary.totalRent)}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{summary.totalNights} đêm × {fmt(summary.dailyRate)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{summary.totalNights} nights × {fmt(summary.dailyRate)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-xs text-gray-500">Tổng dịch vụ</p>
+              <p className="text-xs text-gray-500">Total services</p>
               <p className="text-lg font-bold text-blue-600">{fmt(summary.totalCharges)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-xs text-gray-500">Đã thanh toán</p>
+              <p className="text-xs text-gray-500">Paid</p>
               <p className="text-lg font-bold text-green-600">{fmt(summary.totalPaid)}</p>
             </div>
             <div className={`rounded-lg shadow p-4 ${summary.remainingAmount > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
-              <p className="text-xs text-gray-500">Còn lại</p>
+              <p className="text-xs text-gray-500">Remaining</p>
               <p className={`text-lg font-bold ${summary.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {fmt(summary.remainingAmount)}
               </p>
-              <p className="text-xs text-gray-400 mt-0.5">Tổng: {fmt(summary.totalAmount)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">Total: {fmt(summary.totalAmount)}</p>
             </div>
           </div>
 
           {/* Charges grouped by date */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="px-6 py-4 border-b bg-gray-50">
-              <h2 className="font-semibold text-gray-700">Chi tiết dịch vụ theo ngày</h2>
+              <h2 className="font-semibold text-gray-700">Service Details by Date</h2>
             </div>
             {Object.keys(chargesByDate).length === 0 ? (
-              <div className="px-6 py-8 text-center text-gray-400">Chưa có dịch vụ nào</div>
+              <div className="px-6 py-8 text-center text-gray-400">No services yet</div>
             ) : (
               Object.entries(chargesByDate).sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => {
                 const dayTotal = items.reduce((s, i) => s + parseFloat(i.amount), 0)
@@ -223,11 +223,11 @@ const GuestCharges = () => {
                       <table className="min-w-full">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-6 py-2 text-left text-xs text-gray-500 uppercase">Mô tả</th>
-                            <th className="px-6 py-2 text-right text-xs text-gray-500 uppercase">SL</th>
-                            <th className="px-6 py-2 text-right text-xs text-gray-500 uppercase">Đơn giá</th>
-                            <th className="px-6 py-2 text-right text-xs text-gray-500 uppercase">Thành tiền</th>
-                            <th className="px-6 py-2 text-xs text-gray-500 uppercase">Ghi chú</th>
+                            <th className="px-6 py-2 text-left text-xs text-gray-500 uppercase">Description</th>
+                            <th className="px-6 py-2 text-right text-xs text-gray-500 uppercase">Qty</th>
+                            <th className="px-6 py-2 text-right text-xs text-gray-500 uppercase">Unit Price</th>
+                            <th className="px-6 py-2 text-right text-xs text-gray-500 uppercase">Amount</th>
+                            <th className="px-6 py-2 text-xs text-gray-500 uppercase">Note</th>
                             <th className="px-6 py-2"></th>
                           </tr>
                         </thead>
@@ -261,10 +261,10 @@ const GuestCharges = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Thêm dịch vụ</h2>
+            <h2 className="text-xl font-bold mb-4">Add Service</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Ngày</label>
+                <label className="block text-sm font-medium text-gray-700">Date</label>
                 <input type="date" required value={formData.chargeDate}
                   onChange={e => setFormData({ ...formData, chargeDate: e.target.value })}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -272,7 +272,7 @@ const GuestCharges = () => {
 
               {/* Catalog grouped by category */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Chọn dịch vụ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select service</label>
                 {Object.entries(CATEGORIES).map(([catKey, catLabel]) => {
                   const catItems = catalog.filter(c => c.category === catKey)
                   if (catItems.length === 0) return null
@@ -302,7 +302,7 @@ const GuestCharges = () => {
 
               {formData.description && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Mô tả</label>
+                  <label className="block text-sm font-medium text-gray-700">Description</label>
                   <input type="text" value={formData.description}
                     onChange={e => setFormData({ ...formData, description: e.target.value })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -311,13 +311,13 @@ const GuestCharges = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Số lượng</label>
+                  <label className="block text-sm font-medium text-gray-700">Quantity</label>
                   <input type="number" step="0.01" min="0.01" required value={formData.quantity}
                     onChange={e => setFormData({ ...formData, quantity: e.target.value })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Đơn giá (VND)</label>
+                  <label className="block text-sm font-medium text-gray-700">Unit Price (VND)</label>
                   <input type="number" step="1000" min="0" required value={formData.unitPrice}
                     onChange={e => setFormData({ ...formData, unitPrice: e.target.value })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -325,20 +325,20 @@ const GuestCharges = () => {
               </div>
               {formData.quantity && formData.unitPrice && (
                 <div className="bg-blue-50 px-3 py-2 rounded text-sm">
-                  Thành tiền: <strong>{fmt(parseFloat(formData.quantity) * parseFloat(formData.unitPrice))}</strong>
+                  Amount: <strong>{fmt(parseFloat(formData.quantity) * parseFloat(formData.unitPrice))}</strong>
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700">Ghi chú</label>
+                <label className="block text-sm font-medium text-gray-700">Note</label>
                 <input type="text" value={formData.note}
                   onChange={e => setFormData({ ...formData, note: e.target.value })}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
               <div className="flex justify-end space-x-3">
                 <button type="button" onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md">Hủy</button>
+                  className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
                 <button type="submit" disabled={!formData.description || !formData.unitPrice}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Lưu</button>
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Save</button>
               </div>
             </form>
           </div>

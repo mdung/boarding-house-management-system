@@ -198,7 +198,7 @@ const Invoices = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Khách</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guest</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
@@ -246,7 +246,7 @@ const Invoices = () => {
                     <button
                       onClick={() => navigate(`/admin/invoices/${invoice.id}/detail`)}
                       className="text-blue-600 hover:text-blue-900"
-                      title="Xem chi tiết"
+                      title="View detail"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
@@ -254,7 +254,7 @@ const Invoices = () => {
                       <button
                         onClick={() => navigate(`/admin/payments?invoiceId=${invoice.id}`)}
                         className="text-green-600 hover:text-green-800"
-                        title="Thanh toán"
+                        title="Pay invoice"
                       >
                         <DollarSign className="w-4 h-4" />
                       </button>

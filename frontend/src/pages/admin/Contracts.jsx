@@ -59,7 +59,7 @@ const Contracts = () => {
     e.preventDefault()
     // Validate dates
     if (formData.startDate && formData.endDate && formData.endDate <= formData.startDate) {
-      showToast('Ngày trả phòng phải sau ngày nhận phòng', 'error')
+      showToast('Check-out date must be after check-in date', 'error')
       return
     }
     try {
@@ -80,9 +80,9 @@ const Contracts = () => {
       setEditing(null)
       setFormData({ code: '', roomId: '', mainTenantId: '', startDate: '', endDate: '', deposit: '', monthlyRent: '', dailyRate: '', status: 'DRAFT', billingCycle: 'MONTHLY' })
       fetchData()
-      showToast(editing ? 'Cập nhật hợp đồng thành công' : 'Tạo hợp đồng thành công', 'success')
+      showToast(editing ? 'Contract updated successfully' : 'Contract created successfully', 'success')
     } catch (error) {
-      showToast(error.response?.data?.message || 'Lỗi khi lưu hợp đồng', 'error')
+      showToast(error.response?.data?.message || 'Error saving contract', 'error')
     }
   }
 
@@ -104,8 +104,8 @@ const Contracts = () => {
   }
 
   const handleDelete = async (id) => {
-    try { await api.delete(`/contracts/${id}`); fetchData(); showToast('Đã xóa hợp đồng', 'success') }
-    catch (e) { showToast(e.response?.data?.message || 'Không thể xóa', 'error') }
+    try { await api.delete(`/contracts/${id}`); fetchData(); showToast('Contract deleted', 'success') }
+    catch (e) { showToast(e.response?.data?.message || 'Cannot delete', 'error') }
   }
 
   const toggleSelect = (id) => {
@@ -127,7 +127,7 @@ const Contracts = () => {
     }
     setSelected(new Set())
     fetchData()
-    showToast(`Đã xóa ${ok} hợp đồng${fail > 0 ? `, ${fail} không thể xóa` : ''}`, fail > 0 ? 'warning' : 'success')
+    showToast(`Deleted ${ok} contracts${fail > 0 ? `, ${fail} could not be deleted` : ''}`, fail > 0 ? 'warning' : 'success')
   }
 
   if (loading) return <div>Loading...</div>
@@ -151,14 +151,14 @@ const Contracts = () => {
 
       <div className="mb-4 flex gap-3">
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-          <option value="ALL">Tất cả trạng thái</option>
-          <option value="ACTIVE">Đang hoạt động</option>
-          <option value="DRAFT">Nháp</option>
-          <option value="TERMINATED">Đã hủy</option>
-          <option value="EXPIRED">Hết hạn</option>
+          <option value="ALL">All statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="DRAFT">Draft</option>
+          <option value="TERMINATED">Terminated</option>
+          <option value="EXPIRED">Expired</option>
         </select>
         <span className="flex items-center text-sm text-gray-500">
-          {(statusFilter === 'ALL' ? contracts : contracts.filter(c => c.status === statusFilter)).length} hợp đồng
+          {(statusFilter === 'ALL' ? contracts : contracts.filter(c => c.status === statusFilter)).length} contracts
         </span>
       </div>
 
@@ -287,19 +287,19 @@ const Contracts = () => {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Tiền cọc</label>
+                  <label className="block text-sm font-medium text-gray-700">Deposit</label>
                   <input type="number" value={formData.deposit}
                     onChange={(e) => setFormData({ ...formData, deposit: e.target.value })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Giá/ngày</label>
+                  <label className="block text-sm font-medium text-gray-700">Daily Rate</label>
                   <input type="number" value={formData.dailyRate}
                     onChange={(e) => setFormData({ ...formData, dailyRate: e.target.value })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Giá/tháng</label>
+                  <label className="block text-sm font-medium text-gray-700">Monthly Rate</label>
                   <input type="number" value={formData.monthlyRent}
                     onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -354,9 +354,9 @@ const Contracts = () => {
       {/* Bulk action bar */}
       <ConfirmDialog
         isOpen={confirmBulkDelete}
-        title={`Xóa ${selected.size} hợp đồng`}
-        message={`Xóa ${selected.size} hợp đồng đã chọn? Hợp đồng có hóa đơn sẽ không thể xóa.`}
-        confirmText="Xóa" cancelText="Hủy" danger
+        title={`Delete ${selected.size} contracts`}
+        message={`Delete ${selected.size} selected contracts? Contracts with invoices cannot be deleted.`}
+        confirmText="Delete" cancelText="Cancel" danger
         onConfirm={() => { handleBulkDelete(); setConfirmBulkDelete(false) }}
         onCancel={() => setConfirmBulkDelete(false)}
       />

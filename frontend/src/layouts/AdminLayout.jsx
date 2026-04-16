@@ -11,33 +11,33 @@ const menuGroups = [
     label: null,
     items: [
       { path: '/admin/dashboard', icon: Home, label: 'Dashboard' },
-      { path: '/admin/calendar', icon: CalendarDays, label: 'Lịch quản lý' },
+      { path: '/admin/calendar', icon: CalendarDays, label: 'Calendar' },
     ],
   },
   {
-    label: 'Quản lý',
+    label: 'Management',
     items: [
-      { path: '/admin/boarding-houses', icon: Building2, label: 'Nhà trọ' },
-      { path: '/admin/rooms', icon: DoorOpen, label: 'Phòng' },
-      { path: '/admin/tenants', icon: Users, label: 'Khách thuê' },
-      { path: '/admin/contracts', icon: FileText, label: 'Hợp đồng' },
+      { path: '/admin/boarding-houses', icon: Building2, label: 'Boarding Houses' },
+      { path: '/admin/rooms', icon: DoorOpen, label: 'Rooms' },
+      { path: '/admin/tenants', icon: Users, label: 'Tenants' },
+      { path: '/admin/contracts', icon: FileText, label: 'Contracts' },
     ],
   },
   {
-    label: 'Tài chính',
+    label: 'Finance',
     items: [
-      { path: '/admin/invoices', icon: Receipt, label: 'Hóa đơn' },
-      { path: '/admin/payments', icon: CreditCard, label: 'Thanh toán' },
-      { path: '/admin/guest-charges', icon: ShoppingCart, label: 'Dịch vụ khách' },
+      { path: '/admin/invoices', icon: Receipt, label: 'Invoices' },
+      { path: '/admin/payments', icon: CreditCard, label: 'Payments' },
+      { path: '/admin/guest-charges', icon: ShoppingCart, label: 'Guest Charges' },
     ],
   },
   {
-    label: 'Cài đặt',
+    label: 'Settings',
     items: [
-      { path: '/admin/service-types', icon: Settings, label: 'Loại dịch vụ' },
-      { path: '/admin/room-services', icon: Settings, label: 'DV theo phòng' },
-      { path: '/admin/service-catalog', icon: BookOpen, label: 'Danh mục dịch vụ' },
-      { path: '/admin/reports', icon: BarChart3, label: 'Báo cáo' },
+      { path: '/admin/service-types', icon: Settings, label: 'Service Types' },
+      { path: '/admin/room-services', icon: Settings, label: 'Room Services' },
+      { path: '/admin/service-catalog', icon: BookOpen, label: 'Service Catalog' },
+      { path: '/admin/reports', icon: BarChart3, label: 'Reports' },
     ],
   },
 ]
@@ -126,7 +126,7 @@ const AdminLayout = () => {
           className={`flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors ${collapsed ? 'justify-center px-2' : ''}`}
         >
           <LogOut className="w-4 h-4" />
-          {!collapsed && <span>Đăng xuất</span>}
+          {!collapsed && <span>Logout</span>}
         </button>
       </div>
     </>

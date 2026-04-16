@@ -44,10 +44,10 @@ const Profile = () => {
     e.preventDefault()
     try {
       await api.put('/users/profile', formData)
-      showToast('Cập nhật thông tin thành công', 'success')
+      showToast('Profile updated successfully', 'success')
       fetchProfile()
     } catch (error) {
-      showToast('Lỗi khi cập nhật thông tin', 'error')
+      showToast('Error updating profile', 'error')
     }
   }
 

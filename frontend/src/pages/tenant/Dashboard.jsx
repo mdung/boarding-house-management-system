@@ -32,7 +32,7 @@ const TenantDashboard = () => {
     }
   }
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Đang tải...</div>
+  if (loading) return <div className="p-8 text-center text-gray-400">Loading...</div>
 
   const activeContract = data?.contracts?.find(c => c.status === 'ACTIVE')
   const unpaidInvoices = data?.invoices?.filter(i => i.status !== 'PAID') || []
@@ -40,7 +40,7 @@ const TenantDashboard = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Xin chào, {user?.fullName} 👋</h1>
+      <h1 className="text-2xl font-bold mb-6">Welcome, {user?.fullName} 👋</h1>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
@@ -48,7 +48,7 @@ const TenantDashboard = () => {
           <div className="flex items-center gap-3">
             <div className="bg-blue-100 p-2 rounded-full"><BedDouble className="w-5 h-5 text-blue-600" /></div>
             <div>
-              <p className="text-xs text-gray-500">Phòng đang ở</p>
+              <p className="text-xs text-gray-500">Current Room</p>
               <p className="text-lg font-bold">{activeContract?.roomCode || '-'}</p>
             </div>
           </div>
@@ -57,7 +57,7 @@ const TenantDashboard = () => {
           <div className="flex items-center gap-3">
             <div className="bg-yellow-100 p-2 rounded-full"><FileText className="w-5 h-5 text-yellow-600" /></div>
             <div>
-              <p className="text-xs text-gray-500">Hóa đơn chưa trả</p>
+              <p className="text-xs text-gray-500">Unpaid Invoices</p>
               <p className="text-lg font-bold text-yellow-600">{unpaidInvoices.length}</p>
             </div>
           </div>
@@ -68,7 +68,7 @@ const TenantDashboard = () => {
               <AlertCircle className={`w-5 h-5 ${totalDebt > 0 ? 'text-red-600' : 'text-green-600'}`} />
             </div>
             <div>
-              <p className="text-xs text-gray-500">Tổng còn nợ</p>
+              <p className="text-xs text-gray-500">Total Outstanding</p>
               <p className={`text-lg font-bold ${totalDebt > 0 ? 'text-red-600' : 'text-green-600'}`}>{fmt(totalDebt)}</p>
             </div>
           </div>
@@ -78,14 +78,14 @@ const TenantDashboard = () => {
       {/* Active contract info */}
       {activeContract && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="font-semibold text-gray-700 mb-3">Thông tin hợp đồng hiện tại</h2>
+          <h2 className="font-semibold text-gray-700 mb-3">Current Contract Info</h2>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="text-gray-500">Mã HĐ:</span> <span className="font-medium ml-1">{activeContract.code}</span></div>
-            <div><span className="text-gray-500">Phòng:</span> <span className="font-medium ml-1">{activeContract.roomCode}</span></div>
-            <div><span className="text-gray-500">Nhận phòng:</span> <span className="font-medium ml-1">{fmtDate(activeContract.startDate)}</span></div>
-            <div><span className="text-gray-500">Trả phòng:</span> <span className="font-medium ml-1">{fmtDate(activeContract.endDate)}</span></div>
-            <div><span className="text-gray-500">Giá thuê:</span> <span className="font-medium ml-1">
-              {activeContract.dailyRate ? `${fmt(activeContract.dailyRate)}/ngày` : `${fmt(activeContract.monthlyRent)}/tháng`}
+            <div><span className="text-gray-500">Contract Code:</span> <span className="font-medium ml-1">{activeContract.code}</span></div>
+            <div><span className="text-gray-500">Room:</span> <span className="font-medium ml-1">{activeContract.roomCode}</span></div>
+            <div><span className="text-gray-500">Check-in:</span> <span className="font-medium ml-1">{fmtDate(activeContract.startDate)}</span></div>
+            <div><span className="text-gray-500">Check-out:</span> <span className="font-medium ml-1">{fmtDate(activeContract.endDate)}</span></div>
+            <div><span className="text-gray-500">Rate:</span> <span className="font-medium ml-1">
+              {activeContract.dailyRate ? `${fmt(activeContract.dailyRate)}/day` : `${fmt(activeContract.monthlyRent)}/month`}
             </span></div>
           </div>
         </div>
@@ -95,15 +95,15 @@ const TenantDashboard = () => {
       {unpaidInvoices.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-3">
-            <h2 className="font-semibold text-gray-700">Hóa đơn chưa thanh toán</h2>
-            <button onClick={() => navigate('/tenant/invoices')} className="text-sm text-blue-600 hover:underline">Xem tất cả</button>
+            <h2 className="font-semibold text-gray-700">Unpaid Invoices</h2>
+            <button onClick={() => navigate('/tenant/invoices')} className="text-sm text-blue-600 hover:underline">View all</button>
           </div>
           <div className="space-y-2">
             {unpaidInvoices.slice(0, 3).map(inv => (
               <div key={inv.id} className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
                 <div>
                   <p className="text-sm font-medium">{inv.code}</p>
-                  <p className="text-xs text-gray-500">Kỳ {inv.periodMonth}/{inv.periodYear}</p>
+                  <p className="text-xs text-gray-500">Period {inv.periodMonth}/{inv.periodYear}</p>
                 </div>
                 <span className="text-sm font-bold text-red-600">{fmt(inv.remainingAmount)}</span>
               </div>
@@ -115,7 +115,7 @@ const TenantDashboard = () => {
       {!activeContract && !loading && (
         <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">
           <BedDouble className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>Bạn chưa có hợp đồng thuê phòng nào đang hoạt động.</p>
+          <p>You have no active rental contract.</p>
         </div>
       )}
     </div>

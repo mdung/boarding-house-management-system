@@ -78,9 +78,9 @@ const Rooms = () => {
       setEditing(null)
       setFormData({ code: '', boardingHouseId: '', floor: '', area: '', maxOccupants: '', baseRent: '', status: 'AVAILABLE' })
       fetchData()
-      showToast(editing ? 'Cập nhật phòng thành công' : 'Thêm phòng thành công', 'success')
+      showToast(editing ? 'Room updated successfully' : 'Room added successfully', 'success')
     } catch (error) {
-      showToast(error.response?.data?.message || 'Lỗi khi lưu phòng', 'error')
+      showToast(error.response?.data?.message || 'Error saving room', 'error')
     }
   }
 
@@ -102,9 +102,9 @@ const Rooms = () => {
     try {
       await api.delete(`/rooms/${id}`)
       fetchData()
-      showToast('Đã xóa phòng', 'success')
+      showToast('Room deleted', 'success')
     } catch (error) {
-      showToast(error.response?.data?.message || 'Không thể xóa phòng', 'error')
+      showToast(error.response?.data?.message || 'Cannot delete room', 'error')
     }
   }
 
@@ -129,7 +129,7 @@ const Rooms = () => {
     }
     setSelected(new Set())
     fetchData()
-    showToast(`Đã xóa ${ok} phòng${fail > 0 ? `, ${fail} không thể xóa` : ''}`, fail > 0 ? 'warning' : 'success')
+    showToast(`Deleted ${ok} rooms${fail > 0 ? `, ${fail} could not be deleted` : ''}`, fail > 0 ? 'warning' : 'success')
   }
 
   if (loading) return <div>Loading...</div>
@@ -153,16 +153,16 @@ const Rooms = () => {
 
       <div className="mb-4 flex gap-3">
         <select value={filterHouse} onChange={e => setFilterHouse(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-          <option value="ALL">Tất cả nhà trọ</option>
+          <option value="ALL">All boarding houses</option>
           {houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-          <option value="ALL">Tất cả trạng thái</option>
-          <option value="AVAILABLE">Trống</option>
-          <option value="OCCUPIED">Có khách</option>
-          <option value="MAINTENANCE">Bảo trì</option>
+          <option value="ALL">All statuses</option>
+          <option value="AVAILABLE">Available</option>
+          <option value="OCCUPIED">Occupied</option>
+          <option value="MAINTENANCE">Maintenance</option>
         </select>
-        <span className="flex items-center text-sm text-gray-500">{filteredRooms.length} phòng</span>
+        <span className="flex items-center text-sm text-gray-500">{filteredRooms.length} rooms</span>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -338,10 +338,10 @@ const Rooms = () => {
 
       <ConfirmDialog
         isOpen={!!confirmDelete}
-        title="Xóa phòng"
-        message="Bạn có chắc muốn xóa phòng này?"
-        confirmText="Xóa"
-        cancelText="Hủy"
+        title="Delete Room"
+        message="Are you sure you want to delete this room?"
+        confirmText="Delete"
+        cancelText="Cancel"
         danger
         onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
         onCancel={() => setConfirmDelete(null)}
@@ -349,10 +349,10 @@ const Rooms = () => {
 
       <ConfirmDialog
         isOpen={confirmBulkDelete}
-        title={`Xóa ${selected.size} phòng`}
-        message={`Bạn có chắc muốn xóa ${selected.size} phòng đã chọn? Phòng đang có khách sẽ không thể xóa.`}
-        confirmText="Xóa tất cả"
-        cancelText="Hủy"
+        title={`Delete ${selected.size} rooms`}
+        message={`Are you sure you want to delete ${selected.size} selected rooms? Rooms with guests cannot be deleted.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
         danger
         onConfirm={() => { handleBulkDelete(); setConfirmBulkDelete(false) }}
         onCancel={() => setConfirmBulkDelete(false)}
