@@ -516,7 +516,6 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
   })
 
   const total = shown.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
-  const totalPaid = shown.reduce((s, d) => s + (parseFloat(d.paidAmount) || 0), 0)
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -581,12 +580,7 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-gray-800">{fmt(item.amount)}</p>
-                        <p className={`text-xs ${parseFloat(item.paidAmount) >= parseFloat(item.amount) ? 'text-green-600' : 'text-orange-500'}`}>
-                          {parseFloat(item.paidAmount) >= parseFloat(item.amount) ? '✓ Collected' : `Collected ${fmt(item.paidAmount)}`}
-                        </p>
-                      </div>
+                      <p className="text-sm font-bold text-gray-800">{fmt(item.amount)}</p>
                       {item.invoiceId && (
                         <button onClick={() => { onClose(); navigate(`/admin/invoices/${item.invoiceId}/detail`) }}
                           className="p-1.5 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
@@ -607,10 +601,7 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
         {/* Footer summary */}
         <div className="px-6 py-3 border-t bg-gray-50 rounded-b-2xl flex items-center justify-between">
           <span className="text-sm text-gray-500">Grand Total</span>
-          <div className="text-right">
-            <span className="text-lg font-bold text-gray-800">{fmt(total)}</span>
-            <span className="text-sm text-gray-400 ml-2">(collected {fmt(totalPaid)})</span>
-          </div>
+          <span className="text-lg font-bold text-gray-800">{fmt(total)}</span>
         </div>
       </div>
     </div>
@@ -623,7 +614,6 @@ const Dashboard = () => {
   const [dashboard, setDashboard] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedGuest, setSelectedGuest] = useState(null)
-  const [revenueModal, setRevenueModal] = useState(null) // 'RENT' | 'SERVICE' | null
   const [revenueModal, setRevenueModal] = useState(null) // 'RENT' | 'SERVICE' | null
 
   const fetchDashboard = () => {
