@@ -24,8 +24,8 @@ const getGuestStatus = (t) => {
 const debtColor = (debt, checkOut) => {
   const today = new Date(); today.setHours(0,0,0,0)
   const out = checkOut ? new Date(checkOut) : null
-  if (out && out < today) return 'text-red-700 font-bold'   // quá hạn
-  if (out && (out - today) / 86400000 <= 1) return 'text-red-600 font-semibold' // checkout hôm nay/ngày mai
+  if (out && out < today) return 'text-red-700 font-bold'   // overdue
+  if (out && (out - today) / 86400000 <= 1) return 'text-red-600 font-semibold' // checkout today/tomorrow
   return 'text-orange-500'
 }
 
@@ -293,7 +293,7 @@ const Tenants = () => {
                       <option value="">-- No room selected --</option>
                       {availableRooms.map(r => (
                         <option key={r.id} value={r.id}>
-                          {r.code} — {r.boardingHouseName} — {fmt(r.baseRent)}/tháng
+                          {r.code} — {r.boardingHouseName} — {fmt(r.baseRent)}/month
                         </option>
                       ))}
                     </select>
