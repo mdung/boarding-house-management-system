@@ -235,6 +235,19 @@ const Tenants = () => {
               </tr>
             ))}
           </tbody>
+          {tenants.length > 0 && tenants.some(t => t.totalDebt > 0) && (
+            <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+              <tr>
+                <td colSpan="6" className="px-4 py-3 text-sm font-semibold text-gray-700">
+                  Total Outstanding ({tenants.filter(t => t.totalDebt > 0).length} guests with debt)
+                </td>
+                <td className="px-4 py-3 text-sm font-bold text-red-600">
+                  {fmt(tenants.reduce((s, t) => s + (parseFloat(t.totalDebt) > 0 ? parseFloat(t.totalDebt) : 0), 0))}
+                </td>
+                <td colSpan="2"></td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 

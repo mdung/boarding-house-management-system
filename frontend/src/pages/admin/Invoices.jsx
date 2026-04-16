@@ -58,7 +58,7 @@ const Invoices = () => {
     }
     
     if (statusFilter === 'NOT_PAID') {
-      filtered = filtered.filter(inv => inv.status !== 'PAID' && (parseFloat(inv.remainingAmount) || 0) > 0)
+      filtered = filtered.filter(inv => (parseFloat(inv.remainingAmount) || 0) > 0)
     } else if (statusFilter === 'PAST_DUE') {
       const today = new Date().toISOString().split('T')[0]
       filtered = filtered.filter(inv => (parseFloat(inv.remainingAmount) || 0) > 0 && inv.dueDate && inv.dueDate < today)
@@ -273,6 +273,31 @@ const Invoices = () => {
               ))
             )}
           </tbody>
+          {filteredInvoices.length > 0 && (
+            <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+              <tr>
+                <td colSpan="4" className="px-6 py-3 text-sm font-semibold text-gray-700">
+                  Total ({filteredInvoices.length} invoices)
+                </td>
+                <td className="px-6 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(
+                    filteredInvoices.reduce((s, inv) => s + (parseFloat(inv.totalAmount) || 0), 0)
+                  )}
+                </td>
+                <td className="px-6 py-3 whitespace-nowrap text-sm font-bold text-green-600">
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(
+                    filteredInvoices.reduce((s, inv) => s + (parseFloat(inv.paidAmount) || 0), 0)
+                  )}
+                </td>
+                <td className="px-6 py-3 whitespace-nowrap text-sm font-bold text-red-600">
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(
+                    filteredInvoices.reduce((s, inv) => s + (parseFloat(inv.remainingAmount) || 0), 0)
+                  )}
+                </td>
+                <td colSpan="2"></td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
