@@ -45,16 +45,22 @@ const Contracts = () => {
 
   const fetchData = async () => {
     try {
+      setLoading(true)
       const [contractsRes, roomsRes, tenantsRes] = await Promise.all([
         api.get('/contracts'),
         api.get('/rooms'),
         api.get('/tenants'),
       ])
-      setContracts(contractsRes.data)
-      setRooms(roomsRes.data)
-      setTenants(tenantsRes.data)
+      setContracts(contractsRes.data || [])
+      setRooms(roomsRes.data || [])
+      setTenants(tenantsRes.data || [])
     } catch (error) {
       console.error('Failed to fetch data:', error)
+      showToast(error.response?.data?.message || 'Failed to fetch data', 'error')
+      // Set empty arrays to prevent undefined errors
+      setContracts([])
+      setRooms([])
+      setTenants([])
     } finally {
       setLoading(false)
     }
@@ -78,15 +84,18 @@ const Contracts = () => {
       }
       if (editing) {
         await api.put(`/contracts/${editing.id}`, payload)
+        showToast('Contract updated successfully', 'success')
       } else {
         await api.post('/contracts', payload)
+        showToast('Contract created successfully', 'success')
       }
       setShowModal(false)
       setEditing(null)
       setFormData({ code: '', roomId: '', mainTenantId: '', startDate: '', endDate: '', deposit: '', monthlyRent: '', dailyRate: '', status: 'DRAFT', billingCycle: 'MONTHLY' })
+      setCurrentPage(1) // Reset to first page after create/update
       fetchData()
-      showToast(editing ? 'Contract updated successfully' : 'Contract created successfully', 'success')
     } catch (error) {
+      console.error('Error saving contract:', error)
       showToast(error.response?.data?.message || 'Error saving contract', 'error')
     }
   }
@@ -109,8 +118,13 @@ const Contracts = () => {
   }
 
   const handleDelete = async (id) => {
-    try { await api.delete(`/contracts/${id}`); fetchData(); showToast('Contract deleted', 'success') }
-    catch (e) { showToast(e.response?.data?.message || 'Cannot delete', 'error') }
+    try {
+      await api.delete(`/contracts/${id}`)
+      fetchData()
+      showToast('Contract deleted successfully', 'success')
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Cannot delete contract', 'error')
+    }
   }
 
   const toggleSelect = (id) => {
@@ -118,43 +132,58 @@ const Contracts = () => {
   }
 
   const visibleContracts = useMemo(() => {
+    if (!contracts || !Array.isArray(contracts)) return []
+    
     let filtered = statusFilter === 'ALL' ? contracts : contracts.filter(c => c.status === statusFilter)
     
-    // Apply search filter
+    // Apply search filter with better error handling
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
-      filtered = filtered.filter(contract => 
-        contract.code?.toLowerCase().includes(term) ||
-        contract.roomCode?.toLowerCase().includes(term) ||
-        contract.mainTenantName?.toLowerCase().includes(term) ||
-        contract.status?.toLowerCase().includes(term)
-      )
+      filtered = filtered.filter(contract => {
+        try {
+          return (
+            contract.code?.toLowerCase().includes(term) ||
+            contract.roomCode?.toLowerCase().includes(term) ||
+            contract.mainTenantName?.toLowerCase().includes(term) ||
+            contract.status?.toLowerCase().includes(term) ||
+            contract.billingCycle?.toLowerCase().includes(term)
+          )
+        } catch (error) {
+          console.error('Error filtering contract:', error)
+          return false
+        }
+      })
     }
     
-    // Apply sorting
+    // Apply sorting with better error handling
     filtered.sort((a, b) => {
-      let aValue = a[sortField]
-      let bValue = b[sortField]
-      
-      // Handle null/undefined values
-      if (aValue == null) aValue = ''
-      if (bValue == null) bValue = ''
-      
-      // Handle dates
-      if (sortField.includes('Date')) {
-        aValue = new Date(aValue)
-        bValue = new Date(bValue)
+      try {
+        let aValue = a[sortField]
+        let bValue = b[sortField]
+        
+        // Handle null/undefined values
+        if (aValue == null) aValue = ''
+        if (bValue == null) bValue = ''
+        
+        // Handle dates
+        if (sortField.includes('Date')) {
+          aValue = aValue ? new Date(aValue) : new Date(0)
+          bValue = bValue ? new Date(bValue) : new Date(0)
+        }
+        
+        // Handle numbers and BigDecimal
+        if (sortField === 'monthlyRent' || sortField === 'deposit' || sortField === 'dailyRate') {
+          aValue = aValue ? parseFloat(aValue) : 0
+          bValue = bValue ? parseFloat(bValue) : 0
+        }
+        
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+        return 0
+      } catch (error) {
+        console.error('Error sorting contracts:', error)
+        return 0
       }
-      
-      // Handle numbers
-      if (sortField === 'monthlyRent' || sortField === 'deposit' || sortField === 'dailyRate') {
-        aValue = parseFloat(aValue) || 0
-        bValue = parseFloat(bValue) || 0
-      }
-      
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
-      return 0
     })
     
     return filtered
@@ -174,15 +203,25 @@ const Contracts = () => {
   const handleBulkDelete = async () => {
     let ok = 0, fail = 0
     for (const id of selected) {
-      try { await api.delete(`/contracts/${id}`); ok++ }
-      catch { fail++ }
+      try {
+        await api.delete(`/contracts/${id}`)
+        ok++
+      } catch (error) {
+        fail++
+        console.error(`Failed to delete contract ${id}:`, error)
+      }
     }
     setSelected(new Set())
+    setCurrentPage(1) // Reset to first page after bulk delete
     fetchData()
     showToast(`Deleted ${ok} contracts${fail > 0 ? `, ${fail} could not be deleted` : ''}`, fail > 0 ? 'warning' : 'success')
   }
 
-  if (loading) return <div>Loading...</div>
+  if (loading) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="text-lg text-gray-600">Loading contracts...</div>
+    </div>
+  )
 
   return (
     <div>
@@ -243,13 +282,23 @@ const Contracts = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3">
-                <input type="checkbox" checked={selected.size === paginatedContracts.length && paginatedContracts.length > 0}
-                  onChange={toggleSelectAll} className="rounded" />
-              </th>
+        {paginatedContracts.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-gray-500 text-lg">No contracts found</div>
+            <div className="text-gray-400 text-sm mt-2">
+              {searchTerm || statusFilter !== 'ALL' 
+                ? 'Try adjusting your search or filters' 
+                : 'Get started by adding your first contract'}
+            </div>
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3">
+                  <input type="checkbox" checked={selected.size === paginatedContracts.length && paginatedContracts.length > 0}
+                    onChange={toggleSelectAll} className="rounded" />
+                </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 <button
                   onClick={() => {
@@ -424,6 +473,7 @@ const Contracts = () => {
             ))}
           </tbody>
         </table>
+        )}
       </div>
       
       {/* Pagination */}
