@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
 import { useToast } from '../../context/ToastContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import { Plus, Edit, Trash2, Eye, AlertCircle, Clock } from 'lucide-react'
+import SearchFilter from '../../components/SearchFilter'
+import Pagination from '../../components/Pagination'
+import { Plus, Edit, Trash2, Eye, AlertCircle, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import BulkActionBar from '../../components/BulkActionBar'
 
 const fmt = (n) => n != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n) : '-'
@@ -51,6 +53,11 @@ const Tenants = () => {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [selected, setSelected] = useState(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortField, setSortField] = useState('fullName')
+  const [sortDirection, setSortDirection] = useState('asc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
   const [formData, setFormData] = useState({
     fullName: '', phone: '', email: '', identityNumber: '',
     dateOfBirth: '', permanentAddress: '', status: 'ACTIVE',
@@ -64,6 +71,82 @@ const Tenants = () => {
   useEffect(() => {
     return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchData)
   }, [])
+
+  // Filtered and sorted tenants
+  const filteredAndSortedTenants = useMemo(() => {
+    let filtered = tenants.filter(tenant =>
+      tenant.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.activeRoomCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
+    filtered.sort((a, b) => {
+      let aVal, bVal
+
+      switch (sortField) {
+        case 'fullName':
+          aVal = a.fullName.toLowerCase()
+          bVal = b.fullName.toLowerCase()
+          break
+        case 'phone':
+          aVal = a.phone || ''
+          bVal = b.phone || ''
+          break
+        case 'activeRoomCode':
+          aVal = a.activeRoomCode || ''
+          bVal = b.activeRoomCode || ''
+          break
+        case 'checkInDate':
+          aVal = a.checkInDate ? new Date(a.checkInDate) : new Date(0)
+          bVal = b.checkInDate ? new Date(b.checkInDate) : new Date(0)
+          break
+        case 'checkOutDate':
+          aVal = a.checkOutDate ? new Date(a.checkOutDate) : new Date('9999-12-31')
+          bVal = b.checkOutDate ? new Date(b.checkOutDate) : new Date('9999-12-31')
+          break
+        case 'totalDebt':
+          aVal = a.totalDebt || 0
+          bVal = b.totalDebt || 0
+          break
+        default:
+          return 0
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return filtered
+  }, [tenants, searchTerm, sortField, sortDirection])
+
+  // Paginated tenants
+  const paginatedTenants = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    return filteredAndSortedTenants.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredAndSortedTenants, currentPage, itemsPerPage])
+
+  const totalPages = Math.ceil(filteredAndSortedTenants.length / itemsPerPage)
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+    setCurrentPage(1) // Reset to first page when sorting
+  }
+
+  const handleSearchChange = (term) => {
+    setSearchTerm(term)
+    setCurrentPage(1) // Reset to first page when searching
+  }
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+  }
 
   const fetchData = async () => {
     try {
@@ -140,8 +223,8 @@ const Tenants = () => {
   }
 
   const toggleSelectAll = () => {
-    if (selected.size === tenants.length) setSelected(new Set())
-    else setSelected(new Set(tenants.map(t => t.id)))
+    if (selected.size === filteredAndSortedTenants.length) setSelected(new Set())
+    else setSelected(new Set(filteredAndSortedTenants.map(t => t.id)))
   }
 
   const handleBulkDelete = async () => {
@@ -166,26 +249,85 @@ const Tenants = () => {
         </button>
       </div>
 
+      <SearchFilter
+        searchTerm={searchTerm}
+        onSearchChange={handleSearchChange}
+        placeholder="Search by name, phone, room, or email..."
+      />
+
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {paginatedTenants.length} of {filteredAndSortedTenants.length} tenants
+        {searchTerm && ` (filtered from ${tenants.length} total)`}
+      </div>
+
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3">
-                <input type="checkbox" checked={selected.size === tenants.length && tenants.length > 0}
+                <input type="checkbox" checked={selected.size === filteredAndSortedTenants.length && filteredAndSortedTenants.length > 0}
                   onChange={toggleSelectAll} className="rounded" />
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guest Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check-in</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check-out</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Outstanding Debt</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('fullName')}>
+                <div className="flex items-center gap-1">
+                  Guest Name
+                  {sortField === 'fullName' ? (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                </div>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('phone')}>
+                <div className="flex items-center gap-1">
+                  Phone
+                  {sortField === 'phone' ? (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                </div>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('activeRoomCode')}>
+                <div className="flex items-center gap-1">
+                  Room
+                  {sortField === 'activeRoomCode' ? (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                </div>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('checkInDate')}>
+                <div className="flex items-center gap-1">
+                  Check-in
+                  {sortField === 'checkInDate' ? (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                </div>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('checkOutDate')}>
+                <div className="flex items-center gap-1">
+                  Check-out
+                  {sortField === 'checkOutDate' ? (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                </div>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('totalDebt')}>
+                <div className="flex items-center gap-1">
+                  Outstanding Debt
+                  {sortField === 'totalDebt' ? (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                </div>
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {tenants.map((t) => (
+            {paginatedTenants.map((t) => (
               <tr key={t.id} className={`hover:bg-gray-50 ${selected.has(t.id) ? 'bg-blue-50' : ''}`}>
                 <td className="px-4 py-3">
                   <input type="checkbox" checked={selected.has(t.id)}
@@ -235,14 +377,14 @@ const Tenants = () => {
               </tr>
             ))}
           </tbody>
-          {tenants.length > 0 && tenants.some(t => t.totalDebt > 0) && (
+          {filteredAndSortedTenants.length > 0 && filteredAndSortedTenants.some(t => t.totalDebt > 0) && (
             <tfoot className="bg-gray-50 border-t-2 border-gray-300">
               <tr>
                 <td colSpan="6" className="px-4 py-3 text-sm font-semibold text-gray-700">
-                  Total Outstanding ({tenants.filter(t => t.totalDebt > 0).length} guests with debt)
+                  Total Outstanding ({filteredAndSortedTenants.filter(t => t.totalDebt > 0).length} guests with debt)
                 </td>
                 <td className="px-4 py-3 text-sm font-bold text-red-600">
-                  {fmt(tenants.reduce((s, t) => s + (parseFloat(t.totalDebt) > 0 ? parseFloat(t.totalDebt) : 0), 0))}
+                  {fmt(filteredAndSortedTenants.reduce((s, t) => s + (parseFloat(t.totalDebt) > 0 ? parseFloat(t.totalDebt) : 0), 0))}
                 </td>
                 <td colSpan="2"></td>
               </tr>
@@ -250,6 +392,12 @@ const Tenants = () => {
           )}
         </table>
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+      />
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

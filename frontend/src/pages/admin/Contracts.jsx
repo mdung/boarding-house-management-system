@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useToast } from '../../context/ToastContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import BulkActionBar from '../../components/BulkActionBar'
-import { Plus, Edit, X, Eye, Trash2 } from 'lucide-react'
+import { Plus, Edit, X, Eye, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US') : '-'
@@ -21,6 +21,11 @@ const Contracts = () => {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [selected, setSelected] = useState(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortField, setSortField] = useState('code')
+  const [sortDirection, setSortDirection] = useState('asc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [formData, setFormData] = useState({
     code: '',
     roomId: '',
@@ -112,11 +117,58 @@ const Contracts = () => {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
-  const visibleContracts = statusFilter === 'ALL' ? contracts : contracts.filter(c => c.status === statusFilter)
+  const visibleContracts = useMemo(() => {
+    let filtered = statusFilter === 'ALL' ? contracts : contracts.filter(c => c.status === statusFilter)
+    
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      filtered = filtered.filter(contract => 
+        contract.code?.toLowerCase().includes(term) ||
+        contract.roomCode?.toLowerCase().includes(term) ||
+        contract.mainTenantName?.toLowerCase().includes(term) ||
+        contract.status?.toLowerCase().includes(term)
+      )
+    }
+    
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue = a[sortField]
+      let bValue = b[sortField]
+      
+      // Handle null/undefined values
+      if (aValue == null) aValue = ''
+      if (bValue == null) bValue = ''
+      
+      // Handle dates
+      if (sortField.includes('Date')) {
+        aValue = new Date(aValue)
+        bValue = new Date(bValue)
+      }
+      
+      // Handle numbers
+      if (sortField === 'monthlyRent' || sortField === 'deposit' || sortField === 'dailyRate') {
+        aValue = parseFloat(aValue) || 0
+        bValue = parseFloat(bValue) || 0
+      }
+      
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+    
+    return filtered
+  }, [contracts, statusFilter, searchTerm, sortField, sortDirection])
+  
+  // Pagination
+  const totalPages = Math.ceil(visibleContracts.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedContracts = visibleContracts.slice(startIndex, endIndex)
 
   const toggleSelectAll = () => {
-    if (selected.size === visibleContracts.length) setSelected(new Set())
-    else setSelected(new Set(visibleContracts.map(c => c.id)))
+    if (selected.size === paginatedContracts.length) setSelected(new Set())
+    else setSelected(new Set(paginatedContracts.map(c => c.id)))
   }
 
   const handleBulkDelete = async () => {
@@ -149,17 +201,45 @@ const Contracts = () => {
         </button>
       </div>
 
-      <div className="mb-4 flex gap-3">
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-          <option value="ALL">All statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="DRAFT">Draft</option>
-          <option value="TERMINATED">Terminated</option>
-          <option value="EXPIRED">Expired</option>
-        </select>
-        <span className="flex items-center text-sm text-gray-500">
-          {(statusFilter === 'ALL' ? contracts : contracts.filter(c => c.status === statusFilter)).length} contracts
-        </span>
+      <div className="mb-4 flex flex-col gap-4">
+        <div className="flex gap-3 items-center">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search contracts..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm w-full"
+            />
+          </div>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm">
+            <option value="ALL">All statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="DRAFT">Draft</option>
+            <option value="TERMINATED">Terminated</option>
+            <option value="EXPIRED">Expired</option>
+          </select>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(parseInt(e.target.value))
+              setCurrentPage(1)
+            }}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+          >
+            <option value={5}>5 per page</option>
+            <option value={10}>10 per page</option>
+            <option value={25}>25 per page</option>
+            <option value={50}>50 per page</option>
+          </select>
+          <span className="flex items-center text-sm text-gray-500">
+            {visibleContracts.length} contracts
+          </span>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -167,21 +247,147 @@ const Contracts = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3">
-                <input type="checkbox" checked={selected.size === visibleContracts.length && visibleContracts.length > 0}
+                <input type="checkbox" checked={selected.size === paginatedContracts.length && paginatedContracts.length > 0}
                   onChange={toggleSelectAll} className="rounded" />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monthly Rent</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <button
+                  onClick={() => {
+                    if (sortField === 'code') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortField('code')
+                      setSortDirection('asc')
+                    }
+                  }}
+                  className="flex items-center gap-1 hover:text-gray-700"
+                >
+                  Code
+                  {sortField === 'code' && (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                  {sortField !== 'code' && <ArrowUpDown className="w-3 h-3" />}
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <button
+                  onClick={() => {
+                    if (sortField === 'roomCode') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortField('roomCode')
+                      setSortDirection('asc')
+                    }
+                  }}
+                  className="flex items-center gap-1 hover:text-gray-700"
+                >
+                  Room
+                  {sortField === 'roomCode' && (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                  {sortField !== 'roomCode' && <ArrowUpDown className="w-3 h-3" />}
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <button
+                  onClick={() => {
+                    if (sortField === 'mainTenantName') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortField('mainTenantName')
+                      setSortDirection('asc')
+                    }
+                  }}
+                  className="flex items-center gap-1 hover:text-gray-700"
+                >
+                  Tenant
+                  {sortField === 'mainTenantName' && (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                  {sortField !== 'mainTenantName' && <ArrowUpDown className="w-3 h-3" />}
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <button
+                  onClick={() => {
+                    if (sortField === 'startDate') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortField('startDate')
+                      setSortDirection('asc')
+                    }
+                  }}
+                  className="flex items-center gap-1 hover:text-gray-700"
+                >
+                  Start Date
+                  {sortField === 'startDate' && (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                  {sortField !== 'startDate' && <ArrowUpDown className="w-3 h-3" />}
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <button
+                  onClick={() => {
+                    if (sortField === 'endDate') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortField('endDate')
+                      setSortDirection('asc')
+                    }
+                  }}
+                  className="flex items-center gap-1 hover:text-gray-700"
+                >
+                  End Date
+                  {sortField === 'endDate' && (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                  {sortField !== 'endDate' && <ArrowUpDown className="w-3 h-3" />}
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <button
+                  onClick={() => {
+                    if (sortField === 'monthlyRent') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortField('monthlyRent')
+                      setSortDirection('asc')
+                    }
+                  }}
+                  className="flex items-center gap-1 hover:text-gray-700"
+                >
+                  Monthly Rent
+                  {sortField === 'monthlyRent' && (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                  {sortField !== 'monthlyRent' && <ArrowUpDown className="w-3 h-3" />}
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <button
+                  onClick={() => {
+                    if (sortField === 'status') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortField('status')
+                      setSortDirection('asc')
+                    }
+                  }}
+                  className="flex items-center gap-1 hover:text-gray-700"
+                >
+                  Status
+                  {sortField === 'status' && (
+                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  )}
+                  {sortField !== 'status' && <ArrowUpDown className="w-3 h-3" />}
+                </button>
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {visibleContracts.map((contract) => (
+            {paginatedContracts.map((contract) => (
               <tr key={contract.id} className={`hover:bg-gray-50 ${selected.has(contract.id) ? 'bg-blue-50' : ''}`}>
                 <td className="px-4 py-4">
                   <input type="checkbox" checked={selected.has(contract.id)}
@@ -219,6 +425,61 @@ const Contracts = () => {
           </tbody>
         </table>
       </div>
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Showing {startIndex + 1} to {Math.min(endIndex, visibleContracts.length)} of {visibleContracts.length} results
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum
+                if (totalPages <= 5) {
+                  pageNum = i + 1
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i
+                } else {
+                  pageNum = currentPage - 2 + i
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-3 py-1 text-sm border rounded-md ${
+                      currentPage === pageNum
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+            </div>
+            
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
