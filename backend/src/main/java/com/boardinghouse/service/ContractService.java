@@ -220,11 +220,16 @@ public class ContractService {
 
         // If new endDate is today or future → reactivate contract + set room occupied
         java.time.LocalDate today = java.time.LocalDate.now();
-        if (!newEndDate.isBefore(today) && contract.getStatus() == ContractStatus.EXPIRED) {
-            contract.setStatus(ContractStatus.ACTIVE);
+        if (!newEndDate.isBefore(today)) {
+            if (contract.getStatus() == ContractStatus.EXPIRED) {
+                contract.setStatus(ContractStatus.ACTIVE);
+            }
+            // Always re-occupy room if extending stay
             Room room = contract.getRoom();
-            room.setStatus(RoomStatus.OCCUPIED);
-            roomRepository.save(room);
+            if (room.getStatus() == RoomStatus.AVAILABLE) {
+                room.setStatus(RoomStatus.OCCUPIED);
+                roomRepository.save(room);
+            }
         }
 
         return toDto(repository.save(contract));
