@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
-import { Plus, DollarSign, Trash2, AlertTriangle, X } from 'lucide-react'
+import { Plus, DollarSign, Trash2, AlertTriangle, X, ChevronUp, ChevronDown } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US') : '-'
@@ -14,6 +14,7 @@ const Payments = () => {
   const [payments, setPayments] = useState([])
   const [invoices, setInvoices] = useState([])
   const [allInvoices, setAllInvoices] = useState([])
+  const [tenantsWithDebt, setTenantsWithDebt] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
@@ -27,6 +28,11 @@ const Payments = () => {
   })
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [paySearch, setPaySearch] = useState('')
+  const [paySort, setPaySort] = useState('paymentDate')
+  const [paySortDir, setPaySortDir] = useState('desc')
+  const [payPage, setPayPage] = useState(1)
+  const PAY_PAGE_SIZE = 15
 
   useEffect(() => { fetchData() }, [])
 
@@ -44,12 +50,16 @@ const Payments = () => {
 
   const fetchData = async () => {
     try {
-      const [paymentsRes, invoicesRes] = await Promise.all([
+      const [paymentsRes, invoicesRes, tenantsRes] = await Promise.all([
         api.get('/payments'),
         api.get('/invoices'),
+        api.get('/tenants'),
       ])
       setPayments(paymentsRes.data)
       setAllInvoices(invoicesRes.data)
+      // Tenants with outstanding debt (contract-based)
+      setTenantsWithDebt(tenantsRes.data.filter(t => parseFloat(t.totalDebt) > 0))
+      // Invoices with remaining > 0 (for payment modal dropdown)
       setInvoices(invoicesRes.data.filter(i => (parseFloat(i.remainingAmount) || 0) > 0))
     } catch (error) {
       console.error('Failed to fetch data:', error)
@@ -74,12 +84,26 @@ const Payments = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      await api.post('/payments', {
-        ...formData,
-        invoiceId: parseInt(formData.invoiceId),
-        paidAmount: parseFloat(formData.paidAmount),
-        paymentDate: formData.paymentDate ? formData.paymentDate + 'T00:00:00' : new Date().toISOString(),
-      })
+      if (formData._contractId && !formData.invoiceId) {
+        // Contract-based payment (no existing invoice)
+        await api.post(`/payments/contract/${formData._contractId}`, {
+          paidAmount: parseFloat(formData.paidAmount),
+          method: formData.method,
+          note: formData.note,
+          transactionCode: formData.transactionCode,
+          paymentDate: formData.paymentDate ? formData.paymentDate + 'T00:00:00' : new Date().toISOString(),
+        })
+      } else {
+        // Invoice-based payment
+        await api.post('/payments', {
+          invoiceId: parseInt(formData.invoiceId),
+          paidAmount: parseFloat(formData.paidAmount),
+          method: formData.method,
+          note: formData.note,
+          transactionCode: formData.transactionCode,
+          paymentDate: formData.paymentDate ? formData.paymentDate + 'T00:00:00' : new Date().toISOString(),
+        })
+      }
       setShowModal(false)
       setSelectedInvoice(null)
       setFormData({ invoiceId: '', paidAmount: '', method: 'CASH', note: '', transactionCode: '' })
@@ -121,38 +145,55 @@ const Payments = () => {
         </button>
       </div>
 
-      {/* Unpaid invoices quick-pay section */}
-      {invoices.length > 0 && (
+      {/* Outstanding debts - matches Tenants page */}
+      {tenantsWithDebt.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">Unpaid Invoices</h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+            Outstanding Debts ({tenantsWithDebt.length} guests · {fmt(tenantsWithDebt.reduce((s,t) => s + (parseFloat(t.totalDebt)||0), 0))})
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {invoices.map(inv => (
-              <div key={inv.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-all">
+            {tenantsWithDebt.map(t => (
+              <div key={t.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-red-300 transition-all">
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <p className="font-semibold text-sm text-gray-900">{inv.tenantName || 'N/A'}</p>
-                    <p className="text-xs text-gray-400">Room {inv.roomCode} · {inv.code}</p>
+                    <p className="font-semibold text-sm text-gray-900">{t.fullName}</p>
+                    <p className="text-xs text-gray-400">Room {t.activeRoomCode || '-'}</p>
                   </div>
-                  <span className={`px-2 py-0.5 text-xs rounded-full ${
-                    inv.status === 'OVERDUE' ? 'bg-red-100 text-red-700' :
-                    inv.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-gray-100 text-gray-600'
-                  }`}>
-                    {inv.status === 'OVERDUE' ? 'Overdue' : inv.status === 'PARTIALLY_PAID' ? 'Partially Paid' : 'Unpaid'}
-                  </span>
+                  <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700">Debt</span>
                 </div>
-                <p className="text-xs text-gray-500 mb-2">Period: {inv.periodMonth}/{inv.periodYear}</p>
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-xs text-gray-400">Remaining</p>
-                    <p className="text-lg font-bold text-red-600">{fmt(inv.remainingAmount)}</p>
+                    <p className="text-xs text-gray-400">Outstanding</p>
+                    <p className="text-lg font-bold text-red-600">{fmt(t.totalDebt)}</p>
                   </div>
-                  <button
-                    onClick={() => openPaymentModal(inv)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                  >
-                    <DollarSign className="w-3.5 h-3.5" /> Pay
-                  </button>
+                  {t.activeContractId && (
+                    <button
+                      onClick={() => {
+                        // Find or use SUM invoice for this contract
+                        const sumInv = allInvoices.find(i => i.contractId === t.activeContractId && (parseFloat(i.remainingAmount)||0) > 0)
+                        if (sumInv) {
+                          openPaymentModal(sumInv)
+                        } else {
+                          // No invoice yet - use contract-based payment
+                          setSelectedInvoice(null)
+                          setFormData({
+                            invoiceId: '',
+                            paidAmount: parseFloat(t.totalDebt).toFixed(0),
+                            paymentDate: new Date().toISOString().split('T')[0],
+                            method: 'CASH', note: '', transactionCode: '',
+                            _contractId: t.activeContractId,
+                            _tenantName: t.fullName,
+                            _roomCode: t.activeRoomCode,
+                            _totalDebt: t.totalDebt,
+                          })
+                          setShowModal(true)
+                        }
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                    >
+                      <DollarSign className="w-3.5 h-3.5" /> Pay
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -161,64 +202,109 @@ const Payments = () => {
       )}
 
       {/* Payment history */}
-      <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">Payment History</h2>
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guest / Room</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction Code</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Note</th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {payments.length === 0 ? (
-              <tr><td colSpan="8" className="px-4 py-8 text-center text-gray-400">No payments yet</td></tr>
-            ) : (
-              payments.map((p) => {
-                const inv = getInvoiceInfo(p.invoiceId)
-                return (
+      {(() => {
+        // Filter
+        let filtered = payments.map(p => ({ ...p, _inv: getInvoiceInfo(p.invoiceId) }))
+        if (paySearch) {
+          const q = paySearch.toLowerCase()
+          filtered = filtered.filter(p =>
+            p.invoiceCode?.toLowerCase().includes(q) ||
+            p._inv?.tenantName?.toLowerCase().includes(q) ||
+            p._inv?.roomCode?.toLowerCase().includes(q) ||
+            p.note?.toLowerCase().includes(q)
+          )
+        }
+        // Sort
+        filtered.sort((a, b) => {
+          let va, vb
+          if (paySort === 'paidAmount') { va = parseFloat(a.paidAmount)||0; vb = parseFloat(b.paidAmount)||0 }
+          else if (paySort === 'paymentDate') { va = a.paymentDate||''; vb = b.paymentDate||'' }
+          else if (paySort === 'invoiceCode') { va = a.invoiceCode||''; vb = b.invoiceCode||'' }
+          else if (paySort === 'tenantName') { va = a._inv?.tenantName||''; vb = b._inv?.tenantName||'' }
+          else { va = a[paySort]||''; vb = b[paySort]||'' }
+          if (va < vb) return paySortDir === 'asc' ? -1 : 1
+          if (va > vb) return paySortDir === 'asc' ? 1 : -1
+          return 0
+        })
+        const totalPages = Math.ceil(filtered.length / PAY_PAGE_SIZE)
+        const paged = filtered.slice((payPage-1)*PAY_PAGE_SIZE, payPage*PAY_PAGE_SIZE)
+        const toggleSort = (f) => { if (paySort===f) setPaySortDir(d=>d==='asc'?'desc':'asc'); else { setPaySort(f); setPaySortDir('desc') }; setPayPage(1) }
+        const SortIcon = ({f}) => paySort!==f ? <ChevronUp className="w-3 h-3 text-gray-300"/> : paySortDir==='asc' ? <ChevronUp className="w-3 h-3 text-blue-500"/> : <ChevronDown className="w-3 h-3 text-blue-500"/>
+
+        return (<>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase">Payment History ({filtered.length})</h2>
+            <input type="text" value={paySearch} onChange={e => { setPaySearch(e.target.value); setPayPage(1) }}
+              placeholder="Search payments..." className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm w-64" />
+          </div>
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none" onClick={()=>toggleSort('invoiceCode')}>
+                    <span className="flex items-center gap-1">Invoice <SortIcon f="invoiceCode"/></span></th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none" onClick={()=>toggleSort('tenantName')}>
+                    <span className="flex items-center gap-1">Guest / Room <SortIcon f="tenantName"/></span></th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer select-none" onClick={()=>toggleSort('paidAmount')}>
+                    <span className="flex items-center gap-1 justify-end">Amount <SortIcon f="paidAmount"/></span></th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none" onClick={()=>toggleSort('paymentDate')}>
+                    <span className="flex items-center gap-1">Date <SortIcon f="paymentDate"/></span></th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Note</th>
+                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {paged.length === 0 ? (
+                  <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-400">No payments found</td></tr>
+                ) : paged.map(p => (
                   <tr key={p.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.invoiceCode}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {inv ? <><span className="font-medium">{inv.tenantName}</span> <span className="text-gray-400">· {inv.roomCode}</span></> : '-'}
+                      {p._inv ? <><span className="font-medium">{p._inv.tenantName}</span> <span className="text-gray-400">· {p._inv.roomCode}</span></> : '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-right font-semibold text-green-600">{fmt(p.paidAmount)}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{fmtDate(p.paymentDate)}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{methodLabel[p.method] || p.method}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{p.transactionCode || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{p.note || '-'}</td>
                     <td className="px-4 py-3 text-center">
-                      <button onClick={() => setDeleteConfirm(p)}
-                        className="text-gray-400 hover:text-red-600 transition-colors" title="Delete payment">
+                      <button onClick={() => setDeleteConfirm(p)} className="text-gray-400 hover:text-red-600 transition-colors" title="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
-                )
-              })
-            )}
-          </tbody>
-          {payments.length > 0 && (
-            <tfoot className="bg-gray-50 border-t-2 border-gray-300">
-              <tr>
-                <td colSpan="2" className="px-4 py-3 text-sm font-semibold text-gray-700">
-                  Total ({payments.length} payments)
-                </td>
-                <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
-                  {fmt(payments.reduce((s, p) => s + (parseFloat(p.paidAmount) || 0), 0))}
-                </td>
-                <td colSpan="5"></td>
-              </tr>
-            </tfoot>
+                ))}
+              </tbody>
+              {filtered.length > 0 && (
+                <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                  <tr>
+                    <td colSpan="2" className="px-4 py-3 text-sm font-semibold text-gray-700">Total ({filtered.length} payments)</td>
+                    <td className="px-4 py-3 text-sm text-right font-bold text-green-600">{fmt(filtered.reduce((s,p) => s+(parseFloat(p.paidAmount)||0), 0))}</td>
+                    <td colSpan="4"></td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 px-2">
+              <p className="text-sm text-gray-500">Showing {(payPage-1)*PAY_PAGE_SIZE+1}–{Math.min(payPage*PAY_PAGE_SIZE, filtered.length)} of {filtered.length}</p>
+              <div className="flex gap-1">
+                <button onClick={() => setPayPage(p => Math.max(1,p-1))} disabled={payPage===1}
+                  className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-40">Prev</button>
+                {Array.from({length:totalPages},(_,i)=>i+1).filter(p=>p===1||p===totalPages||Math.abs(p-payPage)<=2).map((p,i,arr)=>(
+                  <span key={p}>
+                    {i>0&&arr[i-1]!==p-1&&<span className="px-1 text-gray-400">...</span>}
+                    <button onClick={()=>setPayPage(p)} className={`px-3 py-1.5 text-sm border rounded-md ${p===payPage?'bg-blue-600 text-white border-blue-600':'hover:bg-gray-50'}`}>{p}</button>
+                  </span>
+                ))}
+                <button onClick={() => setPayPage(p => Math.min(totalPages,p+1))} disabled={payPage===totalPages}
+                  className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-40">Next</button>
+              </div>
+            </div>
           )}
-        </table>
-      </div>
+        </>)
+      })()}
 
       {/* Payment modal */}
       {showModal && (
@@ -226,26 +312,36 @@ const Payments = () => {
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Payment</h2>
 
-            {/* Invoice info card */}
+            {/* Info card */}
             {selectedInvoice && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-semibold text-gray-900">{selectedInvoice.tenantName}</p>
                     <p className="text-sm text-gray-500">Room {selectedInvoice.roomCode} · {selectedInvoice.code}</p>
-                    <p className="text-sm text-gray-500">Period: {selectedInvoice.periodMonth}/{selectedInvoice.periodYear}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-400">Total: {fmt(selectedInvoice.totalAmount)}</p>
-                    <p className="text-xs text-gray-400">Paid: {fmt(selectedInvoice.paidAmount)}</p>
                     <p className="text-sm font-bold text-red-600">Remaining: {fmt(selectedInvoice.remainingAmount)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {!selectedInvoice && formData._contractId && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-semibold text-gray-900">{formData._tenantName}</p>
+                    <p className="text-sm text-gray-500">Room {formData._roomCode}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-red-600">Debt: {fmt(formData._totalDebt)}</p>
                   </div>
                 </div>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {!selectedInvoice && (
+              {!selectedInvoice && !formData._contractId && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Select Invoice</label>
                   <select
