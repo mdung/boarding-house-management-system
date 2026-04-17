@@ -5,7 +5,7 @@ import eventBus, { EVENTS } from '../../services/eventBus'
 import {
   DoorOpen, Users, DollarSign, AlertCircle, LogIn, LogOut,
   BedDouble, CreditCard, X, ExternalLink, ShoppingCart, Receipt,
-  ChevronRight, Edit2, Save, Plus, CalendarDays, Package
+  ChevronRight, ChevronDown, Edit2, Save, Plus, CalendarDays, Package
 } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -39,6 +39,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
   // Checkout confirm state
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false)
   const [checkingOut, setCheckingOut] = useState(false)
+  const [showServiceDetail, setShowServiceDetail] = useState(false)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -241,15 +242,55 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
                 </div>
                 <span className="font-semibold">{fmt(summary.totalRent)}</span>
               </div>
-              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 bg-purple-100 rounded-full flex items-center justify-center"><ShoppingCart className="w-3.5 h-3.5 text-purple-600" /></div>
-                  <div>
-                    <p className="text-sm font-medium">Extra services</p>
-                    <p className="text-xs text-gray-400">{summary.charges?.length || 0} items</p>
+              <div className="border-b border-gray-100">
+                <button onClick={() => setShowServiceDetail(!showServiceDetail)}
+                  className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 bg-purple-100 rounded-full flex items-center justify-center"><ShoppingCart className="w-3.5 h-3.5 text-purple-600" /></div>
+                    <div className="text-left">
+                      <p className="text-sm font-medium">Extra services</p>
+                      <p className="text-xs text-gray-400">{summary.charges?.length || 0} items · click to {showServiceDetail ? 'hide' : 'view'}</p>
+                    </div>
                   </div>
-                </div>
-                <span className="font-semibold">{fmt(summary.totalCharges)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{fmt(summary.totalCharges)}</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showServiceDetail ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+                {showServiceDetail && summary.charges?.length > 0 && (
+                  <div className="px-4 pb-3">
+                    <div className="bg-purple-50 rounded-lg overflow-hidden">
+                      {(() => {
+                        const grouped = {}
+                        summary.charges.forEach(ch => {
+                          const d = ch.chargeDate || 'Unknown'
+                          if (!grouped[d]) grouped[d] = []
+                          grouped[d].push(ch)
+                        })
+                        return Object.entries(grouped).sort(([a],[b]) => b.localeCompare(a)).map(([date, items]) => (
+                          <div key={date}>
+                            <div className="px-3 py-1.5 bg-purple-100 text-xs font-semibold text-purple-700">
+                              {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                              <span className="ml-2 font-normal text-purple-500">{fmt(items.reduce((s,i) => s + (parseFloat(i.amount)||0), 0))}</span>
+                            </div>
+                            {items.map((ch, i) => (
+                              <div key={ch.id || i} className="flex items-center justify-between px-3 py-1.5 text-xs border-t border-purple-100">
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-gray-700">{ch.description}</span>
+                                  {ch.note && <span className="text-gray-400 ml-1">· {ch.note}</span>}
+                                </div>
+                                <div className="flex items-center gap-3 text-gray-500 flex-shrink-0 ml-2">
+                                  <span>{parseFloat(ch.quantity)} × {fmt(ch.unitPrice)}</span>
+                                  <span className="font-semibold text-gray-700 w-20 text-right">{fmt(ch.amount)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ))
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
               {summary.deposit > 0 && (
                 <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
