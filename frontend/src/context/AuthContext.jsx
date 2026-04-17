@@ -50,12 +50,21 @@ export const AuthProvider = ({ children }) => {
     return user?.roles?.some(role => role.includes('ADMIN'))
   }
 
+  const isStaff = () => {
+    return user?.roles?.some(role => role.includes('STAFF'))
+  }
+
   const isTenant = () => {
     return user?.roles?.some(role => role.includes('TENANT'))
   }
 
+  const hasPermission = (permission) => {
+    if (isAdmin()) return true
+    return user?.permissions?.includes(permission)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isTenant }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isStaff, isTenant, hasPermission }}>
       {children}
     </AuthContext.Provider>
   )

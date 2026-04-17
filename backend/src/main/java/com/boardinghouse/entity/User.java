@@ -35,11 +35,19 @@ public class User {
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
     private Set<Role> roles = new HashSet<>();
+    
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_permissions", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "permission")
+    private Set<String> permissions = new HashSet<>();
 
     @Column(nullable = false)
     private Boolean active = true;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @Column(columnDefinition = "TEXT")
+    private String profilePicture;
+
+    @OneToOne(mappedBy = "user")
     private Tenant tenant;
 }
 

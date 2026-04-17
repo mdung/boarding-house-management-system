@@ -12,5 +12,7 @@ public class UserProfileDto {
     private String phone;
     private String email;
     private List<String> roles;
+    private List<String> permissions;
+    private String profilePicture;
 }
 

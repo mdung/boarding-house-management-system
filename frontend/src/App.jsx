@@ -24,6 +24,8 @@ import GuestCharges from './pages/admin/GuestCharges'
 import Inventory from './pages/admin/Inventory'
 import ServiceCatalog from './pages/admin/ServiceCatalog'
 import Calendar from './pages/admin/Calendar'
+import StaffManagement from './pages/admin/StaffManagement'
+import ActivityLogs from './pages/admin/ActivityLogs'
 import TenantDashboard from './pages/tenant/Dashboard'
 import TenantInvoices from './pages/tenant/Invoices'
 import TenantPayments from './pages/tenant/Payments'
@@ -55,6 +57,8 @@ function App() {
             <Route path="contracts/:id/detail" element={<ContractDetail />} />
             <Route path="rooms/:id/detail" element={<RoomDetail />} />
             <Route path="tenants/:id/detail" element={<TenantDetail />} />
+            <Route path="staff" element={<StaffManagement />} />
+            <Route path="activity-logs" element={<ActivityLogs />} />
             <Route path="profile" element={<Profile />} />
           </Route>
           <Route path="/tenant" element={<PrivateRoute><TenantLayout /></PrivateRoute>}>

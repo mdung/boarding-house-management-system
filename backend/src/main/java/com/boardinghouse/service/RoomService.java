@@ -20,30 +20,27 @@ public class RoomService {
     private final RoomRepository repository;
     private final BoardingHouseRepository boardingHouseRepository;
     private final ContractRepository contractRepository;
+    private final AuditLogService auditLogService;
 
     public RoomService(RoomRepository repository, BoardingHouseRepository boardingHouseRepository,
-                       ContractRepository contractRepository) {
+                       ContractRepository contractRepository, AuditLogService auditLogService) {
         this.repository = repository;
         this.boardingHouseRepository = boardingHouseRepository;
         this.contractRepository = contractRepository;
+        this.auditLogService = auditLogService;
     }
 
     public List<RoomDto> getAll() {
-        return repository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        return repository.findAll().stream().map(this::toDto).collect(Collectors.toList());
     }
 
     public List<RoomDto> getByBoardingHouse(Long boardingHouseId) {
-        return repository.findByBoardingHouseId(boardingHouseId).stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        return repository.findByBoardingHouseId(boardingHouseId).stream().map(this::toDto).collect(Collectors.toList());
     }
 
     public RoomDto getById(Long id) {
-        Room room = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: " + id));
-        return toDto(room);
+        return toDto(repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: " + id)));
     }
 
     @Transactional
@@ -51,10 +48,8 @@ public class RoomService {
         if (repository.existsByCode(dto.getCode())) {
             throw new BadRequestException("Room code already exists: " + dto.getCode());
         }
-
         BoardingHouse house = boardingHouseRepository.findById(dto.getBoardingHouseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Boarding house not found"));
-
         Room room = new Room();
         room.setCode(dto.getCode());
         room.setBoardingHouse(house);
@@ -63,45 +58,43 @@ public class RoomService {
         room.setMaxOccupants(dto.getMaxOccupants());
         room.setBaseRent(dto.getBaseRent());
         room.setStatus(dto.getStatus() != null ? dto.getStatus() : RoomStatus.AVAILABLE);
-        return toDto(repository.save(room));
+        RoomDto result = toDto(repository.save(room));
+        auditLogService.log("CREATE", "ROOM", "Created room: " + room.getCode() + " in " + house.getName());
+        return result;
     }
 
     @Transactional
     public RoomDto update(Long id, RoomDto dto) {
         Room room = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: " + id));
-
         if (!room.getCode().equals(dto.getCode()) && repository.existsByCode(dto.getCode())) {
             throw new BadRequestException("Room code already exists: " + dto.getCode());
         }
-
         if (dto.getBoardingHouseId() != null && !dto.getBoardingHouseId().equals(room.getBoardingHouse().getId())) {
             BoardingHouse house = boardingHouseRepository.findById(dto.getBoardingHouseId())
                     .orElseThrow(() -> new ResourceNotFoundException("Boarding house not found"));
             room.setBoardingHouse(house);
         }
-
         room.setCode(dto.getCode());
         room.setFloor(dto.getFloor());
         room.setArea(dto.getArea());
         room.setMaxOccupants(dto.getMaxOccupants());
         room.setBaseRent(dto.getBaseRent());
-        if (dto.getStatus() != null) {
-            room.setStatus(dto.getStatus());
-        }
-        return toDto(repository.save(room));
+        if (dto.getStatus() != null) room.setStatus(dto.getStatus());
+        RoomDto result = toDto(repository.save(room));
+        auditLogService.log("UPDATE", "ROOM", "Updated room: " + room.getCode());
+        return result;
     }
 
     @Transactional
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("Room not found with id: " + id);
-        }
-        // Block delete if any contracts exist (active or expired)
+        Room room = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: " + id));
         List<com.boardinghouse.entity.Contract> contracts = contractRepository.findByRoomId(id);
         if (!contracts.isEmpty()) {
             throw new BadRequestException("Cannot delete room with " + contracts.size() + " contract(s). Delete contracts first.");
         }
+        auditLogService.log("DELETE", "ROOM", "Deleted room: " + room.getCode());
         repository.deleteById(id);
     }
 
@@ -124,4 +117,3 @@ public class RoomService {
         return dto;
     }
 }
-

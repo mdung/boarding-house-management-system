@@ -21,16 +21,19 @@ public class TenantService {
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final GuestServiceChargeRepository guestChargeRepository;
+    private final AuditLogService auditLogService;
 
     public TenantService(TenantRepository repository, UserRepository userRepository,
                          ContractRepository contractRepository, InvoiceRepository invoiceRepository,
-                         PaymentRepository paymentRepository, GuestServiceChargeRepository guestChargeRepository) {
+                         PaymentRepository paymentRepository, GuestServiceChargeRepository guestChargeRepository,
+                         AuditLogService auditLogService) {
         this.repository = repository;
         this.userRepository = userRepository;
         this.contractRepository = contractRepository;
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.guestChargeRepository = guestChargeRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -68,7 +71,9 @@ public class TenantService {
         tenant.setDateOfBirth(dto.getDateOfBirth());
         tenant.setPermanentAddress(dto.getPermanentAddress());
         tenant.setStatus(dto.getStatus() != null ? dto.getStatus() : TenantStatus.ACTIVE);
-        return toDto(repository.save(tenant));
+        TenantDto result = toDto(repository.save(tenant));
+        auditLogService.log("CREATE", "TENANT", "Created tenant: " + tenant.getFullName());
+        return result;
     }
 
     @Transactional
@@ -89,7 +94,9 @@ public class TenantService {
         tenant.setDateOfBirth(dto.getDateOfBirth());
         tenant.setPermanentAddress(dto.getPermanentAddress());
         if (dto.getStatus() != null) tenant.setStatus(dto.getStatus());
-        return toDto(repository.save(tenant));
+        TenantDto result = toDto(repository.save(tenant));
+        auditLogService.log("UPDATE", "TENANT", "Updated tenant: " + tenant.getFullName());
+        return result;
     }
 
     @Transactional
@@ -113,6 +120,7 @@ public class TenantService {
             contractRepository.save(c);
         }
 
+        auditLogService.log("DELETE", "TENANT", "Deleted tenant: " + tenant.getFullName());
         repository.deleteById(id);
     }
 

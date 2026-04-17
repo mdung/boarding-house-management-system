@@ -26,13 +26,16 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
+    private final AuditLogService auditLogService;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                      AuthenticationManager authenticationManager, JwtTokenProvider tokenProvider) {
+                      AuthenticationManager authenticationManager, JwtTokenProvider tokenProvider,
+                      AuditLogService auditLogService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.tokenProvider = tokenProvider;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -73,6 +76,7 @@ public class AuthService {
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
         String token = tokenProvider.generateToken(authentication);
+        auditLogService.logAs(request.getUsername(), "LOGIN", "AUTH", "User logged in: " + request.getUsername());
         return createJwtResponse(token, user, authentication);
     }
 
@@ -85,7 +89,9 @@ public class AuthService {
                 user.getFullName(),
                 authentication.getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority)
-                        .collect(Collectors.toList())
+                        .collect(Collectors.toList()),
+                user.getPermissions() != null ? new java.util.ArrayList<>(user.getPermissions()) : new java.util.ArrayList<>(),
+                user.getProfilePicture()
         );
     }
 }

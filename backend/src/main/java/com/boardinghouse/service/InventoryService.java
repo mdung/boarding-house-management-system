@@ -20,11 +20,14 @@ import java.util.stream.Collectors;
 public class InventoryService {
     private final InventoryItemRepository itemRepository;
     private final InventoryTransactionRepository transactionRepository;
+    private final AuditLogService auditLogService;
 
     public InventoryService(InventoryItemRepository itemRepository,
-                            InventoryTransactionRepository transactionRepository) {
+                            InventoryTransactionRepository transactionRepository,
+                            AuditLogService auditLogService) {
         this.itemRepository = itemRepository;
         this.transactionRepository = transactionRepository;
+        this.auditLogService = auditLogService;
     }
 
     public List<InventoryItemDto> getAll() {
@@ -51,14 +54,18 @@ public class InventoryService {
     @Transactional
     public InventoryItemDto create(InventoryItemDto dto) {
         InventoryItem item = new InventoryItem();
-        return toDto(itemRepository.save(fromDto(item, dto)));
+        InventoryItem saved = itemRepository.save(fromDto(item, dto));
+        auditLogService.log("CREATE", "INVENTORY", "Created item: " + saved.getName() + " (SKU: " + saved.getSku() + ")");
+        return toDto(saved);
     }
 
     @Transactional
     public InventoryItemDto update(Long id, InventoryItemDto dto) {
         InventoryItem item = itemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + id));
-        return toDto(itemRepository.save(fromDto(item, dto)));
+        InventoryItem saved = itemRepository.save(fromDto(item, dto));
+        auditLogService.log("UPDATE", "INVENTORY", "Updated item: " + saved.getName());
+        return toDto(saved);
     }
 
     @Transactional
@@ -108,6 +115,7 @@ public class InventoryService {
 
         item.setQuantityOnHand(newQuantity);
         itemRepository.save(item);
+        auditLogService.log(dto.getType().name(), "INVENTORY", "Recorded " + dto.getType() + " for " + item.getName() + ": " + dto.getQuantity() + " " + item.getUnit());
 
         InventoryTransaction transaction = new InventoryTransaction();
         transaction.setItem(item);
