@@ -381,6 +381,33 @@ public class InvoiceService {
         return dto;
     }
 
+    @Transactional
+    public void delete(Long id) {
+        Invoice invoice = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id));
+
+        // Only allow deleting invoices that have no payments
+        java.util.List<Payment> payments = paymentRepository.findByInvoiceId(id);
+        if (!payments.isEmpty()) {
+            throw new BadRequestException("Cannot delete invoice with " + payments.size() + " payment(s). Delete payments first.");
+        }
+
+        repository.delete(invoice);
+    }
+
+    public int bulkDelete(java.util.List<Long> ids) {
+        int deleted = 0;
+        for (Long id : ids) {
+            try {
+                delete(id);
+                deleted++;
+            } catch (Exception e) {
+                // Skip invoices that can't be deleted
+            }
+        }
+        return deleted;
+    }
+
     private InvoiceDetailDto toDetailDto(Invoice invoice) {
         InvoiceDetailDto dto = new InvoiceDetailDto();
         dto.setId(invoice.getId());

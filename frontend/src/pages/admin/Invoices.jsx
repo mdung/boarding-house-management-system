@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
 import { useToast } from '../../context/ToastContext'
-import { Plus, Eye, EyeOff, Calculator, DollarSign } from 'lucide-react'
+import { Plus, Eye, EyeOff, Calculator, DollarSign, Trash2, ChevronUp, ChevronDown, X, AlertTriangle } from 'lucide-react'
 import SearchFilter from '../../components/SearchFilter'
 import ConfirmDialog from '../../components/ConfirmDialog'
+
+const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
 
 const Invoices = () => {
   const navigate = useNavigate()
@@ -23,6 +25,14 @@ const Invoices = () => {
   const [roomServices, setRoomServices] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'ALL')
+  // New features
+  const [selected, setSelected] = useState(new Set())
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null) // invoice object or 'bulk'
+  const [deleting, setDeleting] = useState(false)
+  const [sortField, setSortField] = useState('code')
+  const [sortDir, setSortDir] = useState('desc')
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 15
   const [formData, setFormData] = useState({
     contractId: '',
     month: new Date().getMonth() + 1,
@@ -45,7 +55,7 @@ const Invoices = () => {
 
   useEffect(() => {
     filterInvoices()
-  }, [invoices, searchTerm, statusFilter])
+  }, [invoices, searchTerm, statusFilter, sortField, sortDir])
 
   const filterInvoices = () => {
     let filtered = [...invoices]
@@ -53,7 +63,8 @@ const Invoices = () => {
     if (searchTerm) {
       filtered = filtered.filter(inv => 
         inv.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        inv.roomCode?.toLowerCase().includes(searchTerm.toLowerCase())
+        inv.roomCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inv.tenantName?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
     
@@ -65,8 +76,71 @@ const Invoices = () => {
     } else if (statusFilter !== 'ALL') {
       filtered = filtered.filter(inv => inv.status === statusFilter)
     }
-    
+
+    // Sort
+    filtered.sort((a, b) => {
+      let va = a[sortField], vb = b[sortField]
+      if (sortField === 'totalAmount' || sortField === 'paidAmount' || sortField === 'remainingAmount') {
+        va = parseFloat(va) || 0; vb = parseFloat(vb) || 0
+      }
+      if (sortField === 'period') {
+        va = `${a.periodYear}-${String(a.periodMonth).padStart(2,'0')}`
+        vb = `${b.periodYear}-${String(b.periodMonth).padStart(2,'0')}`
+      }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1
+      if (va > vb) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+
     setFilteredInvoices(filtered)
+    setPage(1)
+    setSelected(new Set())
+  }
+
+  const totalPages = Math.ceil(filteredInvoices.length / PAGE_SIZE)
+  const pagedInvoices = filteredInvoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  const toggleSort = (field) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDir('asc') }
+  }
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ChevronUp className="w-3 h-3 text-gray-300" />
+    return sortDir === 'asc' ? <ChevronUp className="w-3 h-3 text-blue-500" /> : <ChevronDown className="w-3 h-3 text-blue-500" />
+  }
+
+  const toggleSelect = (id) => setSelected(prev => {
+    const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s
+  })
+  const toggleAll = () => {
+    if (selected.size === pagedInvoices.length) setSelected(new Set())
+    else setSelected(new Set(pagedInvoices.map(i => i.id)))
+  }
+
+  const handleDelete = async (invoice) => {
+    setDeleting(true)
+    try {
+      await api.delete(`/invoices/${invoice.id}`)
+      showToast('Invoice deleted', 'success')
+      setShowDeleteConfirm(null)
+      fetchData()
+    } catch (e) {
+      showToast(e.response?.data?.message || 'Cannot delete invoice', 'error')
+    } finally { setDeleting(false) }
+  }
+
+  const handleBulkDelete = async () => {
+    setDeleting(true)
+    try {
+      const r = await api.post('/invoices/bulk-delete', { ids: [...selected] })
+      showToast(`Deleted ${r.data.deleted} of ${r.data.total} invoices`, 'success')
+      setShowDeleteConfirm(null)
+      setSelected(new Set())
+      fetchData()
+    } catch (e) {
+      showToast(e.response?.data?.message || 'Bulk delete failed', 'error')
+    } finally { setDeleting(false) }
   }
 
   const fetchData = async () => {
@@ -176,20 +250,17 @@ const Invoices = () => {
         </div>
       </div>
 
-      <div className="mb-4 flex gap-4">
+      <div className="mb-4 flex gap-4 items-center">
         <div className="flex-1">
           <SearchFilter
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            placeholder="Search by invoice code or room code..."
+            placeholder="Search by code, room, or guest..."
           />
         </div>
         <div className="w-48">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
             <option value="ALL">All Status</option>
             <option value="NOT_PAID">Not Paid (All)</option>
             <option value="PAST_DUE">Past Due</option>
@@ -199,107 +270,156 @@ const Invoices = () => {
             <option value="OVERDUE">Overdue</option>
           </select>
         </div>
+        {selected.size > 0 && (
+          <button onClick={() => setShowDeleteConfirm('bulk')}
+            className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium">
+            <Trash2 className="w-4 h-4" /> Delete {selected.size}
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guest</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-3 py-3 w-10">
+                <input type="checkbox" checked={pagedInvoices.length > 0 && selected.size === pagedInvoices.length}
+                  onChange={toggleAll} className="rounded border-gray-300" />
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none" onClick={() => toggleSort('code')}>
+                <span className="flex items-center gap-1">Code <SortIcon field="code" /></span>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none" onClick={() => toggleSort('tenantName')}>
+                <span className="flex items-center gap-1">Guest <SortIcon field="tenantName" /></span>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none" onClick={() => toggleSort('period')}>
+                <span className="flex items-center gap-1">Period <SortIcon field="period" /></span>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none" onClick={() => toggleSort('totalAmount')}>
+                <span className="flex items-center gap-1">Total <SortIcon field="totalAmount" /></span>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none" onClick={() => toggleSort('remainingAmount')}>
+                <span className="flex items-center gap-1">Remaining <SortIcon field="remainingAmount" /></span>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none" onClick={() => toggleSort('status')}>
+                <span className="flex items-center gap-1">Status <SortIcon field="status" /></span>
+              </th>
+              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredInvoices.length === 0 ? (
-              <tr>
-                <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">No invoices found</td>
-              </tr>
-            ) : (
-              filteredInvoices.map((invoice) => (
-              <tr key={invoice.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{invoice.code}</td>
-                <td className="px-6 py-4 text-sm text-gray-700">{invoice.tenantName || '-'}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{invoice.roomCode}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {invoice.periodMonth}/{invoice.periodYear}
+            {pagedInvoices.length === 0 ? (
+              <tr><td colSpan="10" className="px-6 py-8 text-center text-sm text-gray-400">No invoices found</td></tr>
+            ) : pagedInvoices.map((invoice) => (
+              <tr key={invoice.id} className={`hover:bg-gray-50 ${selected.has(invoice.id) ? 'bg-blue-50' : ''}`}>
+                <td className="px-3 py-3">
+                  <input type="checkbox" checked={selected.has(invoice.id)}
+                    onChange={() => toggleSelect(invoice.id)} className="rounded border-gray-300" />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount || 0)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.paidAmount || 0)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.remainingAmount || 0)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">{invoice.code}</td>
+                <td className="px-4 py-3 text-sm text-gray-700">{invoice.tenantName || '-'}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">{invoice.roomCode}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">{invoice.periodMonth}/{invoice.periodYear}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">{fmt(invoice.totalAmount)}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">{fmt(invoice.paidAmount)}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">{fmt(invoice.remainingAmount)}</td>
+                <td className="px-4 py-3">
                   <span className={`px-2 py-1 text-xs rounded-full ${
                     invoice.status === 'PAID' ? 'bg-green-100 text-green-800' :
                     invoice.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800' :
                     invoice.status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
                     'bg-gray-100 text-gray-800'
-                  }`}>
-                    {invoice.status}
-                  </span>
+                  }`}>{invoice.status}</span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => navigate(`/admin/invoices/${invoice.id}/detail`)}
-                      className="text-blue-600 hover:text-blue-900"
-                      title="View detail"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
+                <td className="px-4 py-3 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => navigate(`/admin/invoices/${invoice.id}/detail`)}
+                      className="text-blue-600 hover:text-blue-900" title="View"><Eye className="w-4 h-4" /></button>
                     {invoice.status !== 'PAID' && (
-                      <button
-                        onClick={() => navigate(`/admin/payments?invoiceId=${invoice.id}`)}
-                        className="text-green-600 hover:text-green-800"
-                        title="Pay invoice"
-                      >
-                        <DollarSign className="w-4 h-4" />
-                      </button>
+                      <button onClick={() => navigate(`/admin/payments?invoiceId=${invoice.id}`)}
+                        className="text-green-600 hover:text-green-800" title="Pay"><DollarSign className="w-4 h-4" /></button>
+                    )}
+                    {(parseFloat(invoice.paidAmount) || 0) === 0 && (
+                      <button onClick={() => setShowDeleteConfirm(invoice)}
+                        className="text-gray-400 hover:text-red-600" title="Delete"><Trash2 className="w-4 h-4" /></button>
                     )}
                   </div>
                 </td>
               </tr>
-              ))
-            )}
+            ))}
           </tbody>
           {filteredInvoices.length > 0 && (
             <tfoot className="bg-gray-50 border-t-2 border-gray-300">
               <tr>
-                <td colSpan="4" className="px-6 py-3 text-sm font-semibold text-gray-700">
+                <td></td>
+                <td colSpan="4" className="px-4 py-3 text-sm font-semibold text-gray-700">
                   Total ({filteredInvoices.length} invoices)
                 </td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(
-                    filteredInvoices.reduce((s, inv) => s + (parseFloat(inv.totalAmount) || 0), 0)
-                  )}
-                </td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm font-bold text-green-600">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(
-                    filteredInvoices.reduce((s, inv) => s + (parseFloat(inv.paidAmount) || 0), 0)
-                  )}
-                </td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm font-bold text-red-600">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(
-                    filteredInvoices.reduce((s, inv) => s + (parseFloat(inv.remainingAmount) || 0), 0)
-                  )}
-                </td>
+                <td className="px-4 py-3 text-sm font-bold text-gray-900">{fmt(filteredInvoices.reduce((s, i) => s + (parseFloat(i.totalAmount) || 0), 0))}</td>
+                <td className="px-4 py-3 text-sm font-bold text-green-600">{fmt(filteredInvoices.reduce((s, i) => s + (parseFloat(i.paidAmount) || 0), 0))}</td>
+                <td className="px-4 py-3 text-sm font-bold text-red-600">{fmt(filteredInvoices.reduce((s, i) => s + (parseFloat(i.remainingAmount) || 0), 0))}</td>
                 <td colSpan="2"></td>
               </tr>
             </tfoot>
           )}
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 px-2">
+          <p className="text-sm text-gray-500">
+            Showing {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, filteredInvoices.length)} of {filteredInvoices.length}
+          </p>
+          <div className="flex gap-1">
+            <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}
+              className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-40">Prev</button>
+            {Array.from({length: totalPages}, (_, i) => i+1).filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2).map((p, i, arr) => (
+              <span key={p}>
+                {i > 0 && arr[i-1] !== p-1 && <span className="px-1 text-gray-400">...</span>}
+                <button onClick={() => setPage(p)}
+                  className={`px-3 py-1.5 text-sm border rounded-md ${p === page ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-gray-50'}`}>{p}</button>
+              </span>
+            ))}
+            <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}
+              className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-40">Next</button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => !deleting && setShowDeleteConfirm(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-red-50 px-6 py-5 text-center">
+              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <AlertTriangle className="w-7 h-7 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">
+                {showDeleteConfirm === 'bulk' ? `Delete ${selected.size} Invoices?` : 'Delete Invoice?'}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                {showDeleteConfirm === 'bulk'
+                  ? 'Only invoices with no payments will be deleted.'
+                  : `${showDeleteConfirm.code} — ${showDeleteConfirm.tenantName}`}
+              </p>
+            </div>
+            <div className="px-6 pb-5 pt-4 flex gap-3">
+              <button onClick={() => setShowDeleteConfirm(null)} disabled={deleting}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={() => showDeleteConfirm === 'bulk' ? handleBulkDelete() : handleDelete(showDeleteConfirm)}
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium disabled:opacity-50">
+                <Trash2 className="w-4 h-4" /> {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

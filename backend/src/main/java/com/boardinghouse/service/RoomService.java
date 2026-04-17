@@ -97,11 +97,10 @@ public class RoomService {
         if (!repository.existsById(id)) {
             throw new ResourceNotFoundException("Room not found with id: " + id);
         }
-        // Block delete if active contracts exist
-        boolean hasActiveContract = contractRepository.findByRoomId(id).stream()
-                .anyMatch(c -> c.getStatus() == com.boardinghouse.entity.ContractStatus.ACTIVE);
-        if (hasActiveContract) {
-            throw new BadRequestException("Cannot delete room with active contracts");
+        // Block delete if any contracts exist (active or expired)
+        List<com.boardinghouse.entity.Contract> contracts = contractRepository.findByRoomId(id);
+        if (!contracts.isEmpty()) {
+            throw new BadRequestException("Cannot delete room with " + contracts.size() + " contract(s). Delete contracts first.");
         }
         repository.deleteById(id);
     }

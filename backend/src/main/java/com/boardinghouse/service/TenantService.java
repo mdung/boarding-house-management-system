@@ -97,16 +97,14 @@ public class TenantService {
         Tenant tenant = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with id: " + id));
 
-        // Check active contracts where tenant is main tenant
-        boolean hasActiveAsMain = contractRepository.findByMainTenantId(id).stream()
-                .anyMatch(c -> c.getStatus() == ContractStatus.ACTIVE);
-        if (hasActiveAsMain) {
+        // Block delete if tenant has ANY contracts (active or expired)
+        List<Contract> contracts = contractRepository.findByMainTenantId(id);
+        if (!contracts.isEmpty()) {
             throw new com.boardinghouse.exception.BadRequestException(
-                "Cannot delete tenant with active contracts");
+                "Cannot delete tenant with " + contracts.size() + " contract(s). Delete contracts first.");
         }
 
         // Remove tenant from all contract_tenants join table entries
-        // (tenant may be a member in other contracts)
         List<Contract> memberContracts = contractRepository.findAll().stream()
                 .filter(c -> c.getTenants().stream().anyMatch(t -> t.getId().equals(id)))
                 .collect(Collectors.toList());

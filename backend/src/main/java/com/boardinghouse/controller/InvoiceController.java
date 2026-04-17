@@ -56,5 +56,20 @@ public class InvoiceController {
     public ResponseEntity<com.boardinghouse.dto.InvoiceDetailDto> getDetail(@PathVariable Long id) {
         return ResponseEntity.ok(service.getDetailById(id));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/bulk-delete")
+    public ResponseEntity<Map<String, Object>> bulkDelete(@RequestBody Map<String, Object> request) {
+        @SuppressWarnings("unchecked")
+        List<Number> rawIds = (List<Number>) request.get("ids");
+        List<Long> ids = rawIds.stream().map(Number::longValue).collect(java.util.stream.Collectors.toList());
+        int deleted = service.bulkDelete(ids);
+        return ResponseEntity.ok(Map.of("deleted", deleted, "total", ids.size()));
+    }
 }
 

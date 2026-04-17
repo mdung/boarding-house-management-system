@@ -240,15 +240,20 @@ public class ContractService {
     public void delete(Long id) {
         Contract contract = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + id));
-        if (!contract.getInvoices().isEmpty()) {
+
+        // Block if any invoice has payments
+        boolean hasPayments = contract.getInvoices().stream()
+                .anyMatch(inv -> !inv.getPayments().isEmpty());
+        if (hasPayments) {
             throw new com.boardinghouse.exception.BadRequestException(
-                "Cannot delete contract with " + contract.getInvoices().size() + " invoice(s). Delete invoices first.");
+                "Cannot delete contract with paid invoices. Delete payments first.");
         }
-        // Guest charges cascade via entity, room freed
+
+        // Cascade will delete invoices + guest charges (CascadeType.ALL)
         Room room = contract.getRoom();
         room.setStatus(RoomStatus.AVAILABLE);
         roomRepository.save(room);
-        repository.deleteById(id);
+        repository.delete(contract);
     }
 
     private ContractDto toDto(Contract contract) {
