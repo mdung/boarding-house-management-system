@@ -77,11 +77,7 @@ const Login = () => {
               Sign in
             </button>
           </div>
-          <div className="text-sm text-gray-600">
-            <p>Demo accounts:</p>
-            <p>Admin: admin / admin123</p>
-            <p>Tenant: tenant / tenant123</p>
-          </div>
+
         </form>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '../../services/api'
-import { Plus, Edit, Trash2, Activity, Package, RefreshCcw } from 'lucide-react'
+import { Plus, Edit, Trash2, Activity, Package, RefreshCcw, Wand2 } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
 
@@ -130,11 +130,24 @@ const Inventory = () => {
     setShowItemModal(true)
   }
 
+  const generateSKU = (name, category) => {
+    const prefix = (category || 'ITEM').substring(0, 3).toUpperCase()
+    const namePart = (name || '').split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 3)
+    const random = Math.floor(1000 + Math.random() * 9000)
+    return `${prefix}-${namePart || 'X'}-${random}`
+  }
+
   const handleItemSubmit = async (e) => {
     e.preventDefault()
     try {
+      let finalSku = itemForm.sku
+      if (!finalSku) {
+        finalSku = generateSKU(itemForm.name, itemForm.category)
+      }
+
       const payload = {
         ...itemForm,
+        sku: finalSku,
         purchasePrice: parseFloat(itemForm.purchasePrice || 0),
         salePrice: parseFloat(itemForm.salePrice || 0),
         quantityOnHand: parseFloat(itemForm.quantityOnHand || 0),
@@ -377,10 +390,20 @@ const Inventory = () => {
             </div>
             <form onSubmit={handleItemSubmit} className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700">SKU</label>
-                <input type="text" required value={itemForm.sku}
-                  onChange={e => setItemForm({ ...itemForm, sku: e.target.value })}
-                  className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2" />
+                <label className="block text-sm font-medium text-slate-700">SKU (Auto-generated if empty)</label>
+                <div className="mt-2 flex gap-2">
+                  <input type="text" value={itemForm.sku}
+                    onChange={e => setItemForm({ ...itemForm, sku: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2" />
+                  <button
+                    type="button"
+                    onClick={() => setItemForm({ ...itemForm, sku: generateSKU(itemForm.name, itemForm.category) })}
+                    className="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors"
+                    title="Generate SKU"
+                  >
+                    <Wand2 className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700">Name</label>
