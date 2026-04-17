@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
-import { Plus, DollarSign } from 'lucide-react'
+import { Plus, DollarSign, Trash2, AlertTriangle, X } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US') : '-'
@@ -25,6 +25,8 @@ const Payments = () => {
     note: '',
     transactionCode: '',
   })
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => { fetchData() }, [])
 
@@ -48,7 +50,7 @@ const Payments = () => {
       ])
       setPayments(paymentsRes.data)
       setAllInvoices(invoicesRes.data)
-      setInvoices(invoicesRes.data.filter(i => i.status !== 'PAID'))
+      setInvoices(invoicesRes.data.filter(i => (parseFloat(i.remainingAmount) || 0) > 0))
     } catch (error) {
       console.error('Failed to fetch data:', error)
     } finally {
@@ -91,6 +93,19 @@ const Payments = () => {
 
   // Find invoice info for a payment
   const getInvoiceInfo = (invoiceId) => allInvoices.find(i => i.id === invoiceId)
+
+  const handleDeletePayment = async () => {
+    if (!deleteConfirm) return
+    setDeleting(true)
+    try {
+      await api.delete(`/payments/${deleteConfirm.id}`)
+      setDeleteConfirm(null)
+      fetchData()
+      eventBus.emit(EVENTS.PAYMENT_CHANGED)
+    } catch (e) {
+      alert(e.response?.data?.message || 'Delete failed')
+    } finally { setDeleting(false) }
+  }
 
   if (loading) return <div className="p-8 text-center text-gray-400">Loading...</div>
 
@@ -158,11 +173,12 @@ const Payments = () => {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction Code</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Note</th>
+              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {payments.length === 0 ? (
-              <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-400">No payments yet</td></tr>
+              <tr><td colSpan="8" className="px-4 py-8 text-center text-gray-400">No payments yet</td></tr>
             ) : (
               payments.map((p) => {
                 const inv = getInvoiceInfo(p.invoiceId)
@@ -177,6 +193,12 @@ const Payments = () => {
                     <td className="px-4 py-3 text-sm text-gray-600">{methodLabel[p.method] || p.method}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{p.transactionCode || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{p.note || '-'}</td>
+                    <td className="px-4 py-3 text-center">
+                      <button onClick={() => setDeleteConfirm(p)}
+                        className="text-gray-400 hover:text-red-600 transition-colors" title="Delete payment">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 )
               })
@@ -191,7 +213,7 @@ const Payments = () => {
                 <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
                   {fmt(payments.reduce((s, p) => s + (parseFloat(p.paidAmount) || 0), 0))}
                 </td>
-                <td colSpan="4"></td>
+                <td colSpan="5"></td>
               </tr>
             </tfoot>
           )}
@@ -320,6 +342,51 @@ const Payments = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => !deleting && setDeleteConfirm(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-red-50 px-6 py-5 text-center">
+              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <AlertTriangle className="w-7 h-7 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Delete Payment?</h3>
+              <p className="text-sm text-gray-500 mt-1">This will reverse the payment and update the invoice balance.</p>
+            </div>
+            <div className="px-6 py-4">
+              <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Invoice</span>
+                  <span className="font-medium text-gray-800">{deleteConfirm.invoiceCode}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Amount</span>
+                  <span className="font-bold text-green-600">{fmt(deleteConfirm.paidAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Date</span>
+                  <span className="text-gray-700">{fmtDate(deleteConfirm.paymentDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Method</span>
+                  <span className="text-gray-700">{methodLabel[deleteConfirm.method] || deleteConfirm.method}</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 pb-5 flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} disabled={deleting}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={handleDeletePayment} disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium disabled:opacity-50">
+                <Trash2 className="w-4 h-4" /> {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
