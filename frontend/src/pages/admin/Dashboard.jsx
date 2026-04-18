@@ -740,7 +740,6 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
   )
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
 const Dashboard = () => {
   const navigate = useNavigate()
   const [dashboard, setDashboard] = useState(null)
@@ -755,7 +754,40 @@ const Dashboard = () => {
   useEffect(() => { fetchDashboard() }, [])
   useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchDashboard) }, [])
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading...</div>
+  const [widgets, setWidgets] = useState([])
+  const [draggedIdx, setDraggedIdx] = useState(null)
+
+  useEffect(() => {
+    if (dashboard) {
+      setWidgets([
+        { id: 'rooms', label: 'Total Rooms', value: dashboard.totalRooms || 0, icon: DoorOpen, color: 'bg-blue-500', link: '/admin/rooms' },
+        { id: 'occupied', label: 'Occupied', value: dashboard.occupiedRooms || 0, icon: Users, color: 'bg-green-500', link: '/admin/tenants' },
+        { id: 'available', label: 'Available', value: dashboard.availableRooms || 0, icon: DoorOpen, color: 'bg-gray-400', link: '/admin/rooms' },
+        { id: 'unpaid', label: 'Unpaid', value: fmt(dashboard.unpaidAmount), icon: DollarSign, color: 'bg-yellow-500', link: '/admin/tenants' },
+        { id: 'overdue', label: 'Overdue Invoices', value: dashboard.overdueInvoices || 0, icon: AlertCircle, color: 'bg-red-500', link: '/admin/invoices?status=PAST_DUE' },
+        { id: 'inventory', label: 'Low Stock', value: dashboard.lowStockItems || 0, icon: Package, color: dashboard.lowStockItems > 0 ? 'bg-red-500' : 'bg-gray-400', link: '/admin/inventory' },
+      ])
+    }
+  }, [dashboard])
+
+  const handleDragStart = (idx) => setDraggedIdx(idx)
+  const handleDragOver = (e) => e.preventDefault()
+  const handleDrop = (idx) => {
+    if (draggedIdx === null) return
+    const newWidgets = [...widgets]
+    const draggedItem = newWidgets[draggedIdx]
+    newWidgets.splice(draggedIdx, 1)
+    newWidgets.splice(idx, 0, draggedItem)
+    setWidgets(newWidgets)
+    setDraggedIdx(null)
+  }
+
+  if (loading) return (
+    <div className="p-8 text-center">
+      <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-slate-400 font-medium">Loading your intelligence...</p>
+    </div>
+  )
 
   const today = new Date()
   const fmtDay = (offset) => {
@@ -763,66 +795,87 @@ const Dashboard = () => {
     return d.toLocaleDateString('en-US', { weekday: 'long', day: '2-digit', month: '2-digit' })
   }
 
-  const stats = [
-    { label: 'Total Rooms', value: dashboard?.totalRooms || 0, icon: DoorOpen, color: 'bg-blue-500', link: '/admin/rooms' },
-    { label: 'Occupied', value: dashboard?.occupiedRooms || 0, icon: Users, color: 'bg-green-500', link: '/admin/tenants' },
-    { label: 'Available', value: dashboard?.availableRooms || 0, icon: DoorOpen, color: 'bg-gray-400', link: '/admin/rooms' },
-    { label: 'Unpaid', value: fmt(dashboard?.unpaidAmount), icon: DollarSign, color: 'bg-yellow-500', link: '/admin/tenants' },
-    { label: 'Overdue Invoices', value: dashboard?.overdueInvoices || 0, icon: AlertCircle, color: 'bg-red-500', link: '/admin/invoices?status=PAST_DUE' },
-    { label: 'Low Stock', value: dashboard?.lowStockItems || 0, icon: Package, color: dashboard?.lowStockItems > 0 ? 'bg-red-500' : 'bg-gray-400', link: '/admin/inventory' },
-  ]
-
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Intelligence Dashboard</h1>
+          <p className="text-slate-500 mt-1 font-medium">Welcome back, Admin. Here's your boarding house status.</p>
+        </div>
+        <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <CalendarDays className="w-4 h-4 text-slate-400" />
+          <span className="text-sm font-bold text-slate-600">{new Date().toLocaleDateString('vi-VN', { dateStyle: 'full' })}</span>
+        </div>
+      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-        {stats.map((s, i) => {
+      {/* Reorderable Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {widgets.map((s, i) => {
           const Icon = s.icon
           return (
-            <div key={i} onClick={() => navigate(s.link)}
-              className="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all">
-              <div className={`${s.color} w-8 h-8 rounded-full flex items-center justify-center mb-2`}>
-                <Icon className="w-4 h-4 text-white" />
+            <div 
+              key={s.id}
+              draggable
+              onDragStart={() => handleDragStart(i)}
+              onDragOver={handleDragOver}
+              onDrop={() => handleDrop(i)}
+              onClick={() => navigate(s.link)}
+              className={`relative bg-white/70 backdrop-blur-md border border-white rounded-[2rem] p-5 cursor-move transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1 active:scale-95 group overflow-hidden ${draggedIdx === i ? 'opacity-40 grayscale' : ''}`}
+            >
+              {/* Decorative background element */}
+              <div className={`absolute -right-4 -top-4 w-16 h-16 rounded-full opacity-10 transition-transform group-hover:scale-150 duration-500 ${s.color}`} />
+              
+              <div className={`${s.color} w-10 h-10 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-current/20`}>
+                <Icon className="w-5 h-5 text-white" />
               </div>
-              <p className="text-gray-500 text-xs">{s.label}</p>
-              <p className="text-xl font-bold mt-0.5">{s.value}</p>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">{s.label}</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">{s.value}</p>
+              
+              {/* Grab handle hint */}
+              <div className="absolute bottom-3 right-5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-0.5">
+                  <div className="w-1 h-1 bg-slate-200 rounded-full" />
+                  <div className="w-1 h-1 bg-slate-200 rounded-full" />
+                  <div className="w-1 h-1 bg-slate-200 rounded-full" />
+                </div>
+              </div>
             </div>
           )
         })}
       </div>
 
       {/* Revenue breakdown cards */}
-      <div className="grid grid-cols-2 gap-3 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div onClick={() => setRevenueModal('RENT')}
-          className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-100 rounded-xl p-4 cursor-pointer hover:border-blue-300 hover:shadow-md transition-all group">
-          <div className="flex items-center justify-between">
+          className="relative bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2.5rem] p-8 cursor-pointer hover:shadow-2xl hover:shadow-blue-200 transition-all duration-500 group overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-700" />
+          <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
                 <BedDouble className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-medium">Room Revenue This Month</p>
-                <p className="text-2xl font-bold text-blue-700">{fmt(dashboard?.roomRevenue)}</p>
+                <p className="text-xs text-blue-200 font-medium">Room Revenue This Month</p>
+                <p className="text-2xl font-bold text-white">{fmt(dashboard?.roomRevenue)}</p>
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-blue-300 group-hover:text-blue-500 transition-colors" />
+            <ChevronRight className="w-5 h-5 text-blue-200 group-hover:text-white transition-colors" />
           </div>
         </div>
         <div onClick={() => setRevenueModal('SERVICE')}
-          className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-100 rounded-xl p-4 cursor-pointer hover:border-purple-300 hover:shadow-md transition-all group">
-          <div className="flex items-center justify-between">
+          className="relative bg-gradient-to-br from-purple-600 to-pink-600 rounded-[2.5rem] p-8 cursor-pointer hover:shadow-2xl hover:shadow-purple-200 transition-all duration-500 group overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-700" />
+          <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
                 <Receipt className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-medium">Service Revenue This Month</p>
-                <p className="text-2xl font-bold text-purple-700">{fmt(dashboard?.serviceRevenue)}</p>
+                <p className="text-xs text-purple-200 font-medium">Service Revenue This Month</p>
+                <p className="text-2xl font-bold text-white">{fmt(dashboard?.serviceRevenue)}</p>
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-purple-300 group-hover:text-purple-500 transition-colors" />
+            <ChevronRight className="w-5 h-5 text-purple-200 group-hover:text-white transition-colors" />
           </div>
         </div>
       </div>

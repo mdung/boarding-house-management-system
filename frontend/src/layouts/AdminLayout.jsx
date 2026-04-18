@@ -49,8 +49,30 @@ const AdminLayout = () => {
   const { user, logout, hasPermission, isAdmin: checkIsAdmin } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [sidebarWidth, setSidebarWidth] = useState(256)
+  const [isResizing, setIsResizing] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const startResizing = (e) => {
+    e.preventDefault()
+    setIsResizing(true)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', stopResizing)
+  }
+
+  const handleMouseMove = (e) => {
+    const newWidth = e.clientX
+    if (newWidth > 180 && newWidth < 450) {
+      setSidebarWidth(newWidth)
+    }
+  }
+
+  const stopResizing = () => {
+    setIsResizing(false)
+    document.removeEventListener('mousemove', handleMouseMove)
+    document.removeEventListener('mouseup', stopResizing)
+  }
 
   const handleLogout = () => { logout(); navigate('/login') }
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/')
@@ -63,17 +85,17 @@ const AdminLayout = () => {
           <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
             <Building2 className="w-5 h-5 text-white" />
           </div>
-          {!collapsed && (
-            <div>
-              <h1 className="text-base font-bold text-white leading-tight">Boarding House</h1>
-              <p className="text-[11px] text-slate-400 font-medium">Management System</p>
+          {!collapsed && sidebarWidth > 200 && (
+            <div className="animate-in fade-in duration-300 truncate">
+              <h1 className="text-base font-bold text-white leading-tight truncate">Boarding House</h1>
+              <p className="text-[11px] text-slate-400 font-medium truncate">Management System</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6 custom-scrollbar">
         {menuGroups.map((group, gi) => {
           const visibleItems = group.items.filter(item => {
             if (item.adminOnly) return checkIsAdmin()
@@ -83,10 +105,10 @@ const AdminLayout = () => {
 
           return (
             <div key={gi}>
-              {group.label && !collapsed && (
-                <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">{group.label}</p>
+              {group.label && !collapsed && sidebarWidth > 180 && (
+                <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">{group.label}</p>
               )}
-              {group.label && collapsed && <div className="border-t border-white/5 my-2 mx-2" />}
+              {group.label && (collapsed || sidebarWidth <= 180) && <div className="border-t border-white/5 my-2 mx-2" />}
               <div className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const Icon = item.icon
@@ -100,12 +122,12 @@ const AdminLayout = () => {
                         ${active
                           ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/10 text-white shadow-sm'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'
-                        } ${collapsed ? 'justify-center px-2' : ''}`}
-                      title={collapsed ? item.label : undefined}
+                        } ${(collapsed || sidebarWidth < 120) ? 'justify-center px-2' : ''}`}
+                      title={(collapsed || sidebarWidth < 180) ? item.label : undefined}
                     >
                       <Icon className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${active ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
-                      {!collapsed && <span>{item.label}</span>}
-                      {active && !collapsed && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                      {!collapsed && sidebarWidth > 120 && <span className="truncate">{item.label}</span>}
+                      {active && !collapsed && sidebarWidth > 200 && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />}
                     </Link>
                   )
                 })}
@@ -116,11 +138,11 @@ const AdminLayout = () => {
       </nav>
 
       {/* User */}
-      <div className={`border-t border-white/10 p-4 ${collapsed ? 'p-2' : ''}`}>
+      <div className={`border-t border-white/10 p-4 ${(collapsed || sidebarWidth < 150) ? 'p-2' : ''}`}>
         <Link
           to="/admin/profile"
           onClick={() => setMobileOpen(false)}
-          className={`flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors mb-2 ${collapsed ? 'justify-center' : ''}`}
+          className={`flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors mb-2 ${(collapsed || sidebarWidth < 150) ? 'justify-center' : ''}`}
         >
           <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 bg-slate-100 text-slate-600 text-sm font-bold shadow-sm">
             {user?.profilePicture ? (
@@ -129,8 +151,8 @@ const AdminLayout = () => {
               user?.fullName?.charAt(0)?.toUpperCase() || 'U'
             )}
           </div>
-          {!collapsed && (
-            <div className="min-w-0">
+          {!collapsed && sidebarWidth > 150 && (
+            <div className="min-w-0 animate-in fade-in duration-300">
               <p className="text-sm font-semibold text-white truncate">{user?.fullName}</p>
               <p className="text-[11px] text-slate-500 truncate font-bold uppercase tracking-tighter">
                 {checkIsAdmin() ? 'Administrator' : user?.roles?.includes('STAFF') ? 'Staff' : 'User'}
@@ -140,20 +162,30 @@ const AdminLayout = () => {
         </Link>
         <button
           onClick={handleLogout}
-          className={`flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors ${collapsed ? 'justify-center px-2' : ''}`}
+          className={`flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors ${(collapsed || sidebarWidth < 150) ? 'justify-center px-2' : ''}`}
         >
           <LogOut className="w-4 h-4" />
-          {!collapsed && <span>Logout</span>}
+          {!collapsed && sidebarWidth > 150 && <span>Logout</span>}
         </button>
       </div>
     </>
   )
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className={`flex h-screen bg-slate-50 ${isResizing ? 'cursor-col-resize select-none' : ''}`}>
       {/* Desktop sidebar */}
-      <aside className={`hidden lg:flex flex-col bg-slate-900 transition-all duration-300 ${collapsed ? 'w-[72px]' : 'w-64'}`}>
+      <aside 
+        className={`hidden lg:flex flex-col bg-slate-900 transition-all relative ${collapsed ? 'w-[72px]' : ''}`}
+        style={!collapsed ? { width: sidebarWidth } : {}}
+      >
         <SidebarContent />
+        {/* Resize handle */}
+        {!collapsed && (
+          <div
+            onMouseDown={startResizing}
+            className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500/30 transition-colors z-50 ${isResizing ? 'bg-blue-500/50 w-1.5' : ''}`}
+          />
+        )}
       </aside>
 
       {/* Mobile overlay */}
@@ -181,7 +213,11 @@ const AdminLayout = () => {
               {user?.profilePicture && (
                 <img src={user.profilePicture} alt="" className="w-6 h-6 rounded-full object-cover" />
               )}
-              Chào buổi tối, <span className="text-blue-600">{user?.fullName}</span> 👋
+              {(() => {
+                const h = new Date().getHours()
+                const greeting = h < 12 ? 'Chào buổi sáng' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'
+                return <>{greeting}, <span className="text-blue-600">{user?.fullName}</span> 👋</>
+              })()}
             </h2>
           </div>
           <div className="flex items-center gap-2 text-sm text-slate-500">

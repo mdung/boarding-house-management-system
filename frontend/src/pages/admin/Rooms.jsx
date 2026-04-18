@@ -4,19 +4,44 @@ import api from '../../services/api'
 import { useToast } from '../../context/ToastContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import BulkActionBar from '../../components/BulkActionBar'
-import { Plus, Edit, Trash2, Eye, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, DoorOpen, X, Building2, Layers, Maximize2, Users, DollarSign } from 'lucide-react'
 
-const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
+
+const STATUS_CFG = {
+  AVAILABLE:   { label: 'Available',   cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  OCCUPIED:    { label: 'Occupied',    cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  MAINTENANCE: { label: 'Maintenance', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+}
+
+const inputCls = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all'
+const selectCls = inputCls + ' appearance-none'
+
+const Field = ({ label, children }) => (
+  <div className="space-y-1.5">
+    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">{label}</label>
+    {children}
+  </div>
+)
+
+const SortBtn = ({ field, current, dir, onSort, children }) => (
+  <button onClick={() => onSort(field)} className="flex items-center gap-1 hover:text-slate-800 transition-colors group">
+    {children}
+    <span className="text-slate-300 group-hover:text-slate-500">
+      {current === field ? (dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
+    </span>
+  </button>
+)
 
 const Rooms = () => {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [rooms, setRooms] = useState([])
-  const [filteredRooms, setFilteredRooms] = useState([])
   const [houses, setHouses] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [selected, setSelected] = useState(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
@@ -24,573 +49,270 @@ const Rooms = () => {
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [searchTerm, setSearchTerm] = useState('')
   const [sortField, setSortField] = useState('code')
-  const [sortDirection, setSortDirection] = useState('asc')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [formData, setFormData] = useState({
-    code: '',
-    boardingHouseId: '',
-    floor: '',
-    area: '',
-    maxOccupants: '',
-    baseRent: '',
-    status: 'AVAILABLE',
-  })
+  const [sortDir, setSortDir] = useState('asc')
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
+  const empty = { code: '', boardingHouseId: '', floor: '', area: '', maxOccupants: '', baseRent: '', status: 'AVAILABLE' }
+  const [formData, setFormData] = useState(empty)
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  useEffect(() => { fetchData() }, [])
 
   const visibleRooms = useMemo(() => {
-    let filtered = [...rooms]
-    
-    // Apply house filter
-    if (filterHouse !== 'ALL') filtered = filtered.filter(r => r.boardingHouseId.toString() === filterHouse)
-    
-    // Apply status filter
-    if (filterStatus !== 'ALL') filtered = filtered.filter(r => r.status === filterStatus)
-    
-    // Apply search filter
+    let f = [...rooms]
+    if (filterHouse !== 'ALL') f = f.filter(r => r.boardingHouseId?.toString() === filterHouse)
+    if (filterStatus !== 'ALL') f = f.filter(r => r.status === filterStatus)
     if (searchTerm) {
-      const term = searchTerm.toLowerCase()
-      filtered = filtered.filter(room => 
-        room.code?.toLowerCase().includes(term) ||
-        room.boardingHouseName?.toLowerCase().includes(term) ||
-        room.currentTenantName?.toLowerCase().includes(term) ||
-        room.status?.toLowerCase().includes(term) ||
-        room.floor?.toString().includes(term) ||
-        room.area?.toString().includes(term) ||
-        room.maxOccupants?.toString().includes(term) ||
-        room.baseRent?.toString().includes(term)
-      )
+      const t = searchTerm.toLowerCase()
+      f = f.filter(r => [r.code, r.boardingHouseName, r.currentTenantName, r.status].some(v => v?.toLowerCase().includes(t)))
     }
-    
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue = a[sortField]
-      let bValue = b[sortField]
-      
-      // Handle null/undefined values
-      if (aValue == null) aValue = sortField === 'floor' || sortField === 'area' || sortField === 'maxOccupants' || sortField === 'baseRent' ? 0 : ''
-      if (bValue == null) bValue = sortField === 'floor' || sortField === 'area' || sortField === 'maxOccupants' || sortField === 'baseRent' ? 0 : ''
-      
-      // Handle numbers
-      if (sortField === 'floor' || sortField === 'area' || sortField === 'maxOccupants' || sortField === 'baseRent') {
-        aValue = parseFloat(aValue) || 0
-        bValue = parseFloat(bValue) || 0
-      }
-      
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
-      return 0
+    const numFields = ['floor', 'area', 'maxOccupants', 'baseRent']
+    f.sort((a, b) => {
+      let av = a[sortField] ?? (numFields.includes(sortField) ? 0 : '')
+      let bv = b[sortField] ?? (numFields.includes(sortField) ? 0 : '')
+      if (numFields.includes(sortField)) { av = parseFloat(av) || 0; bv = parseFloat(bv) || 0 }
+      return sortDir === 'asc' ? (av < bv ? -1 : av > bv ? 1 : 0) : (av > bv ? -1 : av < bv ? 1 : 0)
     })
-    
-    return filtered
-  }, [rooms, filterHouse, filterStatus, searchTerm, sortField, sortDirection])
-  
-  // Pagination
-  const totalPages = Math.ceil(visibleRooms.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedRooms = visibleRooms.slice(startIndex, endIndex)
+    return f
+  }, [rooms, filterHouse, filterStatus, searchTerm, sortField, sortDir])
+
+  const totalPages = Math.ceil(visibleRooms.length / perPage)
+  const start = (page - 1) * perPage
+  const paginated = visibleRooms.slice(start, start + perPage)
 
   const fetchData = async () => {
     try {
-      const [roomsRes, housesRes] = await Promise.all([
-        api.get('/rooms'),
-        api.get('/boarding-houses'),
-      ])
-      setRooms(roomsRes.data)
-      setHouses(housesRes.data)
-    } catch (error) {
-      console.error('Failed to fetch data:', error)
-    } finally {
-      setLoading(false)
-    }
+      const [rr, hr] = await Promise.all([api.get('/rooms'), api.get('/boarding-houses')])
+      setRooms(rr.data); setHouses(hr.data)
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault(); setSaving(true)
     try {
-      const payload = {
-        ...formData,
-        boardingHouseId: parseInt(formData.boardingHouseId),
-        floor: formData.floor ? parseInt(formData.floor) : null,
-        area: formData.area ? parseFloat(formData.area) : null,
-        maxOccupants: formData.maxOccupants ? parseInt(formData.maxOccupants) : null,
-        baseRent: formData.baseRent ? parseFloat(formData.baseRent) : null,
-      }
-      if (editing) {
-        await api.put(`/rooms/${editing.id}`, payload)
-      } else {
-        await api.post('/rooms', payload)
-      }
-      setShowModal(false)
-      setEditing(null)
-      setFormData({ code: '', boardingHouseId: '', floor: '', area: '', maxOccupants: '', baseRent: '', status: 'AVAILABLE' })
-      fetchData()
-      showToast(editing ? 'Room updated successfully' : 'Room added successfully', 'success')
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Error saving room', 'error')
-    }
+      const payload = { ...formData, boardingHouseId: parseInt(formData.boardingHouseId), floor: formData.floor ? parseInt(formData.floor) : null, area: formData.area ? parseFloat(formData.area) : null, maxOccupants: formData.maxOccupants ? parseInt(formData.maxOccupants) : null, baseRent: formData.baseRent ? parseFloat(formData.baseRent) : null }
+      editing ? await api.put(`/rooms/${editing.id}`, payload) : await api.post('/rooms', payload)
+      setShowModal(false); setEditing(null); setFormData(empty); fetchData()
+      showToast(editing ? 'Room updated' : 'Room added', 'success')
+    } catch (err) { showToast(err.response?.data?.message || 'Error saving room', 'error') }
+    finally { setSaving(false) }
   }
 
-  const handleEdit = (room) => {
-    setEditing(room)
-    setFormData({
-      code: room.code,
-      boardingHouseId: room.boardingHouseId.toString(),
-      floor: room.floor?.toString() || '',
-      area: room.area?.toString() || '',
-      maxOccupants: room.maxOccupants?.toString() || '',
-      baseRent: room.baseRent?.toString() || '',
-      status: room.status,
-    })
-    setShowModal(true)
-  }
+  const openEdit = (r) => { setEditing(r); setFormData({ code: r.code, boardingHouseId: r.boardingHouseId?.toString(), floor: r.floor?.toString() || '', area: r.area?.toString() || '', maxOccupants: r.maxOccupants?.toString() || '', baseRent: r.baseRent?.toString() || '', status: r.status }); setShowModal(true) }
+  const openAdd = () => { setEditing(null); setFormData(empty); setShowModal(true) }
+  const closeModal = () => { setShowModal(false); setEditing(null) }
 
   const handleDelete = async (id) => {
-    try {
-      await api.delete(`/rooms/${id}`)
-      fetchData()
-      showToast('Room deleted', 'success')
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Cannot delete room', 'error')
-    }
+    try { await api.delete(`/rooms/${id}`); fetchData(); showToast('Room deleted', 'success') }
+    catch (err) { showToast(err.response?.data?.message || 'Cannot delete room', 'error') }
   }
 
-  const toggleSelect = (id) => {
-    setSelected(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
-  const toggleSelectAll = () => {
-    if (selected.size === paginatedRooms.length) setSelected(new Set())
-    else setSelected(new Set(paginatedRooms.map(r => r.id)))
-  }
+  const toggleSelect = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const toggleAll = () => setSelected(selected.size === paginated.length ? new Set() : new Set(paginated.map(r => r.id)))
 
   const handleBulkDelete = async () => {
     let ok = 0, fail = 0
-    for (const id of selected) {
-      try { await api.delete(`/rooms/${id}`); ok++ }
-      catch { fail++ }
-    }
-    setSelected(new Set())
-    fetchData()
-    showToast(`Deleted ${ok} rooms${fail > 0 ? `, ${fail} could not be deleted` : ''}`, fail > 0 ? 'warning' : 'success')
+    for (const id of selected) { try { await api.delete(`/rooms/${id}`); ok++ } catch { fail++ } }
+    setSelected(new Set()); fetchData()
+    showToast(`Deleted ${ok} rooms${fail > 0 ? `, ${fail} failed` : ''}`, fail > 0 ? 'warning' : 'success')
   }
 
-  if (loading) return <div>Loading...</div>
+  const onSort = (field) => { if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortField(field); setSortDir('asc') } }
+  const set = (k) => (e) => setFormData(f => ({ ...f, [k]: e.target.value }))
+
+  if (loading) return (
+    <div className="space-y-4">
+      <div className="h-10 w-48 bg-slate-100 rounded-2xl animate-pulse" />
+      <div className="h-64 bg-slate-100 rounded-3xl animate-pulse" />
+    </div>
+  )
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Rooms</h1>
-        <button
-          onClick={() => {
-            setEditing(null)
-            setFormData({ code: '', boardingHouseId: '', floor: '', area: '', maxOccupants: '', baseRent: '', status: 'AVAILABLE' })
-            setShowModal(true)
-          }}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Room
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900">Rooms</h1>
+          <p className="text-slate-500 mt-1 text-sm">{visibleRooms.length} of {rooms.length} rooms</p>
+        </div>
+        <button onClick={openAdd}
+          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5">
+          <Plus className="w-4 h-4" /> Add Room
         </button>
       </div>
 
-      <div className="mb-4 flex flex-col gap-4">
-        <div className="flex gap-3 items-center flex-wrap">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search rooms..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm w-full"
-            />
-          </div>
-          <select value={filterHouse} onChange={e => setFilterHouse(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-            <option value="ALL">All boarding houses</option>
-            {houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-          </select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-            <option value="ALL">All statuses</option>
-            <option value="AVAILABLE">Available</option>
-            <option value="OCCUPIED">Occupied</option>
-            <option value="MAINTENANCE">Maintenance</option>
-          </select>
-          <select
-            value={itemsPerPage}
-            onChange={(e) => {
-              setItemsPerPage(parseInt(e.target.value))
-              setCurrentPage(1)
-            }}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-          >
-            <option value={5}>5 per page</option>
-            <option value={10}>10 per page</option>
-            <option value={25}>25 per page</option>
-            <option value={50}>50 per page</option>
-          </select>
-          <span className="flex items-center text-sm text-gray-500">
-            {visibleRooms.length} rooms
-          </span>
+      {/* Filters */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1) }}
+            placeholder="Search rooms..." className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" />
         </div>
+        <select value={filterHouse} onChange={e => { setFilterHouse(e.target.value); setPage(1) }}
+          className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none">
+          <option value="ALL">All boarding houses</option>
+          {houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+        </select>
+        <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
+          className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none">
+          <option value="ALL">All statuses</option>
+          <option value="AVAILABLE">Available</option>
+          <option value="OCCUPIED">Occupied</option>
+          <option value="MAINTENANCE">Maintenance</option>
+        </select>
+        <select value={perPage} onChange={e => { setPerPage(parseInt(e.target.value)); setPage(1) }}
+          className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none">
+          {[5,10,25,50].map(n => <option key={n} value={n}>{n} per page</option>)}
+        </select>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3">
-                <input type="checkbox" checked={selected.size === paginatedRooms.length && paginatedRooms.length > 0}
-                  onChange={toggleSelectAll} className="rounded" />
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <button
-                  onClick={() => {
-                    if (sortField === 'code') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-                    } else {
-                      setSortField('code')
-                      setSortDirection('asc')
-                    }
-                  }}
-                  className="flex items-center gap-1 hover:text-gray-700"
-                >
-                  Code
-                  {sortField === 'code' && (
-                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                  {sortField !== 'code' && <ArrowUpDown className="w-3 h-3" />}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <button
-                  onClick={() => {
-                    if (sortField === 'boardingHouseName') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-                    } else {
-                      setSortField('boardingHouseName')
-                      setSortDirection('asc')
-                    }
-                  }}
-                  className="flex items-center gap-1 hover:text-gray-700"
-                >
-                  Boarding House
-                  {sortField === 'boardingHouseName' && (
-                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                  {sortField !== 'boardingHouseName' && <ArrowUpDown className="w-3 h-3" />}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <button
-                  onClick={() => {
-                    if (sortField === 'floor') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-                    } else {
-                      setSortField('floor')
-                      setSortDirection('asc')
-                    }
-                  }}
-                  className="flex items-center gap-1 hover:text-gray-700"
-                >
-                  Floor
-                  {sortField === 'floor' && (
-                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                  {sortField !== 'floor' && <ArrowUpDown className="w-3 h-3" />}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <button
-                  onClick={() => {
-                    if (sortField === 'area') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-                    } else {
-                      setSortField('area')
-                      setSortDirection('asc')
-                    }
-                  }}
-                  className="flex items-center gap-1 hover:text-gray-700"
-                >
-                  Area (m²)
-                  {sortField === 'area' && (
-                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                  {sortField !== 'area' && <ArrowUpDown className="w-3 h-3" />}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <button
-                  onClick={() => {
-                    if (sortField === 'baseRent') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-                    } else {
-                      setSortField('baseRent')
-                      setSortDirection('asc')
-                    }
-                  }}
-                  className="flex items-center gap-1 hover:text-gray-700"
-                >
-                  Rent
-                  {sortField === 'baseRent' && (
-                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                  {sortField !== 'baseRent' && <ArrowUpDown className="w-3 h-3" />}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <button
-                  onClick={() => {
-                    if (sortField === 'currentTenantName') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-                    } else {
-                      setSortField('currentTenantName')
-                      setSortDirection('asc')
-                    }
-                  }}
-                  className="flex items-center gap-1 hover:text-gray-700"
-                >
-                  Tenant
-                  {sortField === 'currentTenantName' && (
-                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                  {sortField !== 'currentTenantName' && <ArrowUpDown className="w-3 h-3" />}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <button
-                  onClick={() => {
-                    if (sortField === 'status') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-                    } else {
-                      setSortField('status')
-                      setSortDirection('asc')
-                    }
-                  }}
-                  className="flex items-center gap-1 hover:text-gray-700"
-                >
-                  Status
-                  {sortField === 'status' && (
-                    sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                  {sortField !== 'status' && <ArrowUpDown className="w-3 h-3" />}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {paginatedRooms.map((room) => (
-              <tr key={room.id} className={`hover:bg-gray-50 ${selected.has(room.id) ? 'bg-blue-50' : ''}`}>
-                <td className="px-4 py-4">
-                  <input type="checkbox" checked={selected.has(room.id)}
-                    onChange={() => toggleSelect(room.id)} className="rounded" />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  <button
-                    onClick={() => navigate(`/admin/rooms/${room.id}/detail`)}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    {room.code}
-                  </button>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">{room.boardingHouseName}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{room.floor || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{room.area || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(room.baseRent || 0)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {room.currentTenantName || <span className="text-gray-300">—</span>}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    room.status === 'AVAILABLE' ? 'bg-green-100 text-green-800' :
-                    room.status === 'OCCUPIED' ? 'bg-blue-100 text-blue-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {room.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button onClick={() => navigate(`/admin/rooms/${room.id}/detail`)} className="text-blue-600 hover:text-blue-900 mr-4">
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleEdit(room)} className="text-blue-600 hover:text-blue-900 mr-4">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setConfirmDelete(room.id)} className="text-red-600 hover:text-red-900">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
+      {/* Table */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/60">
+                <th className="px-4 py-4 w-10">
+                  <input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={toggleAll}
+                    className="w-4 h-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500" />
+                </th>
+                {[['code','Code'],['boardingHouseName','Boarding House'],['floor','Floor'],['area','Area (m²)'],['baseRent','Rent'],['currentTenantName','Tenant'],['status','Status']].map(([f,l]) => (
+                  <th key={f} className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <SortBtn field={f} current={sortField} dir={sortDir} onSort={onSort}>{l}</SortBtn>
+                  </th>
+                ))}
+                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, visibleRooms.length)} of {visibleRooms.length} results
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum
-                if (totalPages <= 5) {
-                  pageNum = i + 1
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i
-                } else {
-                  pageNum = currentPage - 2 + i
-                }
-                
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {paginated.length === 0 ? (
+                <tr><td colSpan={9} className="px-6 py-16 text-center text-slate-400">
+                  <DoorOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-semibold">No rooms found</p>
+                </td></tr>
+              ) : paginated.map(r => {
+                const st = STATUS_CFG[r.status] || STATUS_CFG.AVAILABLE
                 return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-1 text-sm border rounded-md ${
-                      currentPage === pageNum
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {pageNum}
+                  <tr key={r.id} className={`hover:bg-slate-50/60 transition-colors group ${selected.has(r.id) ? 'bg-blue-50/40' : ''}`}>
+                    <td className="px-4 py-3.5">
+                      <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)}
+                        className="w-4 h-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <button onClick={() => navigate(`/admin/rooms/${r.id}/detail`)}
+                        className="font-black text-blue-600 hover:text-blue-800 text-sm transition-colors">{r.code}</button>
+                    </td>
+                    <td className="px-4 py-3.5 text-sm text-slate-600 font-medium">{r.boardingHouseName}</td>
+                    <td className="px-4 py-3.5 text-sm text-slate-500">{r.floor ?? '—'}</td>
+                    <td className="px-4 py-3.5 text-sm text-slate-500">{r.area ? `${r.area} m²` : '—'}</td>
+                    <td className="px-4 py-3.5 text-sm font-bold text-slate-700">{fmt(r.baseRent)}</td>
+                    <td className="px-4 py-3.5 text-sm text-slate-600">{r.currentTenantName || <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-3.5">
+                      <span className={`px-2.5 py-1 text-[10px] font-black rounded-xl border ${st.cls}`}>{st.label}</span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => navigate(`/admin/rooms/${r.id}/detail`)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Eye className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => openEdit(r)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Edit className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setConfirmDelete(r.id)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-xl transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between">
+            <p className="text-xs font-bold text-slate-400">
+              Showing {start + 1}–{Math.min(start + perPage, visibleRooms.length)} of {visibleRooms.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
+                className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 transition-all shadow-sm">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const p = Math.max(0, Math.min(page - 3, totalPages - 5)) + i + 1
+                return (
+                  <button key={p} onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-xl text-sm font-bold transition-all ${p === page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                    {p}
                   </button>
                 )
               })}
+              <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)}
+                className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 transition-all shadow-sm">
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
-            
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">{editing ? 'Edit' : 'Add'} Room</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Room Code</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Boarding House</label>
-                <select
-                  required
-                  value={formData.boardingHouseId}
-                  onChange={(e) => setFormData({ ...formData, boardingHouseId: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">Select...</option>
-                  {houses.map((house) => (
-                    <option key={house.id} value={house.id}>{house.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Floor</label>
-                  <input
-                    type="number"
-                    value={formData.floor}
-                    onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={closeModal}>
+          <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="px-8 pt-8 pb-5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
+                  <DoorOpen className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Area (m²)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.area}
-                    onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
+                  <h2 className="text-xl font-black text-slate-900">{editing ? 'Edit' : 'Add'} Room</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{editing ? `Editing ${editing.code}` : 'Add a new room to a property'}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Max Occupants</label>
-                  <input
-                    type="number"
-                    value={formData.maxOccupants}
-                    onChange={(e) => setFormData({ ...formData, maxOccupants: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
+              <button onClick={closeModal} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="px-8 py-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Room Code">
+                    <input required value={formData.code} onChange={set('code')} placeholder="e.g. A101" className={inputCls} />
+                  </Field>
+                  <Field label="Status">
+                    <select value={formData.status} onChange={set('status')} className={selectCls}>
+                      <option value="AVAILABLE">Available</option>
+                      <option value="OCCUPIED">Occupied</option>
+                      <option value="MAINTENANCE">Maintenance</option>
+                    </select>
+                  </Field>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Base Rent</label>
-                  <input
-                    type="number"
-                    required
-                    value={formData.baseRent}
-                    onChange={(e) => setFormData({ ...formData, baseRent: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
+                <Field label="Boarding House">
+                  <select required value={formData.boardingHouseId} onChange={set('boardingHouseId')} className={selectCls}>
+                    <option value="">Select a property...</option>
+                    {houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                  </select>
+                </Field>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="Floor">
+                    <input type="number" min="1" value={formData.floor} onChange={set('floor')} placeholder="1" className={inputCls} />
+                  </Field>
+                  <Field label="Area (m²)">
+                    <input type="number" step="0.1" min="0" value={formData.area} onChange={set('area')} placeholder="20" className={inputCls} />
+                  </Field>
+                  <Field label="Max Occupants">
+                    <input type="number" min="1" value={formData.maxOccupants} onChange={set('maxOccupants')} placeholder="2" className={inputCls} />
+                  </Field>
                 </div>
+                <Field label="Base Rent (VND)">
+                  <input type="number" required min="0" value={formData.baseRent} onChange={set('baseRent')} placeholder="e.g. 2500000" className={inputCls} />
+                </Field>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="AVAILABLE">Available</option>
-                  <option value="OCCUPIED">Occupied</option>
-                  <option value="MAINTENANCE">Maintenance</option>
-                </select>
-              </div>
-              <div className="flex justify-end space-x-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false)
-                    setEditing(null)
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                  Save
+
+              <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button type="button" onClick={closeModal} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                <button type="submit" disabled={saving}
+                  className="px-8 py-2.5 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
+                  {saving ? 'Saving...' : editing ? 'Save Changes' : 'Add Room'}
                 </button>
               </div>
             </form>
@@ -598,36 +320,13 @@ const Rooms = () => {
         </div>
       )}
 
-      <ConfirmDialog
-        isOpen={!!confirmDelete}
-        title="Delete Room"
-        message="Are you sure you want to delete this room?"
-        confirmText="Delete"
-        cancelText="Cancel"
-        danger
-        onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }}
-        onCancel={() => setConfirmDelete(null)}
-      />
-
-      <ConfirmDialog
-        isOpen={confirmBulkDelete}
-        title={`Delete ${selected.size} rooms`}
-        message={`Are you sure you want to delete ${selected.size} selected rooms? Rooms with guests cannot be deleted.`}
-        confirmText="Delete All"
-        cancelText="Cancel"
-        danger
-        onConfirm={() => { handleBulkDelete(); setConfirmBulkDelete(false) }}
-        onCancel={() => setConfirmBulkDelete(false)}
-      />
-
-      <BulkActionBar
-        selectedCount={selected.size}
-        onDelete={() => setConfirmBulkDelete(true)}
-        onClear={() => setSelected(new Set())}
-      />
+      <ConfirmDialog isOpen={!!confirmDelete} title="Delete Room" message="Are you sure you want to delete this room?" confirmText="Delete" cancelText="Cancel" danger
+        onConfirm={() => { handleDelete(confirmDelete); setConfirmDelete(null) }} onCancel={() => setConfirmDelete(null)} />
+      <ConfirmDialog isOpen={confirmBulkDelete} title={`Delete ${selected.size} rooms`} message={`Delete ${selected.size} selected rooms? Rooms with active contracts cannot be deleted.`} confirmText="Delete All" cancelText="Cancel" danger
+        onConfirm={() => { handleBulkDelete(); setConfirmBulkDelete(false) }} onCancel={() => setConfirmBulkDelete(false)} />
+      <BulkActionBar selectedCount={selected.size} onDelete={() => setConfirmBulkDelete(true)} onClear={() => setSelected(new Set())} />
     </div>
   )
 }
 
 export default Rooms
-

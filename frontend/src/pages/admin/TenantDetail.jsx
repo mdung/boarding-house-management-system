@@ -2,16 +2,37 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
-import { ArrowLeft, Edit2, Save, X, CreditCard, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, CreditCard, ShoppingCart, Phone, Mail, MapPin, CreditCard as IdCard, Calendar, DoorOpen, FileText, Receipt, CheckCircle, AlertCircle, Clock } from 'lucide-react'
 
-const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US') : '-'
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—'
+
+const inputCls = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all'
+const Field = ({ label, children }) => (
+  <div className="space-y-1.5">
+    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">{label}</label>
+    {children}
+  </div>
+)
+
+const INV_STATUS = {
+  PAID:           { label: 'Paid',           cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  PARTIALLY_PAID: { label: 'Partial',        cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  OVERDUE:        { label: 'Overdue',        cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+  UNPAID:         { label: 'Unpaid',         cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+}
+
+const CONTRACT_STATUS = {
+  ACTIVE:     { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  EXPIRED:    { cls: 'bg-slate-100 text-slate-500 border-slate-200' },
+  TERMINATED: { cls: 'bg-rose-50 text-rose-600 border-rose-200' },
+}
 
 const TenantDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const [tenant, setTenant] = useState(null)
-  const [summary, setSummary] = useState(null) // contract financial summary
+  const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editingCheckout, setEditingCheckout] = useState(null)
   const [newCheckoutDate, setNewCheckoutDate] = useState('')
@@ -27,26 +48,19 @@ const TenantDetail = () => {
     try {
       const r = await api.get(`/tenants/${id}/detail`)
       setTenant(r.data)
-      // Fetch contract summary for active contract
       const active = r.data.contracts?.find(c => c.status === 'ACTIVE')
       if (active) {
         const s = await api.get(`/guest-charges/contract/${active.id}/summary`)
         setSummary(s.data)
-      } else {
-        setSummary(null)
-      }
+      } else setSummary(null)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
-  const startEditCheckout = (contract) => { setEditingCheckout(contract.id); setNewCheckoutDate(contract.endDate) }
-
   const saveCheckout = async (contractId) => {
     setSaving(true)
-    try {
-      await api.patch(`/contracts/${contractId}/checkout-date`, { endDate: newCheckoutDate })
-      setEditingCheckout(null); fetchAll()
-    } catch (e) { alert(e.response?.data?.message || 'Error') }
+    try { await api.patch(`/contracts/${contractId}/checkout-date`, { endDate: newCheckoutDate }); setEditingCheckout(null); fetchAll() }
+    catch (e) { alert(e.response?.data?.message || 'Error') }
     finally { setSaving(false) }
   }
 
@@ -56,107 +70,126 @@ const TenantDetail = () => {
     if (!active) return
     setPaying(true)
     try {
-      await api.post(`/payments/contract/${active.id}`, {
-        paidAmount: parseFloat(payForm.paidAmount),
-        method: payForm.method,
-        note: payForm.note,
-        transactionCode: payForm.transactionCode,
-        paymentDate: payForm.paymentDate ? new Date(payForm.paymentDate).toISOString() : null,
-      })
+      await api.post(`/payments/contract/${active.id}`, { paidAmount: parseFloat(payForm.paidAmount), method: payForm.method, note: payForm.note, transactionCode: payForm.transactionCode, paymentDate: payForm.paymentDate ? new Date(payForm.paymentDate).toISOString() : null })
       setShowPayModal(false)
       setPayForm({ paidAmount: '', method: 'CASH', note: '', transactionCode: '', paymentDate: new Date().toISOString().split('T')[0] })
-      eventBus.emit(EVENTS.PAYMENT_CHANGED)
-      fetchAll()
+      eventBus.emit(EVENTS.PAYMENT_CHANGED); fetchAll()
     } catch (e) { alert(e.response?.data?.message || 'Payment error') }
     finally { setPaying(false) }
   }
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>
-  if (!tenant) return <div className="p-8 text-center text-red-500">Guest not found</div>
+  if (loading) return (
+    <div className="space-y-4 animate-pulse">
+      <div className="h-8 w-32 bg-slate-100 rounded-2xl" />
+      <div className="h-48 bg-slate-100 rounded-3xl" />
+      <div className="h-64 bg-slate-100 rounded-3xl" />
+    </div>
+  )
+  if (!tenant) return <div className="p-8 text-center text-rose-500 font-semibold">Guest not found</div>
 
   const activeContract = tenant.contracts?.find(c => c.status === 'ACTIVE')
   const remaining = summary ? parseFloat(summary.remainingAmount) : 0
   const today = new Date(); today.setHours(0,0,0,0)
   const checkoutDate = activeContract ? new Date(activeContract.endDate + 'T00:00:00') : null
-  const daysUntilCheckout = checkoutDate ? Math.round((checkoutDate - today) / 86400000) : null
+  const daysLeft = checkoutDate ? Math.round((checkoutDate - today) / 86400000) : null
+
+  const checkoutAlert = daysLeft !== null && (
+    daysLeft < 0  ? { msg: `Overdue by ${Math.abs(daysLeft)} days`, cls: 'bg-rose-50 border-rose-200 text-rose-700' } :
+    daysLeft === 0 ? { msg: 'Checking out today', cls: 'bg-orange-50 border-orange-200 text-orange-700' } :
+    daysLeft === 1 ? { msg: 'Checking out tomorrow', cls: 'bg-amber-50 border-amber-200 text-amber-700' } :
+    null
+  )
 
   return (
-    <div>
-      <button onClick={() => navigate('/admin/tenants')} className="mb-4 flex items-center text-blue-600 hover:text-blue-800">
-        <ArrowLeft className="w-4 h-4 mr-2" /> Back to list
+    <div className="space-y-5 max-w-5xl">
+      {/* Back */}
+      <button onClick={() => navigate('/admin/tenants')}
+        className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors">
+        <ArrowLeft className="w-4 h-4" /> Back to Tenants
       </button>
 
-      {/* Header + debt summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="md:col-span-2 bg-white rounded-lg shadow p-6">
-          <h1 className="text-2xl font-bold mb-4">{tenant.fullName}</h1>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="text-gray-500">Phone:</span> <span className="font-medium ml-1">{tenant.phone}</span></div>
-            <div><span className="text-gray-500">Email:</span> <span className="font-medium ml-1">{tenant.email || '-'}</span></div>
-            <div><span className="text-gray-500">ID Number:</span> <span className="font-medium ml-1">{tenant.identityNumber || '-'}</span></div>
-            <div><span className="text-gray-500">Date of Birth:</span> <span className="font-medium ml-1">{fmtDate(tenant.dateOfBirth)}</span></div>
-            <div className="col-span-2"><span className="text-gray-500">Address:</span> <span className="font-medium ml-1">{tenant.permanentAddress || '-'}</span></div>
+      {/* Top grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Profile card */}
+        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-blue-500/20 flex-shrink-0">
+              {tenant.fullName?.charAt(0)?.toUpperCase()}
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-900">{tenant.fullName}</h1>
+              <p className="text-sm text-slate-500 mt-0.5">
+                {activeContract ? <span className="text-emerald-600 font-bold">● Staying · Room {activeContract.roomCode}</span> : <span className="text-slate-400">No active contract</span>}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              { icon: Phone,    label: 'Phone',        value: tenant.phone },
+              { icon: Mail,     label: 'Email',        value: tenant.email },
+              { icon: IdCard,   label: 'ID Number',    value: tenant.identityNumber },
+              { icon: Calendar, label: 'Date of Birth',value: fmtDate(tenant.dateOfBirth) },
+              { icon: MapPin,   label: 'Address',      value: tenant.permanentAddress, full: true },
+            ].map(({ icon: Icon, label, value, full }) => (
+              <div key={label} className={`flex items-start gap-3 p-3 bg-slate-50 rounded-2xl ${full ? 'sm:col-span-2' : ''}`}>
+                <div className="w-7 h-7 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Icon className="w-3.5 h-3.5 text-slate-500" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+                  <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">{value || '—'}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Debt summary card */}
-        <div className={`rounded-lg shadow p-6 ${remaining > 0 ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
-          <h3 className="font-semibold text-gray-700 mb-3">Payment Summary</h3>
+        {/* Payment summary */}
+        <div className={`rounded-3xl border shadow-sm p-6 flex flex-col ${remaining > 0 ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'}`}>
+          <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
+            <Receipt className="w-4 h-4" /> Payment Summary
+          </h3>
           {summary ? (
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Room charge:</span>
-                <span className="font-medium">{fmt(summary.totalRent)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Services:</span>
-                <span className="font-medium">{fmt(summary.totalCharges)}</span>
-              </div>
-              {summary.deposit > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Deposit:</span>
-                  <span className="font-medium text-blue-600">{fmt(summary.deposit)}</span>
+            <div className="flex-1 space-y-2.5 text-sm">
+              {[
+                { label: 'Room charge', value: summary.totalRent },
+                { label: 'Services',    value: summary.totalCharges },
+                ...(summary.deposit > 0 ? [{ label: 'Deposit', value: summary.deposit, cls: 'text-blue-600' }] : []),
+                { label: 'Total',       value: summary.totalAmount, bold: true, border: true },
+                { label: 'Paid',        value: summary.totalPaid, cls: 'text-emerald-600' },
+              ].map(({ label, value, cls, bold, border }) => (
+                <div key={label} className={`flex justify-between ${border ? 'border-t border-slate-200 pt-2.5' : ''}`}>
+                  <span className={`${bold ? 'font-bold text-slate-700' : 'text-slate-500'}`}>{label}</span>
+                  <span className={`font-bold ${cls || 'text-slate-800'}`}>{fmt(value)}</span>
                 </div>
-              )}
-              <div className="flex justify-between text-gray-700 font-medium border-t pt-1">
-                <span>Total:</span>
-                <span>{fmt(summary.totalAmount)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Paid:</span>
-                <span className="font-medium text-green-600">{fmt(summary.totalPaid)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="font-semibold">Remaining:</span>
-                <span className={`font-bold text-lg ${remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {fmt(remaining)}
-                </span>
+              ))}
+              <div className="flex justify-between border-t border-slate-200 pt-2.5">
+                <span className="font-black text-slate-800">Remaining</span>
+                <span className={`font-black text-xl ${remaining > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmt(remaining)}</span>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No active contract</p>
-          )}
-          {activeContract && daysUntilCheckout !== null && (
-            <div className={`mt-3 pt-3 border-t text-xs text-center font-medium ${
-              daysUntilCheckout < 0 ? 'text-red-600' : daysUntilCheckout === 0 ? 'text-orange-600' :
-              daysUntilCheckout <= 2 ? 'text-yellow-600' : 'text-gray-500'
-            }`}>
-              {daysUntilCheckout < 0 ? `⚠️ Overdue by ${Math.abs(daysUntilCheckout)} days` :
-               daysUntilCheckout === 0 ? '🔔 Checking out today' :
-               daysUntilCheckout === 1 ? '🔔 Checking out tomorrow' :
-               `📅 ${daysUntilCheckout} days remaining`}
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-sm text-slate-400 font-medium">No active contract</p>
             </div>
           )}
+
+          {checkoutAlert && (
+            <div className={`mt-4 px-3 py-2 rounded-2xl border text-xs font-bold text-center ${checkoutAlert.cls}`}>
+              {checkoutAlert.msg}
+            </div>
+          )}
+
           {activeContract && remaining > 0 && (
             <button onClick={() => { setPayForm(f => ({...f, paidAmount: remaining.toFixed(0)})); setShowPayModal(true) }}
-              className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">
-              <CreditCard className="w-4 h-4" /> Collect Payment ({fmt(remaining)})
+              className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-2xl shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
+              <CreditCard className="w-4 h-4" /> Collect {fmt(remaining)}
             </button>
           )}
           {activeContract && (
             <button onClick={() => navigate(`/admin/guest-charges?contractId=${activeContract.id}`)}
-              className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-50 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-100 border border-purple-200">
-              <ShoppingCart className="w-4 h-4" /> Add Service
+              className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 bg-white/70 hover:bg-white text-purple-700 text-sm font-bold rounded-2xl border border-purple-200 transition-all">
+              <ShoppingCart className="w-4 h-4" /> Add Service Charge
             </button>
           )}
         </div>
@@ -164,164 +197,182 @@ const TenantDetail = () => {
 
       {/* Contracts */}
       {tenant.contracts?.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">Rental Contracts</h2>
-          <div className="space-y-3">
-            {tenant.contracts.map(c => (
-              <div key={c.id} className={`border rounded-lg p-4 ${c.status === 'ACTIVE' ? 'border-blue-200 bg-blue-50' : 'border-gray-200'}`}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="font-semibold text-blue-700">{c.code}</span>
-                    <span className="ml-2 text-sm text-gray-600">— Room {c.roomCode}</span>
-                    <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                      c.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                      c.status === 'TERMINATED' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-                    }`}>{c.status}</span>
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-slate-500" />
+            <h2 className="font-black text-slate-900">Rental Contracts</h2>
+            <span className="ml-auto text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{tenant.contracts.length}</span>
+          </div>
+          <div className="p-4 space-y-3">
+            {tenant.contracts.map(c => {
+              const stCls = CONTRACT_STATUS[c.status]?.cls || CONTRACT_STATUS.EXPIRED.cls
+              return (
+                <div key={c.id} className={`rounded-2xl border p-4 ${c.status === 'ACTIVE' ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-blue-700 text-sm">{c.code}</span>
+                      <span className="flex items-center gap-1 px-2 py-0.5 bg-white rounded-xl border border-slate-200 text-xs font-bold text-slate-600">
+                        <DoorOpen className="w-3 h-3" /> {c.roomCode}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-xl border text-[10px] font-black ${stCls}`}>{c.status}</span>
+                    </div>
+                    <span className="text-sm font-black text-slate-700">
+                      {c.dailyRate ? `${fmt(c.dailyRate)}/ngày` : `${fmt(c.monthlyRent)}/tháng`}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium">
-                    {c.dailyRate ? `${fmt(c.dailyRate)}/day` : `${fmt(c.monthlyRent)}/month`}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
-                  <span>Check-in: <strong>{fmtDate(c.startDate)}</strong></span>                  <span className="flex items-center gap-1">
-                    Check-out:
-                    {editingCheckout === c.id ? (
-                      <span className="flex items-center gap-1 ml-1">
-                        <input type="date" value={newCheckoutDate}
-                          onChange={e => setNewCheckoutDate(e.target.value)}
-                          className="px-2 py-0.5 border border-blue-300 rounded text-sm" />
-                        <button onClick={() => saveCheckout(c.id)} disabled={saving}
-                          className="p-1 text-green-600 hover:text-green-800"><Save className="w-4 h-4" /></button>
-                        <button onClick={() => setEditingCheckout(null)}
-                          className="p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 ml-1">
-                        <strong>{fmtDate(c.endDate)}</strong>
-                        {c.status === 'ACTIVE' && (
-                          <button onClick={() => startEditCheckout(c)} className="text-blue-400 hover:text-blue-600">
-                            <Edit2 className="w-3.5 h-3.5" />
+                  <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-600">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      Check-in: <strong>{fmtDate(c.startDate)}</strong>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      Check-out:
+                      {editingCheckout === c.id ? (
+                        <span className="flex items-center gap-1 ml-1">
+                          <input type="date" value={newCheckoutDate} onChange={e => setNewCheckoutDate(e.target.value)}
+                            className="px-2 py-1 border border-blue-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          <button onClick={() => saveCheckout(c.id)} disabled={saving} className="w-7 h-7 flex items-center justify-center bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl transition-colors">
+                            <Save className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </span>
-                    )}
-                  </span>
+                          <button onClick={() => setEditingCheckout(null)} className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 ml-1">
+                          <strong>{fmtDate(c.endDate)}</strong>
+                          {c.status === 'ACTIVE' && (
+                            <button onClick={() => { setEditingCheckout(c.id); setNewCheckoutDate(c.endDate) }}
+                              className="w-6 h-6 flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors">
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
 
       {/* Invoices */}
       {tenant.invoices?.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">
-            Invoices ({tenant.totalInvoices}) — Unpaid: <span className="text-red-600">{tenant.unpaidInvoices}</span>
-          </h2>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs text-gray-500 uppercase">Invoice Code</th>
-                <th className="px-4 py-2 text-left text-xs text-gray-500 uppercase">Period</th>
-                <th className="px-4 py-2 text-right text-xs text-gray-500 uppercase">Total</th>
-                <th className="px-4 py-2 text-right text-xs text-gray-500 uppercase">Paid</th>
-                <th className="px-4 py-2 text-right text-xs text-gray-500 uppercase">Remaining</th>
-                <th className="px-4 py-2 text-left text-xs text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {tenant.invoices.map(inv => (
-                <tr key={inv.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-sm font-medium text-gray-900">{inv.code}</td>
-                  <td className="px-4 py-2 text-sm text-gray-600">{inv.periodMonth}/{inv.periodYear}</td>
-                  <td className="px-4 py-2 text-sm text-right">{fmt(inv.totalAmount)}</td>
-                  <td className="px-4 py-2 text-sm text-right text-green-600">{fmt(inv.paidAmount)}</td>
-                  <td className="px-4 py-2 text-sm text-right font-medium text-red-600">{fmt(inv.remainingAmount)}</td>
-                  <td className="px-4 py-2">
-                    <span className={`px-2 py-0.5 text-xs rounded-full ${
-                      inv.status === 'PAID' ? 'bg-green-100 text-green-800' :
-                      inv.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800' :
-                      inv.status === 'OVERDUE' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
-                    }`}>{inv.status}</span>
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {inv.status !== 'PAID' && (
-                      <button onClick={() => { setPayForm(f => ({...f, paidAmount: inv.remainingAmount?.toFixed(0) || ''})); setShowPayModal(true) }}
-                        className="text-green-600 hover:text-green-800" title="Pay">
-                        <CreditCard className="w-4 h-4" />
-                      </button>
-                    )}
-                  </td>
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-slate-500" />
+            <h2 className="font-black text-slate-900">Invoices</h2>
+            <span className="ml-1 text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{tenant.totalInvoices}</span>
+            {tenant.unpaidInvoices > 0 && (
+              <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">{tenant.unpaidInvoices} unpaid</span>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/60">
+                  {['Invoice Code','Period','Total','Paid','Remaining','Status',''].map(h => (
+                    <th key={h} className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {tenant.invoices.map(inv => {
+                  const st = INV_STATUS[inv.status] || INV_STATUS.UNPAID
+                  return (
+                    <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors group">
+                      <td className="px-5 py-3.5 text-sm font-bold text-slate-800">{inv.code}</td>
+                      <td className="px-5 py-3.5 text-sm text-slate-500">{inv.periodMonth}/{inv.periodYear}</td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-slate-700">{fmt(inv.totalAmount)}</td>
+                      <td className="px-5 py-3.5 text-sm font-bold text-emerald-600">{fmt(inv.paidAmount)}</td>
+                      <td className="px-5 py-3.5 text-sm font-bold text-rose-600">{fmt(inv.remainingAmount)}</td>
+                      <td className="px-5 py-3.5">
+                        <span className={`px-2.5 py-1 text-[10px] font-black rounded-xl border ${st.cls}`}>{st.label}</span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {inv.status !== 'PAID' && (
+                          <button onClick={() => { setPayForm(f => ({...f, paidAmount: inv.remainingAmount?.toFixed(0) || ''})); setShowPayModal(true) }}
+                            className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl transition-all">
+                            <CreditCard className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Payment Modal */}
       {showPayModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h2 className="text-xl font-bold mb-1">Collect Payment</h2>
-            <p className="text-sm text-gray-500 mb-4">{tenant.fullName} — {activeContract?.roomCode}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowPayModal(false)}>
+          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="px-7 pt-7 pb-5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">Collect Payment</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{tenant.fullName} · Room {activeContract?.roomCode}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowPayModal(false)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
 
             {summary && (
-              <div className="bg-gray-50 rounded-xl p-4 mb-4 text-sm space-y-1">
-                <div className="flex justify-between"><span className="text-gray-500">Room charge:</span><span>{fmt(summary.totalRent)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Services:</span><span>{fmt(summary.totalCharges)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Paid:</span><span className="text-green-600">- {fmt(summary.totalPaid)}</span></div>
-                <div className="flex justify-between font-bold border-t pt-1"><span>Remaining:</span><span className="text-red-600">{fmt(summary.remainingAmount)}</span></div>
+              <div className="mx-7 mt-5 bg-slate-50 rounded-2xl p-4 text-sm space-y-2">
+                {[['Room charge', summary.totalRent], ['Services', summary.totalCharges], ['Paid', `-${fmt(summary.totalPaid)}`]].map(([l, v]) => (
+                  <div key={l} className="flex justify-between text-slate-500"><span>{l}</span><span className="font-semibold text-slate-700">{typeof v === 'string' ? v : fmt(v)}</span></div>
+                ))}
+                <div className="flex justify-between border-t border-slate-200 pt-2 font-black text-slate-800">
+                  <span>Remaining</span><span className="text-rose-600">{fmt(summary.remainingAmount)}</span>
+                </div>
               </div>
             )}
 
-            <form onSubmit={handlePay} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Payment Amount *</label>
-                <input required type="number" min="1000" step="1000"
-                  value={payForm.paidAmount}
-                  onChange={e => setPayForm(f => ({...f, paidAmount: e.target.value}))}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-semibold" />
-                {payForm.paidAmount && summary && (
-                  <p className="text-xs mt-1 text-gray-500">
-                    {parseFloat(payForm.paidAmount) >= parseFloat(summary.remainingAmount)
-                      ? '✅ Full payment'
-                      : `⚠️ Still owed ${fmt(parseFloat(summary.remainingAmount) - parseFloat(payForm.paidAmount))}`}
-                  </p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Method</label>
-                  <select value={payForm.method} onChange={e => setPayForm(f => ({...f, method: e.target.value}))}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option value="CASH">Cash</option>
-                    <option value="BANK_TRANSFER">Bank Transfer</option>
-                    <option value="MOMO">MoMo</option>
-                    <option value="OTHER">Other</option>
-                  </select>
+            <form onSubmit={handlePay}>
+              <div className="px-7 py-5 space-y-4">
+                <Field label="Payment Amount (VND)">
+                  <input required type="number" min="1000" step="1000" value={payForm.paidAmount}
+                    onChange={e => setPayForm(f => ({...f, paidAmount: e.target.value}))}
+                    className={inputCls + ' text-lg font-black'} placeholder="0" />
+                  {payForm.paidAmount && summary && (
+                    <p className={`text-xs mt-1 ml-1 font-bold ${parseFloat(payForm.paidAmount) >= parseFloat(summary.remainingAmount) ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {parseFloat(payForm.paidAmount) >= parseFloat(summary.remainingAmount) ? '✓ Full payment' : `Still owed ${fmt(parseFloat(summary.remainingAmount) - parseFloat(payForm.paidAmount))}`}
+                    </p>
+                  )}
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Method">
+                    <select value={payForm.method} onChange={e => setPayForm(f => ({...f, method: e.target.value}))} className={inputCls + ' appearance-none'}>
+                      <option value="CASH">Cash</option>
+                      <option value="BANK_TRANSFER">Bank Transfer</option>
+                      <option value="MOMO">MoMo</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </Field>
+                  <Field label="Date">
+                    <input type="date" value={payForm.paymentDate} onChange={e => setPayForm(f => ({...f, paymentDate: e.target.value}))} className={inputCls} />
+                  </Field>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Date</label>
-                  <input type="date" value={payForm.paymentDate}
-                    onChange={e => setPayForm(f => ({...f, paymentDate: e.target.value}))}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
-                </div>
+                <Field label="Note">
+                  <input type="text" value={payForm.note} onChange={e => setPayForm(f => ({...f, note: e.target.value}))} placeholder="Optional note..." className={inputCls} />
+                </Field>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Note</label>
-                <input type="text" value={payForm.note}
-                  onChange={e => setPayForm(f => ({...f, note: e.target.value}))}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowPayModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">Cancel</button>
+              <div className="px-7 py-5 bg-slate-50 border-t border-slate-100 flex gap-3">
+                <button type="button" onClick={() => setShowPayModal(false)} className="flex-1 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
                 <button type="submit" disabled={paying}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50">
-                  {paying ? 'Processing...' : 'Confirm'}
+                  className="flex-1 py-2.5 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
+                  {paying ? 'Processing...' : 'Confirm Payment'}
                 </button>
               </div>
             </form>

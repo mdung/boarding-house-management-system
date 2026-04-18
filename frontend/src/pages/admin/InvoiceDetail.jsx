@@ -2,7 +2,38 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
-import { ArrowLeft, Printer, DollarSign } from 'lucide-react'
+import { ArrowLeft, Printer, DollarSign, Receipt, FileText, DoorOpen, Calendar, User, Phone, CreditCard, Banknote, Smartphone } from 'lucide-react'
+
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—'
+
+const STATUS_CFG = {
+  PAID:           { label: 'Paid',         cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  PARTIALLY_PAID: { label: 'Partial',      cls: 'bg-amber-50 text-amber-700 border-amber-200',       dot: 'bg-amber-500'   },
+  OVERDUE:        { label: 'Overdue',      cls: 'bg-rose-50 text-rose-600 border-rose-200',           dot: 'bg-rose-500'    },
+  UNPAID:         { label: 'Unpaid',       cls: 'bg-slate-100 text-slate-500 border-slate-200',       dot: 'bg-slate-400'   },
+}
+
+const TYPE_CFG = {
+  RENT:    { cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  UTILITY: { cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  SERVICE: { cls: 'bg-violet-50 text-violet-700 border-violet-200' },
+  OTHER:   { cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+}
+
+const METHOD_ICON = { CASH: Banknote, BANK_TRANSFER: CreditCard, MOMO: Smartphone }
+
+const InfoTile = ({ icon: Icon, label, value, color = 'text-slate-800' }) => (
+  <div className="flex items-start gap-3 p-3.5 bg-slate-50 rounded-2xl">
+    <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+      <Icon className="w-4 h-4 text-slate-500" />
+    </div>
+    <div className="min-w-0">
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+      <p className={`text-sm font-bold mt-0.5 ${color}`}>{value || '—'}</p>
+    </div>
+  </div>
+)
 
 const InvoiceDetail = () => {
   const { id } = useParams()
@@ -10,185 +41,167 @@ const InvoiceDetail = () => {
   const [invoice, setInvoice] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchInvoice()
-  }, [id])
-
-  useEffect(() => {
-    return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchInvoice)
-  }, [id])
+  useEffect(() => { fetchInvoice() }, [id])
+  useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchInvoice) }, [id])
 
   const fetchInvoice = async () => {
-    try {
-      const response = await api.get(`/invoices/${id}/detail`)
-      setInvoice(response.data)
-    } catch (error) {
-      console.error('Failed to fetch invoice:', error)
-    } finally {
-      setLoading(false)
-    }
+    try { const r = await api.get(`/invoices/${id}/detail`); setInvoice(r.data) }
+    catch (e) { console.error(e) }
+    finally { setLoading(false) }
   }
 
-  if (loading) return <div>Loading...</div>
-  if (!invoice) return <div>Invoice not found</div>
+  if (loading) return (
+    <div className="space-y-4 animate-pulse">
+      <div className="h-8 w-40 bg-slate-100 rounded-2xl" />
+      <div className="h-64 bg-slate-100 rounded-3xl" />
+    </div>
+  )
+  if (!invoice) return <div className="p-8 text-center text-rose-500 font-semibold">Invoice not found</div>
+
+  const st = STATUS_CFG[invoice.status] || STATUS_CFG.UNPAID
+  const remaining = parseFloat(invoice.remainingAmount) || 0
 
   return (
-    <div>
-      <button
-        onClick={() => navigate('/admin/invoices')}
-        className="mb-4 flex items-center text-blue-600 hover:text-blue-800"
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Invoices
+    <div className="space-y-5 max-w-4xl">
+      <button onClick={() => navigate('/admin/invoices')}
+        className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors">
+        <ArrowLeft className="w-4 h-4" /> Back to Invoices
       </button>
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Invoice {invoice.code}</h1>
+      {/* Header */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+        <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
+              <Receipt className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-900">{invoice.code}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-black ${st.cls}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                  {st.label}
+                </span>
+                <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold">
+                  {invoice.periodMonth}/{invoice.periodYear}
+                </span>
+              </div>
+            </div>
+          </div>
           <div className="flex gap-2">
             {invoice.status !== 'PAID' && (
-              <button
-                onClick={() => navigate(`/admin/payments?invoiceId=${invoice.id}`)}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                <DollarSign className="w-4 h-4 mr-2" />
-                Make Payment
+              <button onClick={() => navigate(`/admin/payments?invoiceId=${invoice.id}`)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
+                <DollarSign className="w-4 h-4" /> Make Payment
               </button>
             )}
-            <button
-              onClick={() => window.print()}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              <Printer className="w-4 h-4 mr-2" />
-              Print
+            <button onClick={() => window.print()}
+              className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-sm transition-all">
+              <Printer className="w-4 h-4" /> Print
             </button>
           </div>
         </div>
-        
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Contract</h3>
-            <p className="text-lg">{invoice.contractCode}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Room</h3>
-            <p className="text-lg">{invoice.roomCode} - {invoice.boardingHouseName}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Period</h3>
-            <p className="text-lg">{invoice.periodMonth}/{invoice.periodYear}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Due Date</h3>
-            <p className="text-lg">{invoice.dueDate}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Tenant</h3>
-            <p className="text-lg">{invoice.mainTenantName}</p>
-            <p className="text-sm text-gray-600">{invoice.mainTenantPhone}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Status</h3>
-            <span className={`px-3 py-1 text-sm rounded-full ${
-              invoice.status === 'PAID' ? 'bg-green-100 text-green-800' :
-              invoice.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800' :
-              invoice.status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
-              {invoice.status}
-            </span>
-          </div>
-        </div>
 
-        <div className="border-t pt-6">
-          <h2 className="text-xl font-semibold mb-4">Invoice Items</h2>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Old Index</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">New Index</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <InfoTile icon={FileText}  label="Contract"  value={invoice.contractCode} />
+          <InfoTile icon={DoorOpen}  label="Room"      value={`${invoice.roomCode} · ${invoice.boardingHouseName}`} />
+          <InfoTile icon={Calendar}  label="Due Date"  value={fmtDate(invoice.dueDate)} />
+          <InfoTile icon={User}      label="Tenant"    value={invoice.mainTenantName} color="text-blue-700" />
+          <InfoTile icon={Phone}     label="Phone"     value={invoice.mainTenantPhone} />
+        </div>
+      </div>
+
+      {/* Invoice items */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+          <FileText className="w-4 h-4 text-slate-500" />
+          <h2 className="font-black text-slate-900">Invoice Items</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/60">
+                {['Description','Type','Old Index','New Index','Qty','Unit Price','Amount'].map(h => (
+                  <th key={h} className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {invoice.items?.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-6 py-4 text-sm text-gray-900">{item.description}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{item.type}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{item.oldIndex || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{item.newIndex || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{item.quantity || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {item.unitPrice ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.unitPrice) : '-'}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.amount || 0)}
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-slate-50">
+              {invoice.items?.length === 0 ? (
+                <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400 text-sm">No items</td></tr>
+              ) : invoice.items?.map(item => {
+                const tc = TYPE_CFG[item.type] || TYPE_CFG.OTHER
+                return (
+                  <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-5 py-3.5 text-sm font-semibold text-slate-800">{item.description}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg border ${tc.cls}`}>{item.type}</span>
+                    </td>
+                    <td className="px-5 py-3.5 text-sm text-slate-500">{item.oldIndex ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-slate-500">{item.newIndex ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-slate-500">{item.quantity ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-slate-500">{item.unitPrice ? fmt(item.unitPrice) : '—'}</td>
+                    <td className="px-5 py-3.5 text-sm font-black text-slate-800">{fmt(item.amount)}</td>
+                  </tr>
+                )
+              })}
             </tbody>
-            <tfoot className="bg-gray-50">
-              <tr>
-                <td colSpan="6" className="px-6 py-4 text-right text-sm font-medium text-gray-900">Total Amount:</td>
-                <td className="px-6 py-4 text-sm font-bold text-gray-900">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount || 0)}
-                </td>
-              </tr>
-              <tr>
-                <td colSpan="6" className="px-6 py-4 text-right text-sm font-medium text-gray-900">Paid Amount:</td>
-                <td className="px-6 py-4 text-sm font-medium text-green-600">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.paidAmount || 0)}
-                </td>
-              </tr>
-              <tr>
-                <td colSpan="6" className="px-6 py-4 text-right text-sm font-medium text-gray-900">Remaining:</td>
-                <td className="px-6 py-4 text-sm font-bold text-red-600">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(invoice.remainingAmount || 0)}
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
+        {/* Summary */}
+        <div className="border-t border-slate-100 bg-slate-50/40 px-6 py-4">
+          <div className="flex flex-col items-end gap-2 text-sm max-w-xs ml-auto">
+            <div className="flex justify-between w-full text-slate-600"><span>Total</span><span className="font-bold text-slate-800">{fmt(invoice.totalAmount)}</span></div>
+            <div className="flex justify-between w-full text-slate-600"><span>Paid</span><span className="font-bold text-emerald-600">{fmt(invoice.paidAmount)}</span></div>
+            <div className="flex justify-between w-full border-t border-slate-200 pt-2">
+              <span className="font-black text-slate-800">Remaining</span>
+              <span className={`font-black text-lg ${remaining > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmt(remaining)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {invoice.payments && invoice.payments.length > 0 && (
-          <div className="border-t pt-6 mt-6">
-            <h2 className="text-xl font-semibold mb-4">Payments</h2>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction Code</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Note</th>
+      {/* Payments */}
+      {invoice.payments?.length > 0 && (
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-slate-500" />
+            <h2 className="font-black text-slate-900">Payments</h2>
+            <span className="ml-auto text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{invoice.payments.length}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/60">
+                  {['Date','Amount','Method','Transaction Code','Note'].map(h => (
+                    <th key={h} className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {invoice.payments.map((payment) => (
-                  <tr key={payment.id}>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(payment.paymentDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(payment.paidAmount || 0)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{payment.method}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{payment.transactionCode || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{payment.note || '-'}</td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-slate-50">
+                {invoice.payments.map(p => {
+                  const MIcon = METHOD_ICON[p.method] || CreditCard
+                  return (
+                    <tr key={p.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="px-5 py-3.5 text-sm text-slate-500">{fmtDate(p.paymentDate)}</td>
+                      <td className="px-5 py-3.5 text-sm font-black text-emerald-600">{fmt(p.paidAmount)}</td>
+                      <td className="px-5 py-3.5">
+                        <span className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                          <MIcon className="w-3.5 h-3.5 text-slate-400" />{p.method}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-slate-400">{p.transactionCode || '—'}</td>
+                      <td className="px-5 py-3.5 text-sm text-slate-400">{p.note || '—'}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default InvoiceDetail
-
