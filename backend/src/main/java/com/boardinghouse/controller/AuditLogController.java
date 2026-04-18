@@ -3,6 +3,9 @@ package com.boardinghouse.controller;
 import com.boardinghouse.dto.AuditLogDto;
 import com.boardinghouse.service.AuditLogService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,11 +30,10 @@ public class AuditLogController {
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String module,
             @RequestParam(required = false) String action,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm[:ss]") LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm[:ss]") LocalDateTime end,
+            @PageableDefault(size = 20, sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        return ResponseEntity.ok(auditLogService.search(userId, module, action, start, end, page, size));
+        return ResponseEntity.ok(auditLogService.search(userId, module, action, start, end, pageable));
     }
 }

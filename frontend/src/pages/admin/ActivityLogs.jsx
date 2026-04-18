@@ -45,6 +45,7 @@ const ActivityLogs = () => {
   const [staffList, setStaffList] = useState([])
   const [filters, setFilters] = useState({ userId: '', module: '', action: '', start: '', end: '' })
   const [applied, setApplied] = useState({ userId: '', module: '', action: '', start: '', end: '' })
+  const [sort, setSort] = useState({ field: 'timestamp', direction: 'desc' })
 
   useEffect(() => {
     api.get('/users/admin/all').then(r => setStaffList(r.data)).catch(() => {})
@@ -57,8 +58,9 @@ const ActivityLogs = () => {
       if (applied.userId) params.userId = applied.userId
       if (applied.module) params.module = applied.module
       if (applied.action) params.action = applied.action
-      if (applied.start) params.start = new Date(applied.start).toISOString().slice(0, 19)
-      if (applied.end) params.end = new Date(applied.end).toISOString().slice(0, 19)
+      if (applied.start) params.start = applied.start
+      if (applied.end) params.end = applied.end
+      params.sort = `${sort.field},${sort.direction}`
       const r = await api.get('/audit-logs', { params })
       setLogs(r.data.content)
       setTotalPages(r.data.totalPages)
@@ -68,7 +70,7 @@ const ActivityLogs = () => {
     } finally {
       setLoading(false)
     }
-  }, [page, applied])
+  }, [page, applied, sort])
 
   useEffect(() => { fetchLogs() }, [fetchLogs])
 
@@ -78,6 +80,21 @@ const ActivityLogs = () => {
     setFilters(empty); setApplied(empty); setPage(0)
   }
   const hasActiveFilters = Object.values(applied).some(v => v !== '')
+
+  const handleSort = (field) => {
+    setSort(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
+    }))
+    setPage(0)
+  }
+
+  const SortIndicator = ({ field }) => {
+    if (sort.field !== field) return <History className="w-3 h-3 opacity-0 group-hover:opacity-30 transition-opacity" />
+    return sort.direction === 'asc' ? 
+      <ChevronLeft className="w-3 h-3 rotate-90 text-blue-600" /> : 
+      <ChevronLeft className="w-3 h-3 -rotate-90 text-blue-600" />
+  }
 
   return (
     <div className="space-y-6">
@@ -209,10 +226,25 @@ const ActivityLogs = () => {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60">
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Time</th>
+                <th 
+                  className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-slate-600 transition-colors group"
+                  onClick={() => handleSort('timestamp')}
+                >
+                  <div className="flex items-center gap-1">Time <SortIndicator field="timestamp" /></div>
+                </th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Module</th>
+                <th 
+                  className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-slate-600 transition-colors group"
+                  onClick={() => handleSort('action')}
+                >
+                  <div className="flex items-center gap-1">Action <SortIndicator field="action" /></div>
+                </th>
+                <th 
+                  className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-slate-600 transition-colors group"
+                  onClick={() => handleSort('module')}
+                >
+                  <div className="flex items-center gap-1">Module <SortIndicator field="module" /></div>
+                </th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Details</th>
               </tr>
             </thead>

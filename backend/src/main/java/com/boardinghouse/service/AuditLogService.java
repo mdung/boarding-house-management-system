@@ -49,8 +49,8 @@ public class AuditLogService {
     @Transactional(readOnly = true)
     public Page<AuditLogDto> search(Long userId, String module, String action,
                                      LocalDateTime start, LocalDateTime end,
-                                     int page, int size) {
-        return auditLogRepository.search(userId, module, action, start, end, PageRequest.of(page, size))
+                                     org.springframework.data.domain.Pageable pageable) {
+        return auditLogRepository.search(userId, module, action, start, end, pageable)
                 .map(this::toDto);
     }
 
