@@ -99,7 +99,7 @@ const GuestCharges = () => {
     else setFormData(p => ({ ...p, inventoryItemId, description: '', unitPrice: '', catalogId: '' }))
   }
 
-  const quickAdd = (desc, price) => { setFormData({ chargeDate: new Date().toISOString().split('T')[0], catalogId: '', inventoryItemId: '', description: desc, quantity: '1', unitPrice: price, note: '' }); setShowModal(true) }
+  const quickAdd = (desc, price) => { setFormData({ chargeDate: todayLocal(), catalogId: '', inventoryItemId: '', description: desc, quantity: '1', unitPrice: price, note: '' }); setShowModal(true) }
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this charge?')) return
@@ -364,10 +364,10 @@ const GuestCharges = () => {
                   </Field>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Quantity">
-                      <input required type="number" step="0.01" min="0.01" value={formData.quantity} onChange={e => setFormData(f => ({ ...f, quantity: e.target.value }))} className={inputCls} />
+                      <input required type="number" step="1" min="1" value={formData.quantity} onChange={e => setFormData(f => ({ ...f, quantity: e.target.value }))} className={inputCls} />
                     </Field>
                     <Field label="Unit Price (VND)">
-                      <input required type="number" step="1000" min="0" value={formData.unitPrice} onChange={e => setFormData(f => ({ ...f, unitPrice: e.target.value }))} placeholder="0" className={inputCls} />
+                      <input required type="number" step="1" min="0" value={formData.unitPrice} onChange={e => setFormData(f => ({ ...f, unitPrice: e.target.value }))} placeholder="0" className={inputCls} />
                     </Field>
                   </div>
                   {totalAmount > 0 && (

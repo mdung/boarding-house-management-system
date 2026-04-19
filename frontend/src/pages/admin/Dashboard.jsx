@@ -380,7 +380,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Amount (VND)</label>
                   <input
-                    type="number" min="1000" step="1000"
+                    type="number" min="1" step="1"
                     value={payAmount}
                     onChange={e => { setPayAmount(e.target.value); setPayResult(null) }}
                     placeholder={`Max ${fmt(remaining)}`}
@@ -594,6 +594,9 @@ const GuestCard = ({ guest, onSelect }) => {
       <div className="mt-1.5 text-xs text-gray-400">
         {fmtDate(guest.checkInDate)} → {fmtDate(guest.checkOutDate)}
         {guest.totalDays > 0 && <span className="ml-1">({guest.totalDays} nights × {fmt(guest.dailyRate)})</span>}
+        {parseFloat(guest.totalCharges) > 0 && (
+          <span className="ml-1 text-purple-500">+ {fmt(guest.totalCharges)} services</span>
+        )}
       </div>
     </div>
   )

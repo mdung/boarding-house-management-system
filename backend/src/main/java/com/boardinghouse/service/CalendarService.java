@@ -111,13 +111,24 @@ public class CalendarService {
         ev.setDailyRate(daily);
 
         // Calculate total debt for this contract
-        BigDecimal totalInvoiced = invoiceRepository.findByContractId(c.getId()).stream()
-                .map(Invoice::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalPaid = invoiceRepository.findByContractId(c.getId()).stream()
+        List<Invoice> invoices = invoiceRepository.findByContractId(c.getId());
+        BigDecimal totalPaid = invoices.stream()
                 .flatMap(inv -> paymentRepository.findByInvoiceId(inv.getId()).stream())
                 .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal charges = guestChargeRepository.sumAmountByContractId(c.getId());
-        ev.setTotalDebt(totalInvoiced.add(charges).subtract(totalPaid));
+        BigDecimal totalDebt;
+        if (!invoices.isEmpty()) {
+            // Use invoiced amount as source of truth (SUM invoice already includes charges)
+            BigDecimal totalInvoiced = invoices.stream()
+                    .map(Invoice::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            totalDebt = totalInvoiced.subtract(totalPaid);
+        } else {
+            // No invoice yet — estimate from room cost + charges
+            long nights = Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
+            BigDecimal roomCost = daily.multiply(BigDecimal.valueOf(nights));
+            BigDecimal charges = guestChargeRepository.sumAmountByContractId(c.getId());
+            totalDebt = roomCost.add(charges).subtract(totalPaid);
+        }
+        ev.setTotalDebt(totalDebt.max(BigDecimal.ZERO));
         return ev;
     }
 
