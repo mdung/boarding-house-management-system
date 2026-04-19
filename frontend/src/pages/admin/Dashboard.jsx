@@ -138,7 +138,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-xl font-bold text-gray-900">{guest.tenantName}</h2>
-              {activityBadge(guest.activityType, guest.roomReleased)}            {activityBadge(guest.activityType, guest.roomReleased)}
+              {activityBadge(guest.activityType, guest.roomReleased)}
             </div>
             <p className="text-sm text-gray-500">{guest.tenantPhone}</p>
           </div>
