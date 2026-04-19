@@ -17,4 +17,6 @@ public interface GuestServiceChargeRepository extends JpaRepository<GuestService
     BigDecimal sumAmountByContractId(@Param("contractId") Long contractId);
 
     List<GuestServiceCharge> findByContractIdAndChargeDateOrderByChargeDateDesc(Long contractId, LocalDate date);
+
+    List<GuestServiceCharge> findByChargeDateBetween(LocalDate from, LocalDate to);
 }

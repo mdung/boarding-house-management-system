@@ -1,437 +1,596 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
+import {
+  TrendingUp, Building2, Users, AlertTriangle, ShoppingBag,
+  ChevronLeft, ChevronRight, Calendar, RefreshCw, ArrowUpRight,
+  ArrowDownRight, DollarSign, Receipt, Clock, CheckCircle2
+} from 'lucide-react'
+
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
+const fmtShort = (n) => {
+  const v = parseFloat(n) || 0
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}k`
+  return v.toString()
+}
+const todayLocal = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+const firstOfYear = () => `${new Date().getFullYear()}-01-01`
+
+const TABS = [
+  { id: 'revenue-month',  label: 'Revenue',       icon: TrendingUp,   sub: 'By Month' },
+  { id: 'revenue-house',  label: 'By Property',   icon: Building2,    sub: 'Boarding House' },
+  { id: 'services',       label: 'Services',      icon: ShoppingBag,  sub: 'Item Breakdown' },
+  { id: 'tenants',        label: 'Tenants',       icon: Users,        sub: 'Currently Staying' },
+  { id: 'debts',          label: 'Debts',         icon: AlertTriangle,sub: 'Outstanding' },
+]
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const MONTH_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+// Animated bar component
+const Bar = ({ pct, color, delay = 0, value }) => {
+  const [width, setWidth] = useState(0)
+  useEffect(() => { const t = setTimeout(() => setWidth(pct), 80 + delay); return () => clearTimeout(t) }, [pct, delay])
+  return (
+    <div className="relative h-8 bg-slate-100 rounded-xl overflow-hidden">
+      <div className={`h-full rounded-xl ${color} transition-all duration-700 ease-out flex items-center justify-end pr-3`}
+        style={{ width: `${width}%` }}>
+        {width > 20 && <span className="text-white text-xs font-black">{fmtShort(value)}</span>}
+      </div>
+      {width <= 20 && value > 0 && (
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">{fmtShort(value)}</span>
+      )}
+    </div>
+  )
+}
+
+// Dual bar: earned (bg) + collected (fg overlay)
+const EarnedBar = ({ pct, delay, value }) => {
+  const [width, setWidth] = useState(0)
+  useEffect(() => { const t = setTimeout(() => setWidth(pct), 60 + delay); return () => clearTimeout(t) }, [pct, delay])
+  return (
+    <div className="absolute inset-0 bg-violet-100 rounded-xl transition-all duration-700 ease-out"
+      style={{ width: `${width}%` }} />
+  )
+}
+const CollectedBar = ({ pct, delay, value }) => {
+  const [width, setWidth] = useState(0)
+  useEffect(() => { const t = setTimeout(() => setWidth(pct), 60 + delay); return () => clearTimeout(t) }, [pct, delay])
+  return (
+    <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-xl transition-all duration-700 ease-out flex items-center justify-end pr-2"
+      style={{ width: `${width}%` }}>
+      {width > 15 && <span className="text-white text-[10px] font-black">{fmtShort(value)}</span>}
+    </div>
+  )
+}
+
+// Stat card
+const StatCard = ({ label, value, sub, icon: Icon, color, trend }) => (
+  <div className={`bg-white rounded-2xl border border-slate-100 p-4 shadow-sm`}>
+    <div className="flex items-start justify-between mb-3">
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
+        <Icon className="w-4.5 h-4.5 text-white w-[18px] h-[18px]" />
+      </div>
+      {trend !== undefined && (
+        <span className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${trend >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+          {trend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+          {Math.abs(trend)}%
+        </span>
+      )}
+    </div>
+    <p className="text-xl font-black text-slate-900 leading-none">{value}</p>
+    <p className="text-xs text-slate-400 font-medium mt-1">{label}</p>
+    {sub && <p className="text-[10px] text-slate-300 mt-0.5">{sub}</p>}
+  </div>
+)
 
 const Reports = () => {
-  const [activeTab, setActiveTab] = useState('revenue-month')
+  const [tab, setTab] = useState('revenue-month')
   const [revenueByMonth, setRevenueByMonth] = useState([])
   const [revenueByHouse, setRevenueByHouse] = useState([])
+  const [serviceRevenue, setServiceRevenue] = useState([])
   const [tenants, setTenants] = useState([])
-  const [outstandingDebts, setOutstandingDebts] = useState([])
+  const [debts, setDebts] = useState([])
   const [loading, setLoading] = useState(false)
   const [year, setYear] = useState(new Date().getFullYear())
-  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0])
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0])
+  const [startDate, setStartDate] = useState(firstOfYear())
+  const [endDate, setEndDate] = useState(todayLocal())
 
-  useEffect(() => {
-    if (activeTab === 'revenue-month') {
-      fetchRevenueByMonth()
-    } else if (activeTab === 'revenue-house') {
-      fetchRevenueByHouse()
-    } else if (activeTab === 'tenants') {
-      fetchTenants()
-    } else if (activeTab === 'debts') {
-      fetchOutstandingDebts()
-    }
-  }, [activeTab, year, startDate, endDate])
-
-  useEffect(() => {
-    const refetchCurrent = () => {
-      if (activeTab === 'revenue-month') fetchRevenueByMonth()
-      else if (activeTab === 'revenue-house') fetchRevenueByHouse()
-      else if (activeTab === 'debts') fetchOutstandingDebts()
-    }
-    return eventBus.on(EVENTS.PAYMENT_CHANGED, refetchCurrent)
-  }, [activeTab, year, startDate, endDate])
-
-  const fetchRevenueByMonth = async () => {
+  const fetch = async (t = tab) => {
     setLoading(true)
     try {
-      const response = await api.get(`/reports/revenue-by-month?year=${year}`)
-      setRevenueByMonth(response.data)
-    } catch (error) {
-      console.error('Failed to fetch revenue by month:', error)
-    } finally {
-      setLoading(false)
-    }
+      if (t === 'revenue-month') {
+        const r = await api.get(`/reports/revenue-by-month?year=${year}`)
+        setRevenueByMonth(r.data)
+      } else if (t === 'revenue-house') {
+        const r = await api.get(`/reports/revenue-by-boarding-house?startDate=${startDate}&endDate=${endDate}`)
+        setRevenueByHouse(r.data)
+      } else if (t === 'services') {
+        const r = await api.get(`/reports/service-revenue?startDate=${startDate}&endDate=${endDate}`)
+        setServiceRevenue(r.data)
+      } else if (t === 'tenants') {
+        const r = await api.get('/reports/tenants-currently-renting')
+        setTenants(r.data)
+      } else if (t === 'debts') {
+        const r = await api.get('/reports/outstanding-debts')
+        setDebts(r.data)
+      }
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
   }
 
-  const fetchRevenueByHouse = async () => {
-    setLoading(true)
-    try {
-      const response = await api.get(`/reports/revenue-by-boarding-house?startDate=${startDate}&endDate=${endDate}`)
-      setRevenueByHouse(response.data)
-    } catch (error) {
-      console.error('Failed to fetch revenue by house:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  useEffect(() => { fetch(tab) }, [tab, year, startDate, endDate])
+  useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, () => fetch(tab)) }, [tab, year, startDate, endDate])
 
-  const fetchTenants = async () => {
-    setLoading(true)
-    try {
-      const response = await api.get('/reports/tenants-currently-renting')
-      setTenants(response.data)
-    } catch (error) {
-      console.error('Failed to fetch tenants:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Summary stats for revenue-month
+  const monthStats = useMemo(() => {
+    const total = revenueByMonth.reduce((s, m) => s + parseFloat(m.totalRevenue || 0), 0)
+    const best = revenueByMonth.reduce((b, m) => parseFloat(m.totalRevenue || 0) > parseFloat(b.totalRevenue || 0) ? m : b, revenueByMonth[0] || {})
+    const totalInv = revenueByMonth.reduce((s, m) => s + (m.invoiceCount || 0), 0)
+    const paidInv = revenueByMonth.reduce((s, m) => s + (m.paidInvoiceCount || 0), 0)
+    return { total, best, totalInv, paidInv }
+  }, [revenueByMonth])
 
-  const fetchOutstandingDebts = async () => {
-    setLoading(true)
-    try {
-      const response = await api.get('/reports/outstanding-debts')
-      setOutstandingDebts(response.data)
-    } catch (error) {
-      console.error('Failed to fetch outstanding debts:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const debtStats = useMemo(() => ({
+    total: debts.reduce((s, d) => s + parseFloat(d.remainingAmount || 0), 0),
+    overdue: debts.filter(d => d.daysOverdue > 0).length,
+    count: debts.length,
+  }), [debts])
 
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-    'July', 'August', 'September', 'October', 'November', 'December']
+  const maxRevMonth = useMemo(() => Math.max(...revenueByMonth.map(m => parseFloat(m.totalRevenue || 0)), 1), [revenueByMonth])
+  const maxRevHouse = useMemo(() => Math.max(...revenueByHouse.map(h => parseFloat(h.totalRevenue || 0)), 1), [revenueByHouse])
+  const maxService = useMemo(() => Math.max(...serviceRevenue.map(s => parseFloat(s.totalAmount || 0)), 1), [serviceRevenue])
+
+  const DateRangeBar = () => (
+    <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+          className="text-xs font-semibold text-slate-700 outline-none bg-transparent" />
+        <span className="text-slate-300 text-xs">→</span>
+        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+          className="text-xs font-semibold text-slate-700 outline-none bg-transparent" />
+      </div>
+      {/* Quick presets */}
+      {[
+        { label: 'This month', s: () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01` }, e: todayLocal },
+        { label: 'This year',  s: firstOfYear, e: todayLocal },
+        { label: 'Last 30d',   s: () => { const d=new Date(); d.setDate(d.getDate()-30); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }, e: todayLocal },
+      ].map(p => (
+        <button key={p.label} onClick={() => { setStartDate(p.s()); setEndDate(p.e()) }}
+          className="px-3 py-2 text-[11px] font-bold bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
+          {p.label}
+        </button>
+      ))}
+    </div>
+  )
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Reports & Analytics</h1>
+    <div className="space-y-5">
+      <style>{`@keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } } .fade-up { animation: fadeUp 0.35s ease both }`}</style>
 
-      <div className="mb-6 border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('revenue-month')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'revenue-month'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Revenue by Month
-          </button>
-          <button
-            onClick={() => setActiveTab('revenue-house')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'revenue-house'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Revenue by Boarding House
-          </button>
-          <button
-            onClick={() => setActiveTab('tenants')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'tenants'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Current Tenants
-          </button>
-          <button
-            onClick={() => setActiveTab('debts')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'debts'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Outstanding Debts
-          </button>
-        </nav>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/20">
+            <TrendingUp className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-slate-900">Reports & Analytics</h1>
+            <p className="text-xs text-slate-400 font-medium">Revenue · Services · Tenants · Debts</p>
+          </div>
+        </div>
+        <button onClick={() => fetch(tab)} disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-all shadow-sm disabled:opacity-40">
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
 
-      {loading && <div className="text-center py-8">Loading...</div>}
+      {/* Tab bar */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {TABS.map(t => {
+          const Icon = t.icon
+          const active = tab === t.id
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold whitespace-nowrap transition-all duration-200 flex-shrink-0
+                ${active ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-white border border-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-700 shadow-sm'}`}>
+              <Icon className="w-4 h-4" />
+              {t.label}
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'}`}>{t.sub}</span>
+            </button>
+          )
+        })}
+      </div>
 
-      {activeTab === 'revenue-month' && !loading && (
-        <div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
-            <input
-              type="number"
-              value={year}
-              onChange={(e) => setYear(parseInt(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-md"
-            />
+      {loading && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-16 flex flex-col items-center gap-3 text-slate-300 shadow-sm">
+          <div className="w-8 h-8 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-bold">Loading...</p>
+        </div>
+      )}
+
+      {/* ── Revenue by Month ── */}
+      {tab === 'revenue-month' && !loading && (
+        <div className="space-y-4 fade-up">
+          {/* Year selector */}
+          <div className="flex items-center gap-2">
+            <button onClick={() => setYear(y => y-1)} className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center hover:bg-slate-50 shadow-sm transition-all">
+              <ChevronLeft className="w-4 h-4 text-slate-500" />
+            </button>
+            <span className="text-base font-black text-slate-900 w-12 text-center">{year}</span>
+            <button onClick={() => setYear(y => y+1)} className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center hover:bg-slate-50 shadow-sm transition-all">
+              <ChevronRight className="w-4 h-4 text-slate-500" />
+            </button>
           </div>
-          
+
+          {/* Stats row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <StatCard label="Earned Revenue" value={fmtShort(revenueByMonth.reduce((s,m)=>s+parseFloat(m.earnedRevenue||0),0))} sub={`= Dashboard số`} icon={DollarSign} color="bg-gradient-to-br from-violet-500 to-purple-600" />
+            <StatCard label="Collected Cash" value={fmtShort(revenueByMonth.reduce((s,m)=>s+parseFloat(m.totalRevenue||0),0))} sub="Tiền thực thu" icon={TrendingUp} color="bg-gradient-to-br from-emerald-500 to-teal-600" />
+            <StatCard label="Uncollected" value={fmtShort(revenueByMonth.reduce((s,m)=>s+parseFloat(m.uncollectedRevenue||0),0))} sub="Chưa thu được" icon={AlertTriangle} color="bg-gradient-to-br from-amber-500 to-orange-500" />
+            <StatCard label="Paid Invoices" value={`${revenueByMonth.reduce((s,m)=>s+(m.paidInvoiceCount||0),0)}/${revenueByMonth.reduce((s,m)=>s+(m.invoiceCount||0),0)}`} sub={`${revenueByMonth.reduce((s,m)=>s+(m.invoiceCount||0),0) > 0 ? Math.round(revenueByMonth.reduce((s,m)=>s+(m.paidInvoiceCount||0),0)/revenueByMonth.reduce((s,m)=>s+(m.invoiceCount||0),0)*100) : 0}% rate`} icon={CheckCircle2} color="bg-gradient-to-br from-blue-500 to-indigo-600" />
+          </div>
+
+          {/* Legend explanation */}
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex flex-wrap gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-violet-500 flex-shrink-0" />
+              <span className="text-slate-600"><span className="font-black text-slate-800">Earned</span> = tổng invoice phát sinh trong tháng (accrual)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-emerald-500 flex-shrink-0" />
+              <span className="text-slate-600"><span className="font-black text-slate-800">Collected</span> = tiền thực nhận trong tháng (cash basis)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0" />
+              <span className="text-slate-600"><span className="font-black text-slate-800">Uncollected</span> = Earned − Collected (còn nợ chưa thu)</span>
+            </div>
+            <div className="w-full text-slate-400 text-[10px]">
+              💡 Collected có thể &gt; Earned nếu khách trả tiền tháng trước trong tháng này (ví dụ: nợ tháng 2 trả vào tháng 4)
+            </div>
+          </div>
+
           {/* Chart */}
-          {revenueByMonth.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">Monthly Revenue Chart</h2>
+          {revenueByMonth.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-300 shadow-sm">
+              <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-bold">No revenue data for {year}</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Monthly Revenue — {year}</p>
               <div className="space-y-4">
-                {revenueByMonth.map((item) => {
-                  const maxRevenue = Math.max(...revenueByMonth.map(i => parseFloat(i.totalRevenue || 0)))
-                  const percentage = maxRevenue > 0 ? (parseFloat(item.totalRevenue || 0) / maxRevenue) * 100 : 0
+                {revenueByMonth.map((item, i) => {
+                  const earned = parseFloat(item.earnedRevenue || 0)
+                  const collected = parseFloat(item.totalRevenue || 0)
+                  const uncollected = parseFloat(item.uncollectedRevenue || 0)
+                  const maxVal = Math.max(...revenueByMonth.map(m => parseFloat(m.earnedRevenue || 0)), 1)
                   return (
                     <div key={item.month}>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-700">{monthNames[item.month - 1]}</span>
-                        <span className="text-sm text-gray-600">
-                          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-6">
-                        <div
-                          className="bg-blue-600 h-6 rounded-full flex items-center justify-end pr-2"
-                          style={{ width: `${percentage}%` }}
-                        >
-                          {percentage > 10 && (
-                            <span className="text-xs text-white font-medium">
-                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(item.totalRevenue || 0)}
-                            </span>
-                          )}
+                      <div className="grid grid-cols-[80px_1fr_auto] items-center gap-3 mb-1">
+                        <span className="text-xs font-bold text-slate-500 text-right">{MONTHS[(item.month||1)-1]}</span>
+                        <div className="relative h-8 bg-slate-100 rounded-xl overflow-hidden">
+                          {/* Earned bar (background) */}
+                          <EarnedBar pct={(earned/maxVal)*100} delay={i*40} value={earned} />
+                          {/* Collected bar (overlay) */}
+                          <CollectedBar pct={(collected/maxVal)*100} delay={i*40+100} value={collected} />
+                        </div>
+                        <div className="text-right min-w-[70px]">
+                          <p className="text-[10px] font-black text-violet-600">{fmtShort(earned)}</p>
+                          <p className="text-[10px] font-bold text-emerald-600">{fmtShort(collected)}</p>
                         </div>
                       </div>
                     </div>
                   )
                 })}
               </div>
+              {/* Chart legend */}
+              <div className="flex gap-4 mt-4 pt-3 border-t border-slate-100">
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-violet-200" /><span className="text-[10px] font-bold text-slate-500">Earned (phát sinh)</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-400" /><span className="text-[10px] font-bold text-slate-500">Collected (thực thu)</span></div>
+              </div>
             </div>
           )}
 
           {/* Table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Revenue</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Invoices</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid Invoices</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {revenueByMonth.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">No data available</td>
-                  </tr>
-                ) : (
-                  revenueByMonth.map((item) => (
-                    <tr key={item.month}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {monthNames[item.month - 1]} {item.year}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.invoiceCount}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.paidInvoiceCount}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'revenue-house' && !loading && (
-        <div>
-          <div className="mb-4 grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md w-full"
-              />
-            </div>
-          </div>
-
-          {/* Chart */}
-          {revenueByHouse.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">Revenue by Boarding House Chart</h2>
-              <div className="space-y-4">
-                {revenueByHouse.map((item) => {
-                  const maxRevenue = Math.max(...revenueByHouse.map(i => parseFloat(i.totalRevenue || 0)))
-                  const percentage = maxRevenue > 0 ? (parseFloat(item.totalRevenue || 0) / maxRevenue) * 100 : 0
-                  return (
-                    <div key={item.boardingHouseId}>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-700">{item.boardingHouseName}</span>
-                        <span className="text-sm text-gray-600">
-                          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
+          {revenueByMonth.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100">
+                    <th className="px-5 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Month</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black text-violet-400 uppercase tracking-widest">
+                      <span className="group relative cursor-help inline-flex items-center gap-1">
+                        Earned ≈ Dashboard
+                        <span className="text-violet-300">ⓘ</span>
+                        <span className="absolute bottom-full right-0 mb-2 w-64 bg-slate-900 text-white text-[10px] font-normal rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 leading-relaxed shadow-xl">
+                          <span className="font-black block mb-1">Earned (Doanh thu phát sinh)</span>
+                          = Tổng invoice.totalAmount theo tháng billing<br/>
+                          = Room charge + Service charges<br/><br/>
+                          <span className="text-slate-400">Đây là con số giống Dashboard "Room Revenue This Month". Chưa tính đến việc đã thu tiền chưa.</span>
                         </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-6">
-                        <div
-                          className="bg-green-600 h-6 rounded-full flex items-center justify-end pr-2"
-                          style={{ width: `${percentage}%` }}
-                        >
-                          {percentage > 15 && (
-                            <span className="text-xs text-white font-medium">
-                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(item.totalRevenue || 0)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                      </span>
+                    </th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black text-emerald-500 uppercase tracking-widest">
+                      <span className="group relative cursor-help inline-flex items-center gap-1">
+                        Collected
+                        <span className="text-emerald-300">ⓘ</span>
+                        <span className="absolute bottom-full right-0 mb-2 w-64 bg-slate-900 text-white text-[10px] font-normal rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 leading-relaxed shadow-xl">
+                          <span className="font-black block mb-1">Collected (Tiền thực thu)</span>
+                          = Tổng payments.paidAmount theo ngày nhận tiền<br/><br/>
+                          <span className="text-slate-400">Có thể &gt; Earned nếu khách trả nợ tháng trước trong tháng này. Có thể &lt; Earned nếu còn nợ chưa thu.</span>
+                        </span>
+                      </span>
+                    </th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black text-amber-500 uppercase tracking-widest">
+                      <span className="group relative cursor-help inline-flex items-center gap-1">
+                        Uncollected
+                        <span className="text-amber-300">ⓘ</span>
+                        <span className="absolute bottom-full right-0 mb-2 w-64 bg-slate-900 text-white text-[10px] font-normal rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 leading-relaxed shadow-xl">
+                          <span className="font-black block mb-1">Uncollected (Còn nợ)</span>
+                          = Earned − Collected (nếu &gt; 0)<br/><br/>
+                          <span className="text-slate-400">Số tiền đã phát sinh invoice nhưng chưa thu được. Xem chi tiết ở tab "Debts".</span>
+                        </span>
+                      </span>
+                    </th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Invoices</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {revenueByMonth.map(item => (
+                    <tr key={item.month} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-5 py-3 text-sm font-bold text-slate-800">{MONTH_FULL[(item.month||1)-1]} {item.year}</td>
+                      <td className="px-5 py-3 text-right">
+                        <span className="text-sm font-black text-violet-600">{fmt(item.earnedRevenue)}</span>
+                        <p className="text-[10px] text-slate-400">{fmt(item.earnedRoomRevenue)} room + {fmt(item.earnedServiceRevenue)} svc</p>
+                      </td>
+                      <td className="px-5 py-3 text-sm font-black text-emerald-600 text-right">{fmt(item.totalRevenue)}</td>
+                      <td className="px-5 py-3 text-right">
+                        {parseFloat(item.uncollectedRevenue||0) > 0
+                          ? <span className="text-sm font-black text-amber-600">{fmt(item.uncollectedRevenue)}</span>
+                          : <span className="text-sm text-slate-300">—</span>}
+                      </td>
+                      <td className="px-5 py-3 text-sm text-slate-500 text-right">{item.paidInvoiceCount}/{item.invoiceCount}</td>
+                      <td className="px-5 py-3 text-right">
+                        <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg ${item.invoiceCount > 0 && item.paidInvoiceCount === item.invoiceCount ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                          {item.invoiceCount > 0 ? Math.round((item.paidInvoiceCount/item.invoiceCount)*100) : 0}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
-
-          {/* Table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Boarding House</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Revenue</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Invoices</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid Invoices</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {revenueByHouse.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">No data available</td>
-                  </tr>
-                ) : (
-                  revenueByHouse.map((item) => (
-                    <tr key={item.boardingHouseId}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {item.boardingHouseName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(item.totalRevenue || 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.invoiceCount}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.paidInvoiceCount}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
 
-      {activeTab === 'tenants' && !loading && (
-        <div>
-          <div className="bg-white rounded-lg shadow p-4 mb-4">
-            <p className="text-lg font-semibold">Total Active Tenants: <span className="text-blue-600">{tenants.length}</span></p>
-          </div>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID Number</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {tenants.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">No active tenants</td>
-                  </tr>
-                ) : (
-                  tenants.map((tenant) => (
-                    <tr key={tenant.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{tenant.fullName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.phone}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.email || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.identityNumber || '-'}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'debts' && !loading && (
-        <div>
-          <div className="bg-white rounded-lg shadow p-4 mb-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Total Outstanding Debts</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(
-                    outstandingDebts.reduce((sum, debt) => sum + parseFloat(debt.remainingAmount || 0), 0)
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Invoices</p>
-                <p className="text-2xl font-bold text-gray-900">{outstandingDebts.length}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Overdue Invoices</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {outstandingDebts.filter(d => d.daysOverdue > 0).length}
-                </p>
-              </div>
+      {/* ── Revenue by Property ── */}
+      {tab === 'revenue-house' && !loading && (
+        <div className="space-y-4 fade-up">
+          <DateRangeBar />
+          {revenueByHouse.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-300 shadow-sm">
+              <Building2 className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-bold">No data for selected period</p>
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <StatCard label="Total Revenue" value={fmtShort(revenueByHouse.reduce((s,h)=>s+parseFloat(h.totalRevenue||0),0))} sub={fmt(revenueByHouse.reduce((s,h)=>s+parseFloat(h.totalRevenue||0),0))} icon={DollarSign} color="bg-gradient-to-br from-blue-500 to-indigo-600" />
+                <StatCard label="Properties" value={revenueByHouse.length} icon={Building2} color="bg-gradient-to-br from-amber-500 to-orange-500" />
+                <StatCard label="Total Invoices" value={revenueByHouse.reduce((s,h)=>s+(h.invoiceCount||0),0)} icon={Receipt} color="bg-gradient-to-br from-violet-500 to-purple-600" />
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Revenue by Property</p>
+                <div className="space-y-3">
+                  {revenueByHouse.map((item, i) => (
+                    <div key={item.boardingHouseId} className="grid grid-cols-[140px_1fr_auto] items-center gap-3">
+                      <span className="text-xs font-bold text-slate-600 truncate text-right">{item.boardingHouseName}</span>
+                      <Bar pct={(parseFloat(item.totalRevenue||0)/maxRevHouse)*100} color="bg-gradient-to-r from-blue-500 to-indigo-500" delay={i*50} value={item.totalRevenue} />
+                      <span className="text-[10px] font-bold text-slate-400 min-w-[50px] text-right">{item.paidInvoiceCount}/{item.invoiceCount}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-100">
+                      <th className="px-5 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Property</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Revenue</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Invoices</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Paid</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {revenueByHouse.map(item => (
+                      <tr key={item.boardingHouseId} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-5 py-3 text-sm font-bold text-slate-800">{item.boardingHouseName}</td>
+                        <td className="px-5 py-3 text-sm font-black text-blue-600 text-right">{fmt(item.totalRevenue)}</td>
+                        <td className="px-5 py-3 text-sm text-slate-500 text-right">{item.invoiceCount}</td>
+                        <td className="px-5 py-3 text-sm text-emerald-600 font-bold text-right">{item.paidInvoiceCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Service Revenue ── */}
+      {tab === 'services' && !loading && (
+        <div className="space-y-4 fade-up">
+          <DateRangeBar />
+          {serviceRevenue.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-300 shadow-sm">
+              <ShoppingBag className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-bold">No service charges for selected period</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <StatCard label="Service Revenue" value={fmtShort(serviceRevenue.reduce((s,x)=>s+parseFloat(x.totalAmount||0),0))} sub={fmt(serviceRevenue.reduce((s,x)=>s+parseFloat(x.totalAmount||0),0))} icon={DollarSign} color="bg-gradient-to-br from-emerald-500 to-teal-600" />
+                <StatCard label="Unique Services" value={serviceRevenue.length} icon={ShoppingBag} color="bg-gradient-to-br from-amber-500 to-orange-500" />
+                <StatCard label="Total Orders" value={serviceRevenue.reduce((s,x)=>s+(x.count||0),0)} icon={Receipt} color="bg-gradient-to-br from-violet-500 to-purple-600" />
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Top Services by Revenue</p>
+                <div className="space-y-3">
+                  {serviceRevenue.slice(0, 15).map((item, i) => (
+                    <div key={i} className="grid grid-cols-[140px_1fr_auto] items-center gap-3">
+                      <span className="text-xs font-bold text-slate-600 truncate text-right">{item.description}</span>
+                      <Bar pct={(parseFloat(item.totalAmount||0)/maxService)*100} color="bg-gradient-to-r from-emerald-500 to-teal-500" delay={i*30} value={item.totalAmount} />
+                      <span className="text-[10px] font-bold text-slate-400 min-w-[40px] text-right">×{item.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-100">
+                      <th className="px-5 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Service</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Orders</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Revenue</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Avg/Order</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {serviceRevenue.map((item, i) => (
+                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-5 py-3 text-sm font-bold text-slate-800">{item.description}</td>
+                        <td className="px-5 py-3 text-sm text-slate-500 text-right">{item.count}</td>
+                        <td className="px-5 py-3 text-sm font-black text-emerald-600 text-right">{fmt(item.totalAmount)}</td>
+                        <td className="px-5 py-3 text-sm text-slate-400 text-right">{fmt(parseFloat(item.totalAmount||0)/Math.max(item.count,1))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Current Tenants ── */}
+      {tab === 'tenants' && !loading && (
+        <div className="space-y-4 fade-up">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <StatCard label="Currently Staying" value={tenants.length} sub="Active contracts" icon={Users} color="bg-gradient-to-br from-blue-500 to-indigo-600" />
           </div>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice Code</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Days Overdue</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {outstandingDebts.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">No outstanding debts</td>
+          {tenants.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-300 shadow-sm">
+              <Users className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-bold">No active tenants</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100">
+                    <th className="px-5 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</th>
+                    <th className="px-5 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
+                    <th className="px-5 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Email</th>
+                    <th className="px-5 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">ID Number</th>
                   </tr>
-                ) : (
-                  outstandingDebts.map((debt) => (
-                    <tr key={debt.invoiceId}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{debt.invoiceCode}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{debt.roomCode}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{debt.tenantName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(debt.totalAmount || 0)}
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {tenants.map(t => (
+                    <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-[10px] font-black flex-shrink-0">
+                            {t.fullName?.charAt(0)}
+                          </div>
+                          <span className="text-sm font-bold text-slate-800">{t.fullName}</span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(debt.paidAmount || 0)}
+                      <td className="px-5 py-3 text-sm text-slate-500">{t.phone || '—'}</td>
+                      <td className="px-5 py-3 text-sm text-slate-500">{t.email || '—'}</td>
+                      <td className="px-5 py-3 text-sm text-slate-500 font-mono">{t.identityNumber || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Outstanding Debts ── */}
+      {tab === 'debts' && !loading && (
+        <div className="space-y-4 fade-up">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <StatCard label="Total Outstanding" value={fmtShort(debtStats.total)} sub={fmt(debtStats.total)} icon={DollarSign} color="bg-gradient-to-br from-rose-500 to-red-600" />
+            <StatCard label="Overdue" value={debtStats.overdue} sub="Past due date" icon={Clock} color="bg-gradient-to-br from-amber-500 to-orange-500" />
+            <StatCard label="Unpaid Invoices" value={debtStats.count} icon={Receipt} color="bg-gradient-to-br from-slate-600 to-slate-700" />
+          </div>
+          {debts.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm">
+              <CheckCircle2 className="w-10 h-10 mx-auto mb-2 text-emerald-300" />
+              <p className="text-sm font-bold text-slate-400">All clear — no outstanding debts</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100">
+                    <th className="px-5 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Tenant</th>
+                    <th className="px-5 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Room</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Total</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Paid</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Remaining</th>
+                    <th className="px-5 py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Due</th>
+                    <th className="px-5 py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {debts.map(d => (
+                    <tr key={d.invoiceId} className={`hover:bg-slate-50/50 transition-colors ${d.daysOverdue > 0 ? 'bg-rose-50/30' : ''}`}>
+                      <td className="px-5 py-3">
+                        <p className="text-sm font-bold text-slate-800">{d.tenantName}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">{d.invoiceCode}</p>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(debt.remainingAmount || 0)}
+                      <td className="px-5 py-3">
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg">{d.roomCode}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{debt.dueDate}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {debt.daysOverdue > 0 ? (
-                          <span className="text-red-600 font-medium">{debt.daysOverdue} days</span>
+                      <td className="px-5 py-3 text-sm text-slate-600 text-right">{fmt(d.totalAmount)}</td>
+                      <td className="px-5 py-3 text-sm text-emerald-600 font-bold text-right">{fmt(d.paidAmount)}</td>
+                      <td className="px-5 py-3 text-sm font-black text-rose-600 text-right">{fmt(d.remainingAmount)}</td>
+                      <td className="px-5 py-3 text-center">
+                        {d.daysOverdue > 0 ? (
+                          <span className="flex items-center justify-center gap-1 text-[11px] font-black text-rose-600">
+                            <Clock className="w-3 h-3" />{d.daysOverdue}d
+                          </span>
                         ) : (
-                          '-'
+                          <span className="text-[11px] text-slate-400 font-medium">{d.dueDate || '—'}</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          debt.status === 'PAID' ? 'bg-green-100 text-green-800' :
-                          debt.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800' :
-                          debt.status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
+                      <td className="px-5 py-3 text-center">
+                        <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg border ${
+                          d.status === 'OVERDUE' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                          d.status === 'PARTIALLY_PAID' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          'bg-slate-50 text-slate-600 border-slate-200'
                         }`}>
-                          {debt.status}
+                          {d.status === 'PARTIALLY_PAID' ? 'Partial' : d.status === 'OVERDUE' ? 'Overdue' : 'Unpaid'}
                         </span>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -439,4 +598,3 @@ const Reports = () => {
 }
 
 export default Reports
-

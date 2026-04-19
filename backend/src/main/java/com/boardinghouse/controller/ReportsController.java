@@ -3,6 +3,7 @@ package com.boardinghouse.controller;
 import com.boardinghouse.dto.OutstandingDebtDto;
 import com.boardinghouse.dto.RevenueByBoardingHouseDto;
 import com.boardinghouse.dto.RevenueByMonthDto;
+import com.boardinghouse.dto.ServiceRevenueDto;
 import com.boardinghouse.dto.TenantDto;
 import com.boardinghouse.service.ReportsService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -46,6 +47,13 @@ public class ReportsController {
     @GetMapping("/outstanding-debts")
     public ResponseEntity<List<OutstandingDebtDto>> getOutstandingDebts() {
         return ResponseEntity.ok(service.getOutstandingDebts());
+    }
+
+    @GetMapping("/service-revenue")
+    public ResponseEntity<List<ServiceRevenueDto>> getServiceRevenue(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(service.getServiceRevenue(startDate, endDate));
     }
 }
 

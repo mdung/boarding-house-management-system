@@ -630,114 +630,156 @@ const DayColumn = ({ label, dateLabel, data, onSelect, highlight }) => {
 // ─── Revenue Detail Modal ─────────────────────────────────────────────────────
 const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
   const [filterDate, setFilterDate] = useState('ALL')
+  const [filterService, setFilterService] = useState('ALL')
+  const [animIn, setAnimIn] = useState(false)
   const isRent = category === 'RENT'
-  const title = isRent ? 'Room Revenue Details' : 'Service Revenue Details'
-  const color = isRent ? 'blue' : 'purple'
 
-  const bgHeader = isRent ? 'bg-blue-50' : 'bg-purple-50'
-  const textHeader = isRent ? 'text-blue-800' : 'text-purple-800'
-  const iconColor = isRent ? 'text-blue-600' : 'text-purple-600'
-  const activeBtn = isRent ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-  const itemBg = isRent ? 'bg-blue-100' : 'bg-purple-100'
+  useEffect(() => { requestAnimationFrame(() => setAnimIn(true)) }, [])
 
   const filtered = details.filter(d => d.category === category)
   const dates = [...new Set(filtered.map(d => d.date))].sort()
-  const shown = filterDate === 'ALL' ? filtered : filtered.filter(d => d.date === filterDate)
+
+  // Unique service names (only for SERVICE category)
+  const serviceNames = [...new Set(filtered.map(d => d.description))].sort()
+
+  const shown = filtered
+    .filter(d => filterDate === 'ALL' || d.date === filterDate)
+    .filter(d => isRent || filterService === 'ALL' || d.description === filterService)
 
   // Group by date
   const grouped = {}
-  shown.forEach(d => {
-    if (!grouped[d.date]) grouped[d.date] = []
-    grouped[d.date].push(d)
-  })
+  shown.forEach(d => { if (!grouped[d.date]) grouped[d.date] = []; grouped[d.date].push(d) })
 
   const total = shown.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
+  const grandTotal = filtered.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
+
+  // Service breakdown for mini chart
+  const serviceBreakdown = serviceNames.map(name => ({
+    name,
+    amount: filtered.filter(d => d.description === name).reduce((s, d) => s + (parseFloat(d.amount) || 0), 0),
+    count: filtered.filter(d => d.description === name).length,
+  })).sort((a, b) => b.amount - a.amount)
+  const maxSvc = Math.max(...serviceBreakdown.map(s => s.amount), 1)
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div
+        className={`bg-white rounded-3xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col transition-all duration-300
+          ${animIn ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'}`}
+        onClick={e => e.stopPropagation()}>
+
         {/* Header */}
-        <div className={`px-6 py-4 border-b flex items-center justify-between ${bgHeader} rounded-t-2xl`}>
+        <div className={`px-6 py-5 rounded-t-3xl flex items-center justify-between ${isRent ? 'bg-gradient-to-r from-blue-500 to-indigo-600' : 'bg-gradient-to-r from-violet-500 to-purple-600'}`}>
           <div className="flex items-center gap-3">
-            {isRent
-              ? <BedDouble className={`w-6 h-6 ${iconColor}`} />
-              : <Receipt className={`w-6 h-6 ${iconColor}`} />}
+            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+              {isRent ? <BedDouble className="w-5 h-5 text-white" /> : <Receipt className="w-5 h-5 text-white" />}
+            </div>
             <div>
-              <h2 className={`text-lg font-bold ${textHeader}`}>{title}</h2>
-              <p className="text-sm text-gray-500">{shown.length} items · Total {fmt(total)}</p>
+              <h2 className="text-lg font-black text-white">{isRent ? 'Room Revenue' : 'Service Revenue'}</h2>
+              <p className="text-white/70 text-xs font-medium">{shown.length} items · {fmt(total)}{total !== grandTotal ? ` of ${fmt(grandTotal)}` : ''}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/60 rounded-xl transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
+          <button onClick={onClose} className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors">
+            <X className="w-4 h-4 text-white" />
           </button>
         </div>
 
-        {/* Filter */}
-        <div className="px-6 py-3 border-b flex items-center gap-3 flex-wrap">
-          <span className="text-xs text-gray-500">Filter by date:</span>
+        {/* Service breakdown mini chart (only for SERVICE) */}
+        {!isRent && serviceBreakdown.length > 0 && (
+          <div className="px-6 pt-4 pb-3 border-b border-slate-100">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Breakdown by Service</p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {serviceBreakdown.map((s, i) => (
+                <button key={s.name} onClick={() => setFilterService(f => f === s.name ? 'ALL' : s.name)}
+                  className={`flex-shrink-0 px-3 py-2 rounded-2xl border text-left transition-all duration-150 min-w-[100px]
+                    ${filterService === s.name ? 'bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-500/20' : 'bg-white border-slate-200 hover:border-violet-300 text-slate-700'}`}>
+                  <p className={`text-[10px] font-black truncate ${filterService === s.name ? 'text-white/80' : 'text-slate-400'}`}>{s.name}</p>
+                  <p className={`text-sm font-black mt-0.5 ${filterService === s.name ? 'text-white' : 'text-slate-800'}`}>{fmt(s.amount)}</p>
+                  <div className={`h-1 rounded-full mt-1.5 transition-all duration-500 ${filterService === s.name ? 'bg-white/40' : 'bg-violet-200'}`}
+                    style={{ width: `${(s.amount/maxSvc)*100}%`, minWidth: '8px' }} />
+                  <p className={`text-[9px] mt-1 font-bold ${filterService === s.name ? 'text-white/60' : 'text-slate-300'}`}>×{s.count}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Date filter */}
+        <div className="px-6 py-3 border-b border-slate-100 flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex-shrink-0">Date</span>
           <div className="flex gap-1.5 flex-wrap">
-            <button onClick={() => setFilterDate('ALL')}
-              className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${filterDate === 'ALL' ? activeBtn : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-              All
-            </button>
-            {dates.map(d => (
+            {['ALL', ...dates].map(d => (
               <button key={d} onClick={() => setFilterDate(d)}
-                className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${filterDate === d ? activeBtn : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                {fmtDate(d)}
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition-all duration-150
+                  ${filterDate === d
+                    ? (isRent ? 'bg-blue-600 text-white shadow-sm' : 'bg-violet-600 text-white shadow-sm')
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                {d === 'ALL' ? 'All dates' : fmtDate(d)}
               </button>
             ))}
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {Object.entries(grouped).map(([date, items]) => (
-            <div key={date}>
-              <div className="flex items-center gap-2 mb-2">
-                <CalendarDays className="w-4 h-4 text-gray-400" />
-                <span className="text-sm font-semibold text-gray-700">{fmtDate(date)}</span>
-                <span className="text-xs text-gray-400">({items.length} items · {fmt(items.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0))})</span>
-              </div>
-              <div className="space-y-1.5 ml-6">
-                {items.map((item, i) => (
-                  <div key={`${item.invoiceCode}-${i}`}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${itemBg}`}>
-                        {isRent
-                          ? <BedDouble className={`w-4 h-4 ${iconColor}`} />
-                          : <Receipt className={`w-4 h-4 ${iconColor}`} />}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-800 truncate">{item.description}</p>
-                        <p className="text-xs text-gray-400 truncate">
-                          {item.roomCode} · {item.tenantName} · {item.boardingHouseName}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <p className="text-sm font-bold text-gray-800">{fmt(item.amount)}</p>
-                      {item.invoiceId && (
-                        <button onClick={() => { onClose(); navigate(`/admin/invoices/${item.invoiceId}/detail`) }}
-                          className="p-1.5 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
-                          <ExternalLink className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+          {shown.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-300">
+              <Receipt className="w-12 h-12 mb-3 opacity-40" />
+              <p className="text-sm font-bold">No items match filters</p>
             </div>
-          ))}
-          {shown.length === 0 && (
-            <p className="text-center text-gray-400 py-12">No data</p>
-          )}
+          ) : Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([date, items]) => {
+            const dayTotal = items.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
+            return (
+              <div key={date}>
+                <div className="flex items-center gap-2 mb-2.5 sticky top-0 bg-white/95 backdrop-blur-sm py-1 -mx-1 px-1 rounded-xl">
+                  <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-xs font-black text-slate-700">{fmtDate(date)}</span>
+                  <span className="text-[10px] text-slate-400 font-medium">· {items.length} items</span>
+                  <span className={`ml-auto text-xs font-black ${isRent ? 'text-blue-600' : 'text-violet-600'}`}>{fmt(dayTotal)}</span>
+                </div>
+                <div className="space-y-1.5 ml-1">
+                  {items.map((item, i) => (
+                    <div key={`${item.invoiceCode}-${i}`}
+                      className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all duration-150 group cursor-default">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${isRent ? 'bg-blue-100' : 'bg-violet-100'}`}>
+                          {isRent
+                            ? <BedDouble className={`w-4 h-4 text-blue-600`} />
+                            : <Receipt className={`w-4 h-4 text-violet-600`} />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-800 truncate">{item.description}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{item.roomCode} · {item.tenantName} · {item.boardingHouseName}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                        <p className={`text-sm font-black ${isRent ? 'text-blue-700' : 'text-violet-700'}`}>{fmt(item.amount)}</p>
+                        {item.invoiceId && (
+                          <button onClick={() => { onClose(); navigate(`/admin/invoices/${item.invoiceId}/detail`) }}
+                            className="p-1.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all opacity-0 group-hover:opacity-100">
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
 
-        {/* Footer summary */}
-        <div className="px-6 py-3 border-t bg-gray-50 rounded-b-2xl flex items-center justify-between">
-          <span className="text-sm text-gray-500">Grand Total</span>
-          <span className="text-lg font-bold text-gray-800">{fmt(total)}</span>
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 rounded-b-3xl bg-slate-50/60 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              {filterDate !== 'ALL' || filterService !== 'ALL' ? 'Filtered Total' : 'Grand Total'}
+            </p>
+            {(filterDate !== 'ALL' || filterService !== 'ALL') && (
+              <p className="text-[10px] text-slate-400">of {fmt(grandTotal)} total</p>
+            )}
+          </div>
+          <p className={`text-xl font-black ${isRent ? 'text-blue-700' : 'text-violet-700'}`}>{fmt(total)}</p>
         </div>
       </div>
     </div>

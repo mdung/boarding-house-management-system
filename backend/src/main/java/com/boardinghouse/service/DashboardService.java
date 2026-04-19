@@ -85,38 +85,44 @@ public class DashboardService {
         dto.setUnpaidAmount(unpaidAmount);
         dto.setOverdueInvoices(overdueCount);
 
-        // Revenue breakdown: Room vs Service for ALL contracts (including expired/checked-out)
+        // Revenue breakdown: Room vs Service for THIS MONTH
+        // Room revenue = sum of invoice.totalAmount where periodMonth = this month
+        // Service revenue = sum of guest charges where chargeDate in this month
+        // This is consistent with Report "Earned" column
+        LocalDate firstOfMonth = today.withDayOfMonth(1);
+        LocalDate lastOfMonth = today.withDayOfMonth(today.lengthOfMonth());
+        int thisMonth = today.getMonthValue();
+        int thisYear = today.getYear();
+
         BigDecimal roomRevenue = BigDecimal.ZERO;
         BigDecimal serviceRevenue = BigDecimal.ZERO;
         java.util.List<DashboardDto.RevenueDetailDto> details = new java.util.ArrayList<>();
 
+        // Room revenue from invoices this month
+        for (Invoice inv : invoiceRepository.findAll()) {
+            if (!inv.getPeriodMonth().equals(thisMonth) || !inv.getPeriodYear().equals(thisYear)) continue;
+            if (inv.getContract().getStatus() == ContractStatus.DRAFT) continue;
+            roomRevenue = roomRevenue.add(inv.getTotalAmount());
+
+            DashboardDto.RevenueDetailDto rd = new DashboardDto.RevenueDetailDto();
+            rd.setDate(inv.getContract().getStartDate());
+            rd.setInvoiceCode(inv.getCode());
+            rd.setRoomCode(inv.getRoom().getCode());
+            rd.setTenantName(inv.getContract().getMainTenant().getFullName());
+            rd.setBoardingHouseName(inv.getRoom().getBoardingHouse().getName());
+            rd.setDescription("Room – " + inv.getCode());
+            rd.setCategory("RENT");
+            rd.setAmount(inv.getTotalAmount());
+            details.add(rd);
+        }
+
+        // Service revenue from guest charges this month
         for (Contract contract : allContracts) {
             if (contract.getStatus() == ContractStatus.DRAFT) continue;
-
-            long nights = Math.max(1, ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate()));
-            BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate()
-                    : (contract.getMonthlyRent() != null
-                        ? contract.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
-                        : BigDecimal.ZERO);
-            BigDecimal roomCost = dailyRate.multiply(BigDecimal.valueOf(nights));
-            roomRevenue = roomRevenue.add(roomCost);
-
-            // Room detail row
-            DashboardDto.RevenueDetailDto rd = new DashboardDto.RevenueDetailDto();
-            rd.setDate(contract.getStartDate());
-            rd.setInvoiceCode(contract.getCode());
-            rd.setRoomCode(contract.getRoom().getCode());
-            rd.setTenantName(contract.getMainTenant().getFullName());
-            rd.setBoardingHouseName(contract.getRoom().getBoardingHouse().getName());
-            rd.setDescription("Room (" + nights + " nights × " + dailyRate.setScale(0, java.math.RoundingMode.HALF_UP) + ")");
-            rd.setCategory("RENT");
-            rd.setAmount(roomCost);
-            details.add(rd);
-
-            // Guest service charges as service revenue
             List<com.boardinghouse.entity.GuestServiceCharge> gCharges =
                     guestChargeRepository.findByContractIdOrderByChargeDateDesc(contract.getId());
             for (com.boardinghouse.entity.GuestServiceCharge gc : gCharges) {
+                if (gc.getChargeDate().isBefore(firstOfMonth) || gc.getChargeDate().isAfter(lastOfMonth)) continue;
                 serviceRevenue = serviceRevenue.add(gc.getAmount());
 
                 DashboardDto.RevenueDetailDto sd = new DashboardDto.RevenueDetailDto();
