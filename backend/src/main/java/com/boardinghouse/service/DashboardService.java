@@ -191,7 +191,7 @@ public class DashboardService {
         g.setCheckOutDate(c.getEndDate());
         g.setActivityType(type);
         g.setContractStatus(c.getStatus().name());
-        g.setRoomReleased(c.getRoom().getStatus() == RoomStatus.AVAILABLE);
+        g.setRoomReleased(isRoomReleased(c));
 
         // Daily rate & total days
         BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
@@ -216,6 +216,17 @@ public class DashboardService {
         g.setTotalDebt(g.getTotalRoomCost().add(charges).subtract(paid));
 
         return g;
+    }
+
+    /**
+     * A contract is "room released" when the guest has physically left.
+     * - roomReleased = true → explicitly checked out
+     * - TERMINATED/EXPIRED → always considered checked out
+     * - ACTIVE + roomReleased false/null → still staying
+     */
+    private boolean isRoomReleased(Contract c) {
+        if (Boolean.TRUE.equals(c.getRoomReleased())) return true;
+        return c.getStatus() == ContractStatus.TERMINATED || c.getStatus() == ContractStatus.EXPIRED;
     }
 }
 

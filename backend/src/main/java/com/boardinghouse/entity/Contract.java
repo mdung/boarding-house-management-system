@@ -60,6 +60,11 @@ public class Contract {
     private String terminationReason;
     private LocalDate terminationDate;
 
+    // Tracks whether this specific contract's guest has physically left the room.
+    // Null = not yet checked out, true = checked out.
+    @Column(name = "room_released")
+    private Boolean roomReleased = false;
+
     @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL)
     private List<Invoice> invoices = new ArrayList<>();
 

@@ -33,16 +33,32 @@ public class ContractService {
         java.time.LocalTime noon = java.time.LocalTime.of(12, 0);
 
         List<Contract> activeContracts = repository.findByStatus(ContractStatus.ACTIVE);
+
+        // Backfill legacy null roomReleased: run once per contract until all are set
+        activeContracts.stream()
+                .filter(c -> c.getRoomReleased() == null)
+                .forEach(c -> {
+                    Room room = c.getRoom();
+                    if (room.getStatus() == RoomStatus.AVAILABLE) {
+                        c.setRoomReleased(true);
+                    } else {
+                        boolean isCurrentOccupant = repository.findByRoomId(room.getId()).stream()
+                                .filter(o -> o.getStatus() == ContractStatus.ACTIVE)
+                                .max(java.util.Comparator.comparing(Contract::getStartDate))
+                                .map(latest -> latest.getId().equals(c.getId()))
+                                .orElse(false);
+                        c.setRoomReleased(!isCurrentOccupant);
+                    }
+                    repository.save(c);
+                });
+
         for (Contract c : activeContracts) {
             if (c.getEndDate().isBefore(today)) {
-                // Past checkout date → only expire contract status
-                // Room stays OCCUPIED until admin manually checks out
-                // This prevents room from showing as available while guest hasn't left
                 c.setStatus(ContractStatus.EXPIRED);
                 repository.save(c);
             } else if (c.getEndDate().equals(today) && now.isAfter(noon)) {
-                // Checkout today + past 12:00 PM → release room, expire contract
                 c.setStatus(ContractStatus.EXPIRED);
+                c.setRoomReleased(true);
                 repository.save(c);
                 freeRoomIfNoOtherActive(c);
             }
@@ -93,7 +109,9 @@ public class ContractService {
         room.setStatus(RoomStatus.AVAILABLE);
         roomRepository.save(room);
 
-        return toDto(contract);
+        // Mark this specific contract as room released
+        contract.setRoomReleased(true);
+        return toDto(repository.save(contract));
     }
 
     public List<ContractDto> getAll() {
@@ -243,6 +261,7 @@ public class ContractService {
         contract.setStatus(ContractStatus.TERMINATED);
         contract.setTerminationReason(reason);
         contract.setTerminationDate(terminationDate);
+        contract.setRoomReleased(true);
 
         Room room = contract.getRoom();
         room.setStatus(RoomStatus.AVAILABLE);
