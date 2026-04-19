@@ -648,7 +648,7 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
   // Auto-expand all dates on open
   useEffect(() => {
     const init = {}
-    sortedDates.forEach(d => { init[d] = true })
+    sortedDates.forEach(d => { init[d] = false })  // collapsed by default
     setExpandedDates(init)
   }, [filtered.length])
 
@@ -691,7 +691,7 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
               <p className="text-sm font-bold">No data</p>
             </div>
           )}
-          {sortedDates.map(date => {
+          {sortedDates.map((date, dateIdx) => {
             const dayItems = byDate[date]
             const dayTotal = dayItems.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
             const isOpen = expandedDates[date]
@@ -709,7 +709,7 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
             const visibleTotal = visibleItems.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
 
             return (
-              <div key={date} className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+              <div key={date} className={`border border-slate-100 rounded-2xl overflow-hidden shadow-sm ${dateIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}`}>
                 {/* Day header — click to expand/collapse */}
                 <button onClick={() => toggleDate(date)}
                   className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
@@ -751,7 +751,7 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
                     <div className="p-3 space-y-1.5">
                       {visibleItems.map((item, i) => (
                         <div key={`${item.invoiceCode}-${i}`}
-                          className="flex items-center justify-between px-3 py-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors group">
+                          className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors group ${i % 2 === 0 ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/70 hover:bg-slate-100'}`}>
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isRent ? 'bg-blue-100' : 'bg-violet-100'}`}>
                               {isRent ? <BedDouble className="w-3.5 h-3.5 text-blue-600" /> : <Receipt className="w-3.5 h-3.5 text-violet-600" />}
