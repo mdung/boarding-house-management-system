@@ -42,7 +42,8 @@ const GuestCharges = () => {
   const [contractSearch, setContractSearch] = useState('')
   const [chargeSearch, setChargeSearch] = useState('')
   const [activeTab, setActiveTab] = useState('catalog')
-  const [formData, setFormData] = useState({ chargeDate: new Date().toISOString().split('T')[0], catalogId: '', inventoryItemId: '', description: '', quantity: '1', unitPrice: '', note: '' })
+  const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
+  const [formData, setFormData] = useState({ chargeDate: todayLocal(), catalogId: '', inventoryItemId: '', description: '', quantity: '1', unitPrice: '', note: '' })
 
   useEffect(() => {
     api.get('/contracts').then(r => setContracts(r.data)).catch(console.error)
@@ -70,7 +71,7 @@ const GuestCharges = () => {
     finally { setLoading(false) }
   }
 
-  const resetForm = () => { setFormData({ chargeDate: new Date().toISOString().split('T')[0], catalogId: '', inventoryItemId: '', description: '', quantity: '1', unitPrice: '', note: '' }); setActiveTab('catalog') }
+  const resetForm = () => { setFormData({ chargeDate: todayLocal(), catalogId: '', inventoryItemId: '', description: '', quantity: '1', unitPrice: '', note: '' }); setActiveTab('catalog') }
 
   const handleSubmit = async (e) => {
     e.preventDefault()

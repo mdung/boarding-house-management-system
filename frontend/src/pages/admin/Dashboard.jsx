@@ -12,7 +12,8 @@ const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency:
 const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US') : '-'
 const toISO = (d) => d ? d.split('T')[0] : ''
 
-const activityBadge = (type) => {
+const activityBadge = (type, roomReleased) => {
+  if (roomReleased) return <span className="flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full font-medium"><LogOut className="w-3 h-3" />Checked Out</span>
   if (type === 'CHECKIN') return <span className="flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded-full font-medium"><LogIn className="w-3 h-3" />Check-in</span>
   if (type === 'CHECKOUT') return <span className="flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full font-medium"><LogOut className="w-3 h-3" />Check-out</span>
   return <span className="flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full font-medium"><BedDouble className="w-3 h-3" />Staying</span>
@@ -137,7 +138,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-xl font-bold text-gray-900">{guest.tenantName}</h2>
-              {activityBadge(guest.activityType)}
+              {activityBadge(guest.activityType, guest.roomReleased)}            {activityBadge(guest.activityType, guest.roomReleased)}
             </div>
             <p className="text-sm text-gray-500">{guest.tenantPhone}</p>
           </div>
@@ -564,7 +565,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
 // ─── Guest Card ───────────────────────────────────────────────────────────────
 const GuestCard = ({ guest, onSelect }) => {
   const debt = parseFloat(guest.totalDebt) || 0
-  const isExpired = guest.contractStatus === 'EXPIRED' || guest.contractStatus === 'TERMINATED'
+  const isExpired = guest.contractStatus === 'EXPIRED' || guest.contractStatus === 'TERMINATED' || guest.roomReleased
   return (
     <div
       onClick={() => onSelect(guest)}
@@ -584,7 +585,7 @@ const GuestCard = ({ guest, onSelect }) => {
         </div>
       </div>
       <div className="flex items-center justify-between mt-1.5">
-        {activityBadge(guest.activityType)}
+        {activityBadge(guest.activityType, guest.roomReleased)}
         {debt > 0
           ? <span className="text-xs text-red-600 font-semibold flex items-center gap-0.5"><AlertCircle className="w-3 h-3" />Debt {fmt(debt)}</span>
           : <span className="text-xs text-green-600 font-medium">✓ Paid</span>
