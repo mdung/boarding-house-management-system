@@ -199,18 +199,30 @@ public class ReportsService {
 
     public List<ServiceRevenueDto> getServiceRevenue(LocalDate startDate, LocalDate endDate) {
         return guestChargeRepository.findByChargeDateBetween(startDate, endDate).stream()
-                .collect(Collectors.groupingBy(
-                        c -> c.getDescription().trim(),
-                        Collectors.toList()
-                ))
+                .collect(Collectors.groupingBy(c -> c.getDescription().trim()))
                 .entrySet().stream()
                 .map(entry -> {
                     ServiceRevenueDto dto = new ServiceRevenueDto();
                     dto.setDescription(entry.getKey());
                     dto.setTotalAmount(entry.getValue().stream()
-                            .map(c -> c.getAmount())
-                            .reduce(BigDecimal.ZERO, BigDecimal::add));
+                            .map(c -> c.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add));
                     dto.setCount((long) entry.getValue().size());
+
+                    List<ServiceRevenueDto.DetailItem> items = entry.getValue().stream()
+                            .sorted((a, b) -> b.getChargeDate().compareTo(a.getChargeDate()))
+                            .map(gc -> {
+                                ServiceRevenueDto.DetailItem item = new ServiceRevenueDto.DetailItem();
+                                item.setChargeDate(gc.getChargeDate());
+                                item.setTenantName(gc.getContract().getMainTenant().getFullName());
+                                item.setRoomCode(gc.getRoom().getCode());
+                                item.setBoardingHouseName(gc.getRoom().getBoardingHouse().getName());
+                                item.setQuantity(gc.getQuantity());
+                                item.setUnitPrice(gc.getUnitPrice());
+                                item.setAmount(gc.getAmount());
+                                item.setNote(gc.getNote());
+                                return item;
+                            }).collect(Collectors.toList());
+                    dto.setItems(items);
                     return dto;
                 })
                 .sorted((a, b) -> b.getTotalAmount().compareTo(a.getTotalAmount()))
@@ -255,6 +267,129 @@ public class ReportsService {
                 })
                 .sorted((a, b) -> b.getDaysOverdue().compareTo(a.getDaysOverdue()))
                 .collect(Collectors.toList());
+    }
+
+    public java.util.Map<String, Object> getRevenueByBoardingHouseDetail(Long boardingHouseId, LocalDate startDate, LocalDate endDate) {
+        List<Invoice> invoices = invoiceRepository.findAll().stream()
+                .filter(inv -> inv.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
+                .filter(inv -> {
+                    LocalDate ps = LocalDate.of(inv.getPeriodYear(), inv.getPeriodMonth(), 1);
+                    LocalDate pe = ps.withDayOfMonth(ps.lengthOfMonth());
+                    return !pe.isBefore(startDate) && !ps.isAfter(endDate);
+                })
+                .filter(inv -> inv.getContract().getStatus() != com.boardinghouse.entity.ContractStatus.DRAFT)
+                .sorted((a, b) -> a.getCode().compareTo(b.getCode()))
+                .collect(Collectors.toList());
+
+        List<com.boardinghouse.entity.GuestServiceCharge> charges =
+                guestChargeRepository.findByChargeDateBetween(startDate, endDate).stream()
+                        .filter(gc -> gc.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
+                        .sorted((a, b) -> b.getChargeDate().compareTo(a.getChargeDate()))
+                        .collect(Collectors.toList());
+
+        String houseName = invoices.isEmpty()
+                ? charges.isEmpty() ? "Unknown" : charges.get(0).getRoom().getBoardingHouse().getName()
+                : invoices.get(0).getRoom().getBoardingHouse().getName();
+
+        java.util.List<java.util.Map<String, Object>> invoiceRows = invoices.stream().map(inv -> {
+            BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
+                    .map(p -> p.getPaidAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+            java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("invoiceCode", inv.getCode());
+            row.put("tenantName", inv.getContract().getMainTenant().getFullName());
+            row.put("roomCode", inv.getRoom().getCode());
+            row.put("periodMonth", inv.getPeriodMonth());
+            row.put("periodYear", inv.getPeriodYear());
+            row.put("totalAmount", inv.getTotalAmount());
+            row.put("paidAmount", paid);
+            row.put("remainingAmount", inv.getTotalAmount().subtract(paid).max(BigDecimal.ZERO));
+            row.put("status", inv.getStatus().name());
+            return row;
+        }).collect(Collectors.toList());
+
+        java.util.List<java.util.Map<String, Object>> chargeRows = charges.stream().map(gc -> {
+            java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("chargeDate", gc.getChargeDate());
+            row.put("description", gc.getDescription());
+            row.put("tenantName", gc.getContract().getMainTenant().getFullName());
+            row.put("roomCode", gc.getRoom().getCode());
+            row.put("quantity", gc.getQuantity());
+            row.put("unitPrice", gc.getUnitPrice());
+            row.put("amount", gc.getAmount());
+            return row;
+        }).collect(Collectors.toList());
+
+        BigDecimal totalRoom = invoices.stream().map(Invoice::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalSvc = charges.stream().map(gc -> gc.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("boardingHouseId", boardingHouseId);
+        result.put("boardingHouseName", houseName);
+        result.put("totalRevenue", totalRoom.add(totalSvc));
+        result.put("totalRoom", totalRoom);
+        result.put("totalService", totalSvc);
+        result.put("invoices", invoiceRows);
+        result.put("serviceCharges", chargeRows);
+        return result;
+    }
+
+    public java.util.Map<String, Object> getRevenueByMonthDetail(Integer year, Integer month) {
+        // Invoices for this month
+        List<Invoice> invoices = invoiceRepository.findAll().stream()
+                .filter(inv -> inv.getPeriodYear().equals(year) && inv.getPeriodMonth().equals(month))
+                .sorted((a, b) -> a.getCode().compareTo(b.getCode()))
+                .collect(Collectors.toList());
+
+        // Service charges for this month
+        LocalDate mStart = LocalDate.of(year, month, 1);
+        LocalDate mEnd = mStart.withDayOfMonth(mStart.lengthOfMonth());
+        List<com.boardinghouse.entity.GuestServiceCharge> charges =
+                guestChargeRepository.findByChargeDateBetween(mStart, mEnd);
+
+        java.util.List<java.util.Map<String, Object>> invoiceRows = invoices.stream().map(inv -> {
+            BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
+                    .map(p -> p.getPaidAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+            java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("invoiceCode", inv.getCode());
+            row.put("tenantName", inv.getContract().getMainTenant().getFullName());
+            row.put("roomCode", inv.getRoom().getCode());
+            row.put("boardingHouseName", inv.getRoom().getBoardingHouse().getName());
+            row.put("totalAmount", inv.getTotalAmount());
+            row.put("paidAmount", paid);
+            row.put("remainingAmount", inv.getTotalAmount().subtract(paid).max(BigDecimal.ZERO));
+            row.put("status", inv.getStatus().name());
+            row.put("dueDate", inv.getDueDate());
+            return row;
+        }).collect(Collectors.toList());
+
+        java.util.List<java.util.Map<String, Object>> chargeRows = charges.stream()
+                .sorted((a, b) -> b.getChargeDate().compareTo(a.getChargeDate()))
+                .map(gc -> {
+                    java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+                    row.put("chargeDate", gc.getChargeDate());
+                    row.put("description", gc.getDescription());
+                    row.put("tenantName", gc.getContract().getMainTenant().getFullName());
+                    row.put("roomCode", gc.getRoom().getCode());
+                    row.put("boardingHouseName", gc.getRoom().getBoardingHouse().getName());
+                    row.put("quantity", gc.getQuantity());
+                    row.put("unitPrice", gc.getUnitPrice());
+                    row.put("amount", gc.getAmount());
+                    return row;
+                }).collect(Collectors.toList());
+
+        BigDecimal totalEarned = invoices.stream().map(Invoice::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalSvc = charges.stream().map(gc -> gc.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalCollected = invoiceRows.stream()
+                .map(r -> (BigDecimal) r.get("paidAmount")).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("year", year);
+        result.put("month", month);
+        result.put("totalEarned", totalEarned.add(totalSvc));
+        result.put("totalCollected", totalCollected);
+        result.put("invoices", invoiceRows);
+        result.put("serviceCharges", chargeRows);
+        return result;
     }
 }
 

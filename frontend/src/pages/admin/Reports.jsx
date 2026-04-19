@@ -4,7 +4,7 @@ import eventBus, { EVENTS } from '../../services/eventBus'
 import {
   TrendingUp, Building2, Users, AlertTriangle, ShoppingBag,
   ChevronLeft, ChevronRight, Calendar, RefreshCw, ArrowUpRight,
-  ArrowDownRight, DollarSign, Receipt, Clock, CheckCircle2
+  ArrowDownRight, DollarSign, Receipt, Clock, CheckCircle2, X
 } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -99,6 +99,11 @@ const Reports = () => {
   const [year, setYear] = useState(new Date().getFullYear())
   const [startDate, setStartDate] = useState(firstOfYear())
   const [endDate, setEndDate] = useState(todayLocal())
+  const [selectedService, setSelectedService] = useState(null)
+  const [selectedMonth, setSelectedMonth] = useState(null)
+  const [monthDetailLoading, setMonthDetailLoading] = useState(false)
+  const [selectedProperty, setSelectedProperty] = useState(null)
+  const [propertyDetailLoading, setPropertyDetailLoading] = useState(false)
 
   const fetch = async (t = tab) => {
     setLoading(true)
@@ -169,9 +174,29 @@ const Reports = () => {
     </div>
   )
 
+  const openPropertyDetail = async (item) => {
+    setPropertyDetailLoading(true)
+    setSelectedProperty({ id: item.boardingHouseId, name: item.boardingHouseName, data: null })
+    try {
+      const r = await api.get(`/reports/revenue-by-boarding-house-detail?boardingHouseId=${item.boardingHouseId}&startDate=${startDate}&endDate=${endDate}`)
+      setSelectedProperty({ id: item.boardingHouseId, name: item.boardingHouseName, data: r.data })
+    } catch (e) { console.error(e) }
+    finally { setPropertyDetailLoading(false) }
+  }
+
+  const openMonthDetail = async (item) => {
+    setMonthDetailLoading(true)
+    setSelectedMonth({ year: item.year, month: item.month, data: null })
+    try {
+      const r = await api.get(`/reports/revenue-by-month-detail?year=${item.year}&month=${item.month}`)
+      setSelectedMonth({ year: item.year, month: item.month, data: r.data })
+    } catch (e) { console.error(e) }
+    finally { setMonthDetailLoading(false) }
+  }
+
   return (
     <div className="space-y-5">
-      <style>{`@keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } } .fade-up { animation: fadeUp 0.35s ease both }`}</style>
+      <style>{`@keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } } .fade-up { animation: fadeUp 0.35s ease both } @keyframes slideInRight { from { transform: translateX(100%); opacity: 0 } to { transform: translateX(0); opacity: 1 } }`}</style>
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -345,8 +370,12 @@ const Reports = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {revenueByMonth.map(item => (
-                    <tr key={item.month} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-5 py-3 text-sm font-bold text-slate-800">{MONTH_FULL[(item.month||1)-1]} {item.year}</td>
+                    <tr key={item.month} onClick={() => openMonthDetail(item)}
+                      className="hover:bg-violet-50/40 cursor-pointer transition-colors group">
+                      <td className="px-5 py-3 text-sm font-bold text-slate-800 flex items-center gap-2">
+                        {MONTH_FULL[(item.month||1)-1]} {item.year}
+                        <span className="text-[10px] font-bold text-slate-300 group-hover:text-violet-400 transition-colors">Details →</span>
+                      </td>
                       <td className="px-5 py-3 text-right">
                         <span className="text-sm font-black text-violet-600">{fmt(item.earnedRevenue)}</span>
                         <p className="text-[10px] text-slate-400">{fmt(item.earnedRoomRevenue)} room + {fmt(item.earnedServiceRevenue)} svc</p>
@@ -392,11 +421,12 @@ const Reports = () => {
                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Revenue by Property</p>
                 <div className="space-y-3">
                   {revenueByHouse.map((item, i) => (
-                    <div key={item.boardingHouseId} className="grid grid-cols-[140px_1fr_auto] items-center gap-3">
+                    <button key={item.boardingHouseId} onClick={() => openPropertyDetail(item)}
+                      className="w-full grid grid-cols-[140px_1fr_auto] items-center gap-3 hover:opacity-80 transition-opacity text-left">
                       <span className="text-xs font-bold text-slate-600 truncate text-right">{item.boardingHouseName}</span>
                       <Bar pct={(parseFloat(item.totalRevenue||0)/maxRevHouse)*100} color="bg-gradient-to-r from-blue-500 to-indigo-500" delay={i*50} value={item.totalRevenue} />
                       <span className="text-[10px] font-bold text-slate-400 min-w-[50px] text-right">{item.paidInvoiceCount}/{item.invoiceCount}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -412,8 +442,12 @@ const Reports = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {revenueByHouse.map(item => (
-                      <tr key={item.boardingHouseId} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-5 py-3 text-sm font-bold text-slate-800">{item.boardingHouseName}</td>
+                      <tr key={item.boardingHouseId} onClick={() => openPropertyDetail(item)}
+                        className="hover:bg-blue-50/40 cursor-pointer transition-colors group">
+                        <td className="px-5 py-3 text-sm font-bold text-slate-800 flex items-center gap-2">
+                          {item.boardingHouseName}
+                          <span className="text-[10px] font-bold text-slate-300 group-hover:text-blue-400 transition-colors">Details →</span>
+                        </td>
                         <td className="px-5 py-3 text-sm font-black text-blue-600 text-right">{fmt(item.totalRevenue)}</td>
                         <td className="px-5 py-3 text-sm text-slate-500 text-right">{item.invoiceCount}</td>
                         <td className="px-5 py-3 text-sm text-emerald-600 font-bold text-right">{item.paidInvoiceCount}</td>
@@ -447,11 +481,12 @@ const Reports = () => {
                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Top Services by Revenue</p>
                 <div className="space-y-3">
                   {serviceRevenue.slice(0, 15).map((item, i) => (
-                    <div key={i} className="grid grid-cols-[140px_1fr_auto] items-center gap-3">
+                    <button key={i} onClick={() => setSelectedService(item)}
+                      className="w-full grid grid-cols-[140px_1fr_auto] items-center gap-3 hover:opacity-80 transition-opacity text-left">
                       <span className="text-xs font-bold text-slate-600 truncate text-right">{item.description}</span>
                       <Bar pct={(parseFloat(item.totalAmount||0)/maxService)*100} color="bg-gradient-to-r from-emerald-500 to-teal-500" delay={i*30} value={item.totalAmount} />
                       <span className="text-[10px] font-bold text-slate-400 min-w-[40px] text-right">×{item.count}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -463,15 +498,22 @@ const Reports = () => {
                       <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Orders</th>
                       <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Revenue</th>
                       <th className="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Avg/Order</th>
+                      <th className="px-5 py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {serviceRevenue.map((item, i) => (
-                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-5 py-3 text-sm font-bold text-slate-800">{item.description}</td>
+                      <tr key={i} onClick={() => setSelectedService(item)}
+                        className="hover:bg-emerald-50/40 cursor-pointer transition-colors group">
+                        <td className="px-5 py-3 text-sm font-bold text-slate-800 flex items-center gap-2">
+                          {item.description}
+                        </td>
                         <td className="px-5 py-3 text-sm text-slate-500 text-right">{item.count}</td>
                         <td className="px-5 py-3 text-sm font-black text-emerald-600 text-right">{fmt(item.totalAmount)}</td>
                         <td className="px-5 py-3 text-sm text-slate-400 text-right">{fmt(parseFloat(item.totalAmount||0)/Math.max(item.count,1))}</td>
+                        <td className="px-5 py-3 text-center">
+                          <span className="text-[10px] font-bold text-slate-300 group-hover:text-emerald-500 transition-colors">Details →</span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -479,6 +521,82 @@ const Reports = () => {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── Service Drill-down Panel ── */}
+      {selectedService && (
+        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedService(null)}>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+          <div className="relative bg-white w-full max-w-[420px] h-full shadow-2xl flex flex-col"
+            style={{ animation: 'slideInRight 0.25s cubic-bezier(0.16,1,0.3,1)' }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-5">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <ShoppingBag className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-black text-white text-base leading-tight">{selectedService.description}</h2>
+                    <p className="text-white/70 text-xs mt-0.5">{selectedService.count} orders · {fmt(selectedService.totalAmount)}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedService(null)}
+                  className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4 text-white" />
+                </button>
+              </div>
+              {/* Mini stats */}
+              <div className="grid grid-cols-3 gap-2 mt-4">
+                {[
+                  { label: 'Total', value: fmt(selectedService.totalAmount) },
+                  { label: 'Orders', value: selectedService.count },
+                  { label: 'Avg', value: fmt(parseFloat(selectedService.totalAmount||0)/Math.max(selectedService.count,1)) },
+                ].map(s => (
+                  <div key={s.label} className="bg-white/15 rounded-xl px-3 py-2 text-center">
+                    <p className="text-white font-black text-sm">{s.value}</p>
+                    <p className="text-white/60 text-[10px] font-bold">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Items list */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-3">All Charges</p>
+              {(selectedService.items || []).map((item, i) => (
+                <div key={i} className="bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 rounded-2xl p-3.5 transition-all">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                        <Users className="w-3.5 h-3.5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-slate-800 leading-tight">{item.tenantName}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">{item.roomCode} · {item.boardingHouseName}</p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-black text-emerald-600 flex-shrink-0">{fmt(item.amount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium pl-9">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(item.chargeDate + 'T00:00:00').toLocaleDateString('vi-VN')}
+                    </span>
+                    <span>{item.quantity} × {fmt(item.unitPrice)}</span>
+                    {item.note && <span className="text-slate-300 truncate max-w-[80px]">{item.note}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="px-5 py-3 border-t border-slate-100 text-center">
+              <p className="text-[11px] text-slate-400 font-medium">{selectedService.count} charges · Total {fmt(selectedService.totalAmount)}</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -591,6 +709,237 @@ const Reports = () => {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Property Detail Panel ── */}
+      {selectedProperty && (
+        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedProperty(null)}>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+          <div className="relative bg-white w-full max-w-[480px] h-full shadow-2xl flex flex-col"
+            style={{ animation: 'slideInRight 0.25s cubic-bezier(0.16,1,0.3,1)' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-5 py-5">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-black text-white text-base">{selectedProperty.name}</h2>
+                    {selectedProperty.data && <p className="text-white/70 text-xs mt-0.5">{fmt(selectedProperty.data.totalRevenue)} total</p>}
+                  </div>
+                </div>
+                <button onClick={() => setSelectedProperty(null)} className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4 text-white" />
+                </button>
+              </div>
+              {selectedProperty.data && (
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  {[
+                    { label: 'Total', value: fmt(selectedProperty.data.totalRevenue) },
+                    { label: 'Room', value: fmt(selectedProperty.data.totalRoom) },
+                    { label: 'Services', value: fmt(selectedProperty.data.totalService) },
+                  ].map(s => (
+                    <div key={s.label} className="bg-white/15 rounded-xl px-3 py-2 text-center">
+                      <p className="text-white font-black text-xs">{s.value}</p>
+                      <p className="text-white/60 text-[10px] font-bold">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {propertyDetailLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : selectedProperty.data ? (
+              <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                {selectedProperty.data.invoices?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Room Invoices ({selectedProperty.data.invoices.length})</p>
+                    <div className="space-y-2">
+                      {selectedProperty.data.invoices.map((inv, i) => (
+                        <div key={i} className="bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 rounded-2xl p-3.5 transition-all">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <Receipt className="w-3.5 h-3.5 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-slate-800">{inv.tenantName}</p>
+                                <p className="text-[10px] text-slate-400">{inv.roomCode} · {MONTHS[(inv.periodMonth||1)-1]} {inv.periodYear}</p>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm font-black text-blue-600">{fmt(inv.totalAmount)}</p>
+                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${inv.status==='PAID'?'bg-emerald-100 text-emerald-700':inv.status==='PARTIALLY_PAID'?'bg-amber-100 text-amber-700':'bg-rose-100 text-rose-700'}`}>
+                                {inv.status==='PAID'?'Paid':inv.status==='PARTIALLY_PAID'?'Partial':'Unpaid'}
+                              </span>
+                            </div>
+                          </div>
+                          {parseFloat(inv.paidAmount)>0 && (
+                            <div className="flex justify-between text-[10px] text-slate-400 mt-2 pl-9">
+                              <span>Paid: <span className="text-emerald-600 font-bold">{fmt(inv.paidAmount)}</span></span>
+                              {parseFloat(inv.remainingAmount)>0 && <span>Remaining: <span className="text-rose-500 font-bold">{fmt(inv.remainingAmount)}</span></span>}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {selectedProperty.data.serviceCharges?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Service Charges ({selectedProperty.data.serviceCharges.length})</p>
+                    <div className="space-y-2">
+                      {selectedProperty.data.serviceCharges.map((gc, i) => (
+                        <div key={i} className="bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 rounded-2xl p-3.5 transition-all">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                                <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-slate-800">{gc.description}</p>
+                                <p className="text-[10px] text-slate-400">{gc.tenantName} · {gc.roomCode}</p>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm font-black text-emerald-600">{fmt(gc.amount)}</p>
+                              <p className="text-[10px] text-slate-400">{new Date(gc.chargeDate+'T00:00:00').toLocaleDateString('vi-VN')}</p>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1 pl-9">{gc.quantity} × {fmt(gc.unitPrice)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* ── Month Detail Panel ── */}
+      {selectedMonth && (
+        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedMonth(null)}>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+          <div className="relative bg-white w-full max-w-[480px] h-full shadow-2xl flex flex-col"
+            style={{ animation: 'slideInRight 0.25s cubic-bezier(0.16,1,0.3,1)' }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="font-black text-white text-lg">{MONTH_FULL[(selectedMonth.month||1)-1]} {selectedMonth.year}</h2>
+                  {selectedMonth.data && (
+                    <p className="text-white/70 text-xs mt-1">
+                      Earned {fmt(selectedMonth.data.totalEarned)} · Collected {fmt(selectedMonth.data.totalCollected)}
+                    </p>
+                  )}
+                </div>
+                <button onClick={() => setSelectedMonth(null)}
+                  className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4 text-white" />
+                </button>
+              </div>
+              {selectedMonth.data && (
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  <div className="bg-white/15 rounded-xl px-3 py-2 text-center">
+                    <p className="text-white font-black text-sm">{fmt(selectedMonth.data.totalEarned)}</p>
+                    <p className="text-white/60 text-[10px] font-bold">Earned</p>
+                  </div>
+                  <div className="bg-white/15 rounded-xl px-3 py-2 text-center">
+                    <p className="text-white font-black text-sm">{fmt(selectedMonth.data.totalCollected)}</p>
+                    <p className="text-white/60 text-[10px] font-bold">Collected</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {monthDetailLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : selectedMonth.data ? (
+              <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                {/* Invoices */}
+                {selectedMonth.data.invoices?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
+                      Room Invoices ({selectedMonth.data.invoices.length})
+                    </p>
+                    <div className="space-y-2">
+                      {selectedMonth.data.invoices.map((inv, i) => (
+                        <div key={i} className="bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 rounded-2xl p-3.5 transition-all">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+                                <Receipt className="w-3.5 h-3.5 text-violet-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-slate-800">{inv.tenantName}</p>
+                                <p className="text-[10px] text-slate-400">{inv.roomCode} · {inv.boardingHouseName}</p>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm font-black text-violet-600">{fmt(inv.totalAmount)}</p>
+                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${
+                                inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' :
+                                inv.status === 'PARTIALLY_PAID' ? 'bg-amber-100 text-amber-700' :
+                                'bg-rose-100 text-rose-700'
+                              }`}>{inv.status === 'PAID' ? 'Paid' : inv.status === 'PARTIALLY_PAID' ? 'Partial' : 'Unpaid'}</span>
+                            </div>
+                          </div>
+                          {parseFloat(inv.paidAmount) > 0 && (
+                            <div className="flex justify-between text-[10px] text-slate-400 mt-2 pl-9">
+                              <span>Paid: <span className="text-emerald-600 font-bold">{fmt(inv.paidAmount)}</span></span>
+                              {parseFloat(inv.remainingAmount) > 0 && <span>Remaining: <span className="text-rose-500 font-bold">{fmt(inv.remainingAmount)}</span></span>}
+                            </div>
+                          )}
+                          <p className="text-[10px] text-slate-300 mt-1 pl-9 font-mono">{inv.invoiceCode}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Service charges */}
+                {selectedMonth.data.serviceCharges?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
+                      Service Charges ({selectedMonth.data.serviceCharges.length})
+                    </p>
+                    <div className="space-y-2">
+                      {selectedMonth.data.serviceCharges.map((gc, i) => (
+                        <div key={i} className="bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 rounded-2xl p-3.5 transition-all">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                                <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-slate-800">{gc.description}</p>
+                                <p className="text-[10px] text-slate-400">{gc.tenantName} · {gc.roomCode}</p>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm font-black text-emerald-600">{fmt(gc.amount)}</p>
+                              <p className="text-[10px] text-slate-400">{new Date(gc.chargeDate+'T00:00:00').toLocaleDateString('vi-VN')}</p>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1 pl-9">{gc.quantity} × {fmt(gc.unitPrice)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
     </div>

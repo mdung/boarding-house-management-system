@@ -49,6 +49,21 @@ public class ReportsController {
         return ResponseEntity.ok(service.getOutstandingDebts());
     }
 
+    @GetMapping("/revenue-by-boarding-house-detail")
+    public ResponseEntity<?> getRevenueByBoardingHouseDetail(
+            @RequestParam Long boardingHouseId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(service.getRevenueByBoardingHouseDetail(boardingHouseId, startDate, endDate));
+    }
+
+    @GetMapping("/revenue-by-month-detail")
+    public ResponseEntity<?> getRevenueByMonthDetail(
+            @RequestParam Integer year,
+            @RequestParam Integer month) {
+        return ResponseEntity.ok(service.getRevenueByMonthDetail(year, month));
+    }
+
     @GetMapping("/service-revenue")
     public ResponseEntity<List<ServiceRevenueDto>> getServiceRevenue(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
