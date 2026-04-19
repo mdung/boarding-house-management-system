@@ -63,6 +63,8 @@ public class DashboardDto {
         private String description;
         private String category;        // RENT or SERVICE
         private BigDecimal amount;
+        private BigDecimal quantity;
+        private BigDecimal unitPrice;
         private Long invoiceId;
     }
 }

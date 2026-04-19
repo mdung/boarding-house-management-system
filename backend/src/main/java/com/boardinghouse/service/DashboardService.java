@@ -134,6 +134,8 @@ public class DashboardService {
                 sd.setDescription(gc.getDescription());
                 sd.setCategory("SERVICE");
                 sd.setAmount(gc.getAmount());
+                sd.setQuantity(gc.getQuantity());
+                sd.setUnitPrice(gc.getUnitPrice());
                 details.add(sd);
             }
         }

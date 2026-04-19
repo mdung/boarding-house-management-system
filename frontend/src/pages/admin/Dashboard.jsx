@@ -691,14 +691,14 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
             <div className="flex gap-2 overflow-x-auto pb-1">
               {serviceBreakdown.map((s, i) => (
                 <button key={s.name} onClick={() => setFilterService(f => f === s.name ? 'ALL' : s.name)}
-                  className={`flex-shrink-0 px-3 py-2 rounded-2xl border text-left transition-all duration-150 min-w-[100px]
+                  className={`flex-shrink-0 px-3 py-2 rounded-2xl border text-left transition-all duration-150 min-w-[130px] max-w-[160px]
                     ${filterService === s.name ? 'bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-500/20' : 'bg-white border-slate-200 hover:border-violet-300 text-slate-700'}`}>
                   <p className={`text-[10px] font-black truncate ${filterService === s.name ? 'text-white/80' : 'text-slate-400'}`}>{s.name}</p>
+                  <p className={`text-[9px] font-bold mt-0.5 ${filterService === s.name ? 'text-white/60' : 'text-slate-300'}`}>Total revenue</p>
                   <p className={`text-sm font-black mt-0.5 ${filterService === s.name ? 'text-white' : 'text-slate-800'}`}>{fmt(s.amount)}</p>
                   <div className={`h-1 rounded-full mt-1.5 transition-all duration-500 ${filterService === s.name ? 'bg-white/40' : 'bg-violet-200'}`}
                     style={{ width: `${(s.amount/maxSvc)*100}%`, minWidth: '8px' }} />
-                  <p className={`text-[9px] mt-1 font-bold ${filterService === s.name ? 'text-white/60' : 'text-slate-300'}`}>×{s.count}</p>
-                </button>
+                  <p className={`text-[9px] mt-1 font-bold ${filterService === s.name ? 'text-white/60' : 'text-slate-300'}`}>×{s.count} {s.count === 1 ? 'order' : 'orders'} · avg {fmt(s.amount/Math.max(s.count,1))}</p>                </button>
               ))}
             </div>
           </div>
@@ -750,8 +750,10 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-slate-800 truncate">{item.description}</p>
                           <p className="text-[11px] text-slate-400 truncate">{item.roomCode} · {item.tenantName} · {item.boardingHouseName}</p>
-                        </div>
-                      </div>
+                          {!isRent && item.quantity && item.unitPrice && (
+                            <p className="text-[10px] text-slate-300 font-medium">{item.quantity} × {fmt(item.unitPrice)}</p>
+                          )}
+                        </div>                      </div>
                       <div className="flex items-center gap-2 flex-shrink-0 ml-3">
                         <p className={`text-sm font-black ${isRent ? 'text-blue-700' : 'text-violet-700'}`}>{fmt(item.amount)}</p>
                         {item.invoiceId && (
