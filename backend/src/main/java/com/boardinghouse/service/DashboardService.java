@@ -158,6 +158,18 @@ public class DashboardService {
         dto.setToday(buildDayActivity(today));
         dto.setTomorrow(buildDayActivity(today.plusDays(1)));
 
+        // Outstanding debts: ALL contracts with debt > 0 (consistent with unpaidAmount calculation)
+        List<DashboardDto.GuestActivityDto> outstandingDebts = new java.util.ArrayList<>();
+        for (Contract c : allContracts) {
+            if (c.getStatus() == ContractStatus.DRAFT) continue;
+            DashboardDto.GuestActivityDto g = toGuestActivity(c, "DEBT");
+            if (g.getTotalDebt().compareTo(BigDecimal.ZERO) > 0) {
+                outstandingDebts.add(g);
+            }
+        }
+        outstandingDebts.sort((a, b) -> b.getTotalDebt().compareTo(a.getTotalDebt()));
+        dto.setOutstandingDebts(outstandingDebts);
+
         return dto;
     }
 

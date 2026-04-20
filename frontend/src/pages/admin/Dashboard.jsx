@@ -894,20 +894,10 @@ const Dashboard = () => {
     return `In ${offset} days`
   }
 
-  // Guests with debt across all days in dashboard
-  const debtGuests = [
-    ...(dashboard?.yesterday?.checkIns || []),
-    ...(dashboard?.yesterday?.checkOuts || []),
-    ...(dashboard?.yesterday?.staying || []),
-    ...(dashboard?.today?.checkIns || []),
-    ...(dashboard?.today?.checkOuts || []),
-    ...(dashboard?.today?.staying || []),
-    ...(dashboard?.tomorrow?.checkIns || []),
-    ...(dashboard?.tomorrow?.checkOuts || []),
-    ...(dashboard?.tomorrow?.staying || []),
-  ].filter(g => parseFloat(g.totalDebt) > 0)
-   .reduce((acc, g) => { if (!acc.find(x => x.contractId === g.contractId)) acc.push(g); return acc }, [])
-   .sort((a, b) => parseFloat(b.totalDebt) - parseFloat(a.totalDebt))
+  // Guests with debt — from backend (consistent with unpaidAmount)
+  const debtGuests = (dashboard?.outstandingDebts || [])
+    .filter(g => parseFloat(g.totalDebt) > 0)
+    .sort((a, b) => parseFloat(b.totalDebt) - parseFloat(a.totalDebt))
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-10 sm:pb-0">
