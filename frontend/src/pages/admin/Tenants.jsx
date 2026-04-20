@@ -176,9 +176,10 @@ const Tenants = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table / Grid View */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60">
@@ -192,7 +193,7 @@ const Tenants = () => {
                 <SortTh field="checkInDate" current={sortField} dir={sortDir} onSort={onSort}>Check-in</SortTh>
                 <SortTh field="checkOutDate" current={sortField} dir={sortDir} onSort={onSort}>Check-out</SortTh>
                 <SortTh field="totalDebt" current={sortField} dir={sortDir} onSort={onSort}>Outstanding</SortTh>
-                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right pr-6">Status</th>
                 <th className="px-4 py-4 w-24" />
               </tr>
             </thead>
@@ -230,11 +231,11 @@ const Tenants = () => {
                         : t.totalDebt === 0 ? <span className="text-emerald-600 text-xs font-bold">Paid</span>
                         : <span className="text-slate-300">—</span>}
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3.5 text-right pr-6">
                       <span className={`px-2.5 py-1 text-[10px] font-black rounded-xl border ${st.cls}`}>{st.label}</span>
                     </td>
                     <td className="px-4 py-3.5">
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                         <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Eye className="w-3.5 h-3.5" /></button>
                         <button onClick={() => openEdit(t)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Edit className="w-3.5 h-3.5" /></button>
                         <button onClick={() => setConfirmDelete(t.id)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-xl transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -258,22 +259,82 @@ const Tenants = () => {
           </table>
         </div>
 
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-slate-100">
+           {paginated.length === 0 ? (
+             <div className="py-20 text-center text-slate-400">
+               <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+               <p className="font-semibold">No tenants found</p>
+             </div>
+           ) : paginated.map(t => {
+             const st = getStatus(t)
+             return (
+               <div key={t.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-sm font-black text-blue-600">
+                        {t.fullName?.charAt(0)?.toUpperCase()}
+                       </div>
+                       <div>
+                         <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="text-sm font-black text-slate-900 text-left">{t.fullName}</button>
+                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{t.phone}</p>
+                       </div>
+                    </div>
+                    <span className={`px-2.5 py-1 text-[9px] font-black rounded-xl border uppercase tracking-wider ${st.cls}`}>{st.label}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50">
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mb-1 flex items-center gap-1"><DoorOpen className="w-2.5 h-2.5" /> Current Room</p>
+                      <p className="text-xs font-black text-slate-700">{t.activeRoomCode || 'Not Assigned'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50">
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mb-1 flex items-center gap-1"><AlertCircle className="w-2.5 h-2.5" /> Outstanding</p>
+                      <p className={`text-xs font-black ${t.totalDebt > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.totalDebt > 0 ? fmt(t.totalDebt) : 'Paid'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium pt-1">
+                    <div className="flex items-center gap-3">
+                       <div className="flex flex-col">
+                         <span className="text-[8px] uppercase text-slate-400 font-black">Check-in</span>
+                         <span>{fmtDate(t.checkInDate)}</span>
+                       </div>
+                       <div className="flex flex-col border-l border-slate-200 pl-3">
+                         <span className="text-[8px] uppercase text-slate-400 font-black">Check-out</span>
+                         <span className="flex items-center">{fmtDate(t.checkOutDate)}<CheckoutBadge checkOut={t.checkOutDate} /></span>
+                       </div>
+                    </div>
+                    <div className="flex gap-2">
+                       <button onClick={() => openEdit(t)} className="p-2 text-slate-400 hover:text-blue-600 bg-white rounded-xl border border-slate-200 shadow-sm"><Edit className="w-3.5 h-3.5" /></button>
+                       <button onClick={() => setConfirmDelete(t.id)} className="p-2 text-slate-400 hover:text-rose-500 bg-white rounded-xl border border-slate-200 shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </div>
+               </div>
+             )
+           })}
+        </div>
+
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-400">
-              {(page-1)*perPage+1}–{Math.min(page*perPage, sorted.length)} of {sorted.length}
+          <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs font-bold text-slate-400 order-2 sm:order-1">
+              Showing {(page-1)*perPage+1}–{Math.min(page*perPage, sorted.length)} of {sorted.length}
             </p>
-            <div className="flex items-center gap-1">
-              <button disabled={page===1} onClick={() => setPage(p=>p-1)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all">
-                <ArrowUp className="w-3.5 h-3.5 -rotate-90" />
+            <div className="flex items-center gap-1 order-1 sm:order-2">
+              <button disabled={page===1} onClick={() => setPage(p=>p-1)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all">
+                <ChevronLeft className="w-4 h-4" />
               </button>
-              {Array.from({length: Math.min(5, totalPages)}, (_,i) => {
-                const p = Math.max(0, Math.min(page-3, totalPages-5)) + i + 1
-                return <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-xl text-sm font-bold transition-all ${p===page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{p}</button>
+              {Array.from({length: Math.min(3, totalPages)}, (_,i) => {
+                let p = page
+                if (page === 1) p = 1 + i
+                else if (page === totalPages) p = totalPages - 2 + i
+                else p = page - 1 + i
+                if (p < 1 || p > totalPages) return null
+                return <button key={p} onClick={() => setPage(p)} className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${p===page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{p}</button>
               })}
-              <button disabled={page===totalPages} onClick={() => setPage(p=>p+1)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all">
-                <ArrowDown className="w-3.5 h-3.5 -rotate-90" />
+              <button disabled={page===totalPages} onClick={() => setPage(p=>p+1)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all">
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>

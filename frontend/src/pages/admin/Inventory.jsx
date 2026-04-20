@@ -232,84 +232,141 @@ const Inventory = () => {
           <p className="text-sm font-bold">No items found</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([cat, catItems]) => (
-            <div key={cat} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden fade-up">
+            <div key={cat} className="space-y-3 fade-up">
               {/* Category header */}
-              <div className="px-5 py-3 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-orange-400" />
                   <span className="text-xs font-black text-slate-600 uppercase tracking-widest">{cat}</span>
-                  <span className="text-[10px] font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded-full">{catItems.length}</span>
+                  <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{catItems.length}</span>
                 </div>
                 <span className="text-[10px] font-bold text-slate-400">
                   Value: {fmt(catItems.reduce((s,i)=>s+parseFloat(i.quantityOnHand||0)*parseFloat(i.purchasePrice||0),0))}
                 </span>
               </div>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-50">
-                    <th className="px-5 py-2.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Item</th>
-                    <th className="px-5 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock</th>
-                    <th className="px-5 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Buy / Sell</th>
-                    <th className="px-5 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Reorder</th>
-                    <th className="px-5 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                    <th className="px-5 py-2.5 w-24"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {catItems.map(item => {
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-50">
+                      <th className="px-5 py-2.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Item</th>
+                      <th className="px-5 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock</th>
+                      <th className="px-5 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Buy / Sell</th>
+                      <th className="px-5 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Reorder</th>
+                      <th className="px-5 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                      <th className="px-5 py-2.5 w-24"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {catItems.map(item => {
+                      const low = parseFloat(item.quantityOnHand||0) <= parseFloat(item.reorderLevel||0)
+                      const active = selectedItem?.id === item.id
+                      return (
+                        <tr key={item.id} onClick={() => setSelectedItem(s => s?.id === item.id ? null : item)}
+                          className={`cursor-pointer transition-all ${active ? 'bg-orange-50' : low ? 'bg-rose-50/40 hover:bg-rose-50' : 'hover:bg-slate-50/60'}`}>
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${low ? 'bg-rose-100' : 'bg-orange-100'}`}>
+                                <Package className={`w-4 h-4 ${low ? 'text-rose-500' : 'text-orange-500'}`} />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-800">{item.name}</p>
+                                <p className="text-[10px] text-slate-400">{item.unit || '—'} · {item.sku || '—'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <span className={`text-sm font-black ${low ? 'text-rose-600' : 'text-slate-800'}`}>{fmtQty(item.quantityOnHand)}</span>
+                            {low && <div className="text-[9px] font-black text-rose-400 uppercase">Low</div>}
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <p className="text-xs font-bold text-slate-600">{fmt(item.purchasePrice)}</p>
+                            <p className="text-[10px] text-slate-400">{fmt(item.salePrice)}</p>
+                          </td>
+                          <td className="px-5 py-3 text-right text-xs text-slate-500">{fmtQty(item.reorderLevel)}</td>
+                          <td className="px-5 py-3 text-right">
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                              {item.isActive ? 'Active' : 'Hidden'}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 text-right" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => openTx(item)} title="Add transaction"
+                                className="w-7 h-7 flex items-center justify-center rounded-xl hover:bg-blue-100 text-slate-400 hover:text-blue-600 transition-all">
+                                <Activity className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => openEdit(item)} title="Edit"
+                                className="w-7 h-7 flex items-center justify-center rounded-xl hover:bg-amber-100 text-slate-400 hover:text-amber-600 transition-all">
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => handleDelete(item)} title="Hide"
+                                className="w-7 h-7 flex items-center justify-center rounded-xl hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-all">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                 {catItems.map(item => {
                     const low = parseFloat(item.quantityOnHand||0) <= parseFloat(item.reorderLevel||0)
                     const active = selectedItem?.id === item.id
                     return (
-                      <tr key={item.id} onClick={() => setSelectedItem(s => s?.id === item.id ? null : item)}
-                        className={`cursor-pointer transition-all ${active ? 'bg-orange-50' : low ? 'bg-rose-50/40 hover:bg-rose-50' : 'hover:bg-slate-50/60'}`}>
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${low ? 'bg-rose-100' : 'bg-orange-100'}`}>
-                              <Package className={`w-4 h-4 ${low ? 'text-rose-500' : 'text-orange-500'}`} />
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-slate-800">{item.name}</p>
-                              <p className="text-[10px] text-slate-400">{item.unit || '—'} · {item.sku || '—'}</p>
-                            </div>
+                      <div key={item.id} onClick={() => setSelectedItem(s => s?.id === item.id ? null : item)}
+                        className={`bg-white rounded-[1.5rem] p-4 border transition-all ${active ? 'border-orange-400 ring-1 ring-orange-400 bg-orange-50/30' : low ? 'border-rose-200 bg-rose-50/20' : 'border-slate-100'}`}>
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-3">
+                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${low ? 'bg-rose-100' : 'bg-orange-100'}`}>
+                               <Package className={`w-4 h-4 ${low ? 'text-rose-500' : 'text-orange-500'}`} />
+                             </div>
+                             <div>
+                               <p className="text-sm font-black text-slate-800 leading-tight">{item.name}</p>
+                               <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{item.sku || 'No SKU'}</p>
+                             </div>
                           </div>
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          <span className={`text-sm font-black ${low ? 'text-rose-600' : 'text-slate-800'}`}>{fmtQty(item.quantityOnHand)}</span>
-                          {low && <div className="text-[9px] font-black text-rose-400 uppercase">Low</div>}
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          <p className="text-xs font-bold text-slate-600">{fmt(item.purchasePrice)}</p>
-                          <p className="text-[10px] text-slate-400">{fmt(item.salePrice)}</p>
-                        </td>
-                        <td className="px-5 py-3 text-right text-xs text-slate-500">{fmtQty(item.reorderLevel)}</td>
-                        <td className="px-5 py-3 text-right">
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
-                            {item.isActive ? 'Active' : 'Hidden'}
+                          <span className={`px-2 py-0.5 text-[9px] font-black rounded-lg border uppercase tracking-wider ${item.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-200'}`}>
+                             {item.isActive ? 'Active' : 'Hidden'}
                           </span>
-                        </td>
-                        <td className="px-5 py-3 text-right" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => openTx(item)} title="Add transaction"
-                              className="w-7 h-7 flex items-center justify-center rounded-xl hover:bg-blue-100 text-slate-400 hover:text-blue-600 transition-all">
-                              <Activity className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => openEdit(item)} title="Edit"
-                              className="w-7 h-7 flex items-center justify-center rounded-xl hover:bg-amber-100 text-slate-400 hover:text-amber-600 transition-all">
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => handleDelete(item)} title="Hide"
-                              className="w-7 h-7 flex items-center justify-center rounded-xl hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-all">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                           <div className="bg-slate-50/50 rounded-xl p-2.5 border border-slate-100">
+                             <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">In Stock</p>
+                             <div className="flex items-baseline gap-1.5">
+                               <span className={`text-base font-black ${low ? 'text-rose-600' : 'text-slate-800'}`}>{fmtQty(item.quantityOnHand)}</span>
+                               <span className="text-[10px] text-slate-400 font-bold">{item.unit}</span>
+                             </div>
+                           </div>
+                           <div className="bg-slate-50/50 rounded-xl p-2.5 border border-slate-100">
+                             <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Price (Sale)</p>
+                             <p className="text-xs font-black text-slate-800">{fmt(item.salePrice)}</p>
+                           </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="flex items-center gap-2">
+                             <span className="text-[9px] text-slate-400 font-bold uppercase">Reorder @ {fmtQty(item.reorderLevel)}</span>
+                             {low && <span className="px-1.5 py-0.5 bg-rose-600 text-white text-[8px] font-black rounded-md uppercase animate-pulse">Low Stock</span>}
                           </div>
-                        </td>
-                      </tr>
+                          <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => openTx(item)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"><Activity className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => openEdit(item)} className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDelete(item)} className="p-2 text-rose-500 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      </div>
                     )
-                  })}
-                </tbody>
-              </table>
+                 })}
+              </div>
             </div>
           ))}
         </div>

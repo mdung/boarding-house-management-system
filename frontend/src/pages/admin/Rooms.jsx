@@ -142,33 +142,36 @@ const Rooms = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1) }}
             placeholder="Search rooms..." className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" />
         </div>
-        <select value={filterHouse} onChange={e => { setFilterHouse(e.target.value); setPage(1) }}
-          className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none">
-          <option value="ALL">All boarding houses</option>
-          {houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-        </select>
-        <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
-          className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none">
-          <option value="ALL">All statuses</option>
-          <option value="AVAILABLE">Available</option>
-          <option value="OCCUPIED">Occupied</option>
-          <option value="MAINTENANCE">Maintenance</option>
-        </select>
-        <select value={perPage} onChange={e => { setPerPage(parseInt(e.target.value)); setPage(1) }}
-          className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none">
-          {[5,10,25,50].map(n => <option key={n} value={n}>{n} per page</option>)}
-        </select>
+        <div className="grid grid-cols-2 lg:flex gap-3">
+          <select value={filterHouse} onChange={e => { setFilterHouse(e.target.value); setPage(1) }}
+            className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none min-w-[140px]">
+            <option value="ALL">All Properties</option>
+            {houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+          <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
+            className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none min-w-[120px]">
+            <option value="ALL">All Status</option>
+            <option value="AVAILABLE">Available</option>
+            <option value="OCCUPIED">Occupied</option>
+            <option value="MAINTENANCE">Maintenance</option>
+          </select>
+          <select value={perPage} onChange={e => { setPerPage(parseInt(e.target.value)); setPage(1) }}
+            className="hidden lg:block px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none">
+            {[5,10,25,50].map(n => <option key={n} value={n}>{n} per page</option>)}
+          </select>
+        </div>
       </div>
 
-      {/* Table */}
+      {/* List / Grid View */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60">
@@ -181,7 +184,7 @@ const Rooms = () => {
                     <SortBtn field={f} current={sortField} dir={sortDir} onSort={onSort}>{l}</SortBtn>
                   </th>
                 ))}
-                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -210,8 +213,8 @@ const Rooms = () => {
                     <td className="px-4 py-3.5">
                       <span className={`px-2.5 py-1 text-[10px] font-black rounded-xl border ${st.cls}`}>{st.label}</span>
                     </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-4 py-3.5 text-right">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => navigate(`/admin/rooms/${r.id}/detail`)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Eye className="w-3.5 h-3.5" /></button>
                         <button onClick={() => openEdit(r)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Edit className="w-3.5 h-3.5" /></button>
                         <button onClick={() => setConfirmDelete(r.id)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-xl transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -224,28 +227,83 @@ const Rooms = () => {
           </table>
         </div>
 
+        {/* Mobile Grid View */}
+        <div className="md:hidden p-4 grid gap-4 grid-cols-1">
+          {paginated.length === 0 ? (
+            <div className="py-12 text-center text-slate-400">
+               <DoorOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
+               <p className="font-semibold">No rooms found</p>
+            </div>
+          ) : paginated.map(r => {
+            const st = STATUS_CFG[r.status] || STATUS_CFG.AVAILABLE
+            return (
+              <div key={r.id} className="bg-slate-50 rounded-[2rem] p-5 space-y-4 border border-slate-100">
+                <div className="flex justify-between items-start">
+                  <div onClick={() => navigate(`/admin/rooms/${r.id}/detail`)} className="cursor-pointer">
+                    <h3 className="text-xl font-black text-slate-900">{r.code}</h3>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-tight flex items-center gap-1.5 mt-0.5">
+                       <Building2 className="w-3 h-3" /> {r.boardingHouseName}
+                    </p>
+                  </div>
+                  <span className={`px-2.5 py-1 text-[9px] font-black rounded-xl border uppercase tracking-wider ${st.cls}`}>{st.label}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white rounded-2xl p-3 border border-slate-100">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Monthly Rent</p>
+                    <p className="text-sm font-black text-blue-600">{fmt(r.baseRent)}</p>
+                  </div>
+                  <div className="bg-white rounded-2xl p-3 border border-slate-100">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Details</p>
+                    <p className="text-sm font-bold text-slate-700">{r.floor ? `F${r.floor}` : ''} · {r.area ? `${r.area}m²` : '-'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-100">
+                      {r.currentTenantName?.charAt(0) || <Users className="w-3 h-3" />}
+                    </div>
+                    <p className="text-xs font-bold text-slate-600 truncate max-w-[120px]">
+                      {r.currentTenantName || 'No Tenant'}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => openEdit(r)} className="w-9 h-9 flex items-center justify-center bg-white text-slate-600 rounded-xl border border-slate-200 shadow-sm"><Edit className="w-4 h-4" /></button>
+                    <button onClick={() => setConfirmDelete(r.id)} className="w-9 h-9 flex items-center justify-center bg-white text-rose-500 rounded-xl border border-rose-100 shadow-sm"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-400">
+          <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs font-bold text-slate-400 order-2 sm:order-1">
               Showing {start + 1}–{Math.min(start + perPage, visibleRooms.length)} of {visibleRooms.length}
             </p>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 order-1 sm:order-2">
               <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-                className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 transition-all shadow-sm">
+                className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 transition-all shadow-sm">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const p = Math.max(0, Math.min(page - 3, totalPages - 5)) + i + 1
+              {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                let p = page
+                if (page === 1) p = 1 + i
+                else if (page === totalPages) p = totalPages - 2 + i
+                else p = page - 1 + i
+                if (p < 1 || p > totalPages) return null
                 return (
                   <button key={p} onClick={() => setPage(p)}
-                    className={`w-8 h-8 rounded-xl text-sm font-bold transition-all ${p === page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${p === page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                     {p}
                   </button>
                 )
               })}
               <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)}
-                className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 transition-all shadow-sm">
+                className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 transition-all shadow-sm">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>

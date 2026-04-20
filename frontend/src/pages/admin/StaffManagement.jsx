@@ -73,44 +73,44 @@ const StaffManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 pb-10 sm:pb-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Staff & Access Control</h1>
-          <p className="text-slate-500 mt-1">Manage team members and their granular permissions.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Staff & Access Control</h1>
+          <p className="text-slate-500 mt-1 text-sm sm:text-base font-medium">Manage team members and their granular permissions.</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
+          className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
         >
           <UserPlus className="w-4 h-4" /> Add Staff
         </button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {users.map(u => (
-          <div key={u.id} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600 font-bold text-lg">
+          <div key={u.id} className="bg-white rounded-[2rem] p-5 sm:p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+            <div className="flex justify-between items-start mb-5">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl flex items-center justify-center text-slate-600 font-black text-lg border border-slate-200/50">
                   {u.fullName.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900">{u.fullName}</h3>
-                  <p className="text-xs text-slate-500">{u.username} • {u.roles.join(', ')}</p>
+                  <h3 className="font-black text-slate-900 leading-tight">{u.fullName}</h3>
+                  <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">@{u.username} • {u.roles.join(', ')}</p>
                 </div>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 <button
                   onClick={() => { setSelectedUser(u); setShowModal(true) }}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  className="w-9 h-9 flex items-center justify-center text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
                   title="Configure Permissions"
                 >
                   <Shield className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => { setUserToDelete(u); setShowDeleteModal(true) }}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  className="w-9 h-9 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors"
                   title="Deactivate"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -118,19 +118,19 @@ const StaffManagement = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Permissions</p>
+            <div className="space-y-3">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Permissions</p>
               <div className="flex flex-wrap gap-1.5">
                 {u.roles.includes('ADMIN') ? (
-                  <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md uppercase">Full Access</span>
+                  <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-xl uppercase border border-emerald-100/50">Full System Access</span>
                 ) : u.permissions.length > 0 ? (
                   u.permissions.map(p => (
-                    <span key={p} className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-md">
+                    <span key={p} className="px-2.5 py-1.5 bg-slate-50 text-slate-600 text-[10px] font-black rounded-xl border border-slate-100 uppercase tracking-tight">
                       {p.replace('MANAGE_', '').replace('_', ' ')}
                     </span>
                   ))
                 ) : (
-                  <span className="text-[11px] text-slate-400 italic">No special permissions</span>
+                  <span className="text-[11px] text-slate-400 italic px-1 font-medium">No special permissions assigned</span>
                 )}
               </div>
             </div>

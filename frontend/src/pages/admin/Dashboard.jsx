@@ -857,11 +857,11 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-10 sm:pb-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Intelligence Dashboard</h1>
-          <p className="text-slate-500 mt-1 font-medium">Welcome back, Admin. Here's your boarding house status.</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">Intelligence Dashboard</h1>
+          <p className="text-slate-500 mt-1 font-medium text-sm sm:text-base">Welcome back, Admin. Here's your boarding house status.</p>
         </div>
         <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white rounded-2xl border border-slate-200 shadow-sm">
           <CalendarDays className="w-4 h-4 text-slate-400" />
@@ -870,7 +870,7 @@ const Dashboard = () => {
       </div>
 
       {/* Reorderable Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {widgets.map((s, i) => {
           const Icon = s.icon
           return (
@@ -881,19 +881,19 @@ const Dashboard = () => {
               onDragOver={handleDragOver}
               onDrop={() => handleDrop(i)}
               onClick={() => navigate(s.link)}
-              className={`relative bg-white/70 backdrop-blur-md border border-white rounded-[2rem] p-5 cursor-move transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1 active:scale-95 group overflow-hidden ${draggedIdx === i ? 'opacity-40 grayscale' : ''}`}
+              className={`relative bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 cursor-move transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1 active:scale-95 group overflow-hidden ${draggedIdx === i ? 'opacity-40 grayscale' : ''}`}
             >
               {/* Decorative background element */}
-              <div className={`absolute -right-4 -top-4 w-16 h-16 rounded-full opacity-10 transition-transform group-hover:scale-150 duration-500 ${s.color}`} />
+              <div className={`absolute -right-4 -top-4 w-12 h-12 sm:w-16 sm:h-16 rounded-full opacity-10 transition-transform group-hover:scale-150 duration-500 ${s.color}`} />
               
-              <div className={`${s.color} w-10 h-10 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-current/20`}>
-                <Icon className="w-5 h-5 text-white" />
+              <div className={`${s.color} w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 shadow-lg shadow-current/20`}>
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">{s.label}</p>
-              <p className="text-2xl font-black text-slate-900 mt-1">{s.value}</p>
+              <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{s.label}</p>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5 sm:mt-1 truncate">{s.value}</p>
               
               {/* Grab handle hint */}
-              <div className="absolute bottom-3 right-5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute bottom-3 right-5 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
                 <div className="flex gap-0.5">
                   <div className="w-1 h-1 bg-slate-200 rounded-full" />
                   <div className="w-1 h-1 bg-slate-200 rounded-full" />

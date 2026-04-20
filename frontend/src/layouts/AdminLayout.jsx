@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useState } from 'react'
 import {
   Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard,
-  LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History
+  LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History, XCircle
 } from 'lucide-react'
 
 const menuGroups = [
@@ -188,52 +188,98 @@ const AdminLayout = () => {
         )}
       </aside>
 
-      {/* Mobile overlay */}
+      {/* Mobile overlay sidebar */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <aside className="relative w-64 h-full bg-slate-900 flex flex-col shadow-2xl">
+        <div className="fixed inset-0 z-[60] lg:hidden">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setMobileOpen(false)} />
+          <aside className="relative w-72 h-full bg-slate-900 flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
+            <div className="absolute top-4 right-4 lg:hidden">
+              <button onClick={() => setMobileOpen(false)} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-xl">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
             <SidebarContent />
           </aside>
         </div>
       )}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative">
         {/* Top bar */}
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center px-4 gap-3 flex-shrink-0 shadow-sm">
-          <button onClick={() => setMobileOpen(true)} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-100">
+        <header className="h-14 sm:h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center px-4 sm:px-6 gap-3 flex-shrink-0 shadow-sm sticky top-0 z-40">
+          <button onClick={() => setMobileOpen(true)} className="lg:hidden p-2 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
             <Menu className="w-5 h-5 text-slate-600" />
           </button>
-          <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:block p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+          <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:block p-2 rounded-xl hover:bg-slate-100 transition-colors">
             <Menu className="w-5 h-5 text-slate-500" />
           </button>
-          <div className="flex-1">
-            <h2 className="text-sm font-bold text-slate-800 hidden sm:flex items-center gap-2">
+          
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2 truncate">
               {user?.profilePicture && (
-                <img src={user.profilePicture} alt="" className="w-6 h-6 rounded-full object-cover" />
+                <img src={user.profilePicture} alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover ring-2 ring-blue-500/10" />
               )}
-              {(() => {
-                const h = new Date().getHours()
-                const greeting = h < 12 ? 'Chào buổi sáng' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'
-                return <>{greeting}, <span className="text-blue-600">{user?.fullName}</span> 👋</>
-              })()}
+              <span className="hidden xs:inline">
+                {(() => {
+                  const h = new Date().getHours()
+                  const greeting = h < 12 ? 'Chào buổi sáng' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'
+                  return <>{greeting}, <span className="text-blue-600">{user?.fullName?.split(' ').pop()}</span> 👋</>
+                })()}
+              </span>
+              <span className="xs:hidden text-blue-600 truncate">{user?.fullName?.split(' ').pop()}</span>
             </h2>
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="hidden sm:inline font-medium uppercase text-[10px] tracking-widest text-slate-400">
-              {checkIsAdmin() ? 'Admin' : 'Staff'} Session
-            </span>
+
+          <div className="flex items-center gap-2 sm:gap-4">
+             <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-medium uppercase text-[10px] tracking-widest text-slate-400">
+                {checkIsAdmin() ? 'Admin' : 'Staff'}
+              </span>
+            </div>
+            <Link to="/admin/profile" className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors lg:hidden">
+               <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+                {user?.fullName?.charAt(0)}
+               </div>
+            </Link>
           </div>
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
+        <main className="flex-1 overflow-auto pb-20 lg:pb-0">
+          <div className="p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
             <Outlet />
           </div>
         </main>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-slate-200 px-2 py-2 flex items-center justify-around z-50 shadow-[0_-4px_20px_rgba(0,0,0,0,05)]">
+          {[
+            { path: '/admin/dashboard', icon: Home, label: 'Home' },
+            { path: '/admin/rooms', icon: DoorOpen, label: 'Rooms' },
+            { path: '/admin/tenants', icon: Users, label: 'Guests' },
+            { path: '/admin/invoices', icon: Receipt, label: 'Bills' },
+            { path: '/admin/staff', icon: ShieldCheck, label: 'Staff' },
+          ].map((item) => {
+            const Icon = item.icon
+            const active = isActive(item.path)
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all duration-300 ${
+                  active ? 'text-blue-600' : 'text-slate-400'
+                }`}
+              >
+                <div className={`p-1.5 rounded-xl transition-all duration-300 ${active ? 'bg-blue-50' : 'group-hover:bg-slate-50'}`}>
+                  <Icon className={`w-5 h-5 ${active ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} />
+                </div>
+                <span className={`text-[10px] font-bold tracking-tight ${active ? 'opacity-100' : 'opacity-70'}`}>{item.label}</span>
+                {active && <div className="absolute bottom-1.5 w-1 h-1 rounded-full bg-blue-600" />}
+              </Link>
+            )
+          })}
+        </nav>
       </div>
     </div>
   )

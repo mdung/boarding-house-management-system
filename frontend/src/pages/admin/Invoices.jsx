@@ -182,9 +182,10 @@ const Invoices = () => {
         )}
       </div>
 
-      {/* Table */}
+      {/* Table / Grid View */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60">
@@ -200,7 +201,7 @@ const Invoices = () => {
                 <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Paid</th>
                 <SortTh field="remainingAmount" current={sortField} dir={sortDir} onSort={onSort}>Remaining</SortTh>
                 <SortTh field="status" current={sortField} dir={sortDir} onSort={onSort}>Status</SortTh>
-                <th className="px-4 py-4 w-24" />
+                <th className="px-4 py-4 w-24 text-right pr-6">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -232,8 +233,8 @@ const Invoices = () => {
                     <td className="px-4 py-3.5">
                       <span className={`px-2.5 py-1 text-[10px] font-black rounded-xl border ${st.cls}`}>{st.label}</span>
                     </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-4 py-3.5 text-right pr-6">
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                         <button onClick={() => navigate(`/admin/invoices/${inv.id}/detail`)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Eye className="w-3.5 h-3.5" /></button>
                         {inv.status !== 'PAID' && <button onClick={() => navigate(`/admin/payments?invoiceId=${inv.id}`)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-500 rounded-xl transition-colors"><DollarSign className="w-3.5 h-3.5" /></button>}
                         {(parseFloat(inv.paidAmount)||0) === 0 && <button onClick={() => setShowDeleteConfirm(inv)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-xl transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>}
@@ -256,16 +257,70 @@ const Invoices = () => {
             )}
           </table>
         </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-slate-100">
+           {paged.length === 0 ? (
+             <div className="py-20 text-center text-slate-400">
+               <Receipt className="w-10 h-10 mx-auto mb-3 opacity-30" />
+               <p className="font-semibold">No invoices found</p>
+             </div>
+           ) : paged.map(inv => {
+             const st = STATUS_CFG[inv.status] || STATUS_CFG.UNPAID
+             return (
+               <div key={inv.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <button onClick={() => navigate(`/admin/invoices/${inv.id}/detail`)} className="text-sm font-black text-blue-600 mb-0.5">{inv.code}</button>
+                      <p className="text-xs font-bold text-slate-900">{inv.tenantName || 'Unknown Guest'}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-black rounded-lg border border-slate-200 uppercase tracking-widest">{inv.roomCode}</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{inv.periodMonth}/{inv.periodYear}</span>
+                      </div>
+                    </div>
+                    <span className={`px-2.5 py-1 text-[9px] font-black rounded-xl border uppercase tracking-wider ${st.cls}`}>{st.label}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50">
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Total Amount</p>
+                      <p className="text-xs font-black text-slate-800">{fmt(inv.totalAmount)}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50">
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Remaining</p>
+                      <p className={`text-xs font-black ${inv.remainingAmount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmt(inv.remainingAmount)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                      Paid: <span className="text-emerald-600 ml-1">{fmt(inv.paidAmount)}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => navigate(`/admin/invoices/${inv.id}/detail`)} className="p-2 text-slate-400 hover:text-blue-600 bg-white rounded-xl border border-slate-200 shadow-sm transition-colors"><Eye className="w-3.5 h-3.5" /></button>
+                      {inv.status !== 'PAID' && <button onClick={() => navigate(`/admin/payments?invoiceId=${inv.id}`)} className="p-2 text-emerald-600 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm transition-colors"><DollarSign className="w-3.5 h-3.5" /></button>}
+                      {(parseFloat(inv.paidAmount)||0) === 0 && <button onClick={() => setShowDeleteConfirm(inv)} className="p-2 text-rose-500 bg-rose-50 rounded-xl border border-rose-100 shadow-sm transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>}
+                    </div>
+                  </div>
+               </div>
+             )
+           })}
+        </div>
+
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-400">{(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, filteredInvoices.length)} of {filteredInvoices.length}</p>
-            <div className="flex items-center gap-1">
-              <button disabled={page===1} onClick={() => setPage(p=>p-1)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all"><ChevronUp className="w-4 h-4 rotate-90" /></button>
-              {Array.from({length: Math.min(5, totalPages)}, (_,i) => {
-                const p = Math.max(0, Math.min(page-3, totalPages-5)) + i + 1
-                return <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-xl text-sm font-bold transition-all ${p===page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{p}</button>
+          <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs font-bold text-slate-400 order-2 sm:order-1">Showing {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, filteredInvoices.length)} of {filteredInvoices.length}</p>
+            <div className="flex items-center gap-1 order-1 sm:order-2">
+              <button disabled={page===1} onClick={() => setPage(p=>p-1)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all"><ChevronLeft className="w-4 h-4" /></button>
+              {Array.from({length: Math.min(3, totalPages)}, (_,i) => {
+                let p = page
+                if (page === 1) p = 1 + i
+                else if (page === totalPages) p = totalPages - 2 + i
+                else p = page - 1 + i
+                if (p < 1 || p > totalPages) return null
+                return <button key={p} onClick={() => setPage(p)} className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${p===page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{p}</button>
               })}
-              <button disabled={page===totalPages} onClick={() => setPage(p=>p+1)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all"><ChevronDown className="w-4 h-4 rotate-90" /></button>
+              <button disabled={page===totalPages} onClick={() => setPage(p=>p+1)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all"><ChevronRight className="w-4 h-4" /></button>
             </div>
           </div>
         )}

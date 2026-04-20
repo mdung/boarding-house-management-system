@@ -220,9 +220,10 @@ const ActivityLogs = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Desktop Table / Mobile Card View */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60">
@@ -310,6 +311,60 @@ const ActivityLogs = () => {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {loading ? (
+            Array(5).fill(0).map((_, i) => (
+              <div key={i} className="p-5 animate-pulse space-y-3">
+                <div className="flex justify-between">
+                  <div className="h-4 bg-slate-100 rounded w-1/3" />
+                  <div className="h-4 bg-slate-100 rounded w-1/4" />
+                </div>
+                <div className="h-10 bg-slate-50 rounded-xl" />
+              </div>
+            ))
+          ) : logs.length === 0 ? (
+            <div className="p-10 text-center text-slate-400">
+              <History className="w-10 h-10 mx-auto mb-3 opacity-20" />
+              <p className="font-bold">No logs found</p>
+            </div>
+          ) : (
+            logs.map((log) => {
+              const meta = ACTION_META[log.action] || { label: log.action, color: 'text-slate-600 bg-slate-50 border-slate-200' }
+              const icon = ACTION_ICONS[log.action] || <Activity className="w-3.5 h-3.5" />
+              return (
+                <div key={log.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-sm font-black text-slate-600">
+                        {log.fullName?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                      <div>
+                        <div className="text-sm font-black text-slate-900">{log.fullName || 'Unknown'}</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{fmtDate(log.timestamp)} · {fmtTime(log.timestamp)}</div>
+                      </div>
+                    </div>
+                    <span className="px-2 py-1 bg-slate-100 text-slate-500 text-[9px] font-black rounded-lg border border-slate-200 uppercase tracking-widest">
+                      {log.module}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black border ${meta.color}`}>
+                      {icon}
+                      {meta.label}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50">
+                    <p className="text-xs text-slate-600 leading-relaxed font-medium">{log.details}</p>
+                  </div>
+                </div>
+              )
+            })
+          )}
         </div>
 
         {/* Pagination */}
