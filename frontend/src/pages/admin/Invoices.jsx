@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
 import { useToast } from '../../context/ToastContext'
-import { Plus, Eye, Calculator, DollarSign, Trash2, ChevronUp, ChevronDown, X, AlertTriangle, Search, Receipt, FileText } from 'lucide-react'
+import { Plus, Eye, Calculator, DollarSign, Trash2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, AlertTriangle, Search, Receipt, FileText } from 'lucide-react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
