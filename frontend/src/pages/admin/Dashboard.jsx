@@ -5,7 +5,7 @@ import eventBus, { EVENTS } from '../../services/eventBus'
 import {
   DoorOpen, Users, DollarSign, AlertCircle, LogIn, LogOut,
   BedDouble, CreditCard, X, ExternalLink, ShoppingCart, Receipt,
-  ChevronRight, ChevronDown, Edit2, Save, Plus, CalendarDays, Package
+  ChevronRight, ChevronLeft, ChevronDown, Edit2, Save, Plus, CalendarDays, Package
 } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -131,7 +131,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
   const debt = parseFloat(guest.totalDebt) || 0
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 z-50 modal-fix bg-black/50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
         {/* Header */}
         <div className={`px-6 py-4 flex justify-between items-start ${debt > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
@@ -661,7 +661,7 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 modal-fix bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
       <div
         className={`bg-white rounded-3xl w-full max-w-xl shadow-2xl max-h-[90vh] flex flex-col transition-all duration-300
           ${animIn ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'}`}
@@ -806,7 +806,9 @@ const Dashboard = () => {
   const [dashboard, setDashboard] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedGuest, setSelectedGuest] = useState(null)
-  const [revenueModal, setRevenueModal] = useState(null) // 'RENT' | 'SERVICE' | null
+  const [revenueModal, setRevenueModal] = useState(null)
+  const [centerOffset, setCenterOffset] = useState(0)   // 0 = today, -1 = yesterday, etc.
+  const [extraDays, setExtraDays] = useState({})         // cache: offset → DayActivityDto
 
   const fetchDashboard = () => {
     api.get('/dashboard').then(r => setDashboard(r.data)).catch(console.error).finally(() => setLoading(false))
@@ -814,6 +816,37 @@ const Dashboard = () => {
 
   useEffect(() => { fetchDashboard() }, [])
   useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchDashboard) }, [])
+
+  // Fetch a specific day by offset from today
+  const fetchDay = (offset) => {
+    if (offset >= -1 && offset <= 1) return  // already in dashboard data
+    setExtraDays(prev => {
+      if (prev[offset] !== undefined) return prev  // already fetched or fetching
+      const d = new Date(); d.setDate(d.getDate() + offset)
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      api.get(`/dashboard/day?date=${dateStr}`)
+        .then(r => setExtraDays(p => ({ ...p, [offset]: r.data })))
+        .catch(console.error)
+      return { ...prev, [offset]: null }  // null = loading
+    })
+  }
+
+  // When center changes, prefetch neighbors
+  useEffect(() => {
+    fetchDay(centerOffset - 1)
+    fetchDay(centerOffset)
+    fetchDay(centerOffset + 1)
+  }, [centerOffset])
+
+  const getDayData = (offset) => {
+    if (offset === -1) return dashboard?.yesterday
+    if (offset === 0)  return dashboard?.today
+    if (offset === 1)  return dashboard?.tomorrow
+    return extraDays[offset] || null  // null = loading, undefined = not fetched yet
+  }
+
+  const navTo = (delta) => setCenterOffset(o => o + delta)
+  const goToday = () => setCenterOffset(0)
 
   const [widgets, setWidgets] = useState([])
   const [draggedIdx, setDraggedIdx] = useState(null)
@@ -851,10 +884,30 @@ const Dashboard = () => {
   )
 
   const today = new Date()
-  const fmtDay = (offset) => {
-    const d = new Date(today); d.setDate(d.getDate() + offset)
-    return d.toLocaleDateString('en-US', { weekday: 'long', day: '2-digit', month: '2-digit' })
+  const offsetToDate = (offset) => { const d = new Date(today); d.setDate(d.getDate() + offset); return d }
+  const fmtDay = (offset) => offsetToDate(offset).toLocaleDateString('en-US', { weekday: 'long', day: '2-digit', month: '2-digit' })
+  const offsetLabel = (offset) => {
+    if (offset === 0) return 'Today'
+    if (offset === -1) return 'Yesterday'
+    if (offset === 1) return 'Tomorrow'
+    if (offset < 0) return `${Math.abs(offset)} days ago`
+    return `In ${offset} days`
   }
+
+  // Guests with debt across all days in dashboard
+  const debtGuests = [
+    ...(dashboard?.yesterday?.checkIns || []),
+    ...(dashboard?.yesterday?.checkOuts || []),
+    ...(dashboard?.yesterday?.staying || []),
+    ...(dashboard?.today?.checkIns || []),
+    ...(dashboard?.today?.checkOuts || []),
+    ...(dashboard?.today?.staying || []),
+    ...(dashboard?.tomorrow?.checkIns || []),
+    ...(dashboard?.tomorrow?.checkOuts || []),
+    ...(dashboard?.tomorrow?.staying || []),
+  ].filter(g => parseFloat(g.totalDebt) > 0)
+   .reduce((acc, g) => { if (!acc.find(x => x.contractId === g.contractId)) acc.push(g); return acc }, [])
+   .sort((a, b) => parseFloat(b.totalDebt) - parseFloat(a.totalDebt))
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-10 sm:pb-0">
@@ -941,15 +994,77 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Day columns */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-gray-700">Guest Calendar by Day</h2>
-        <p className="text-xs text-gray-400">Click on a guest to view details</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <DayColumn label="Yesterday" dateLabel={fmtDay(-1)} data={dashboard?.yesterday} onSelect={setSelectedGuest} />
-        <DayColumn label="Today" dateLabel={fmtDay(0)} data={dashboard?.today} onSelect={setSelectedGuest} highlight />
-        <DayColumn label="Tomorrow" dateLabel={fmtDay(1)} data={dashboard?.tomorrow} onSelect={setSelectedGuest} />
+      {/* Debt Alert Bar - always visible if any guest has debt */}
+      {debtGuests.length > 0 && (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+            <span className="text-sm font-black text-rose-700">{debtGuests.length} guest{debtGuests.length > 1 ? 's' : ''} with outstanding debt</span>
+            <span className="ml-auto text-sm font-black text-rose-600">{fmt(debtGuests.reduce((s,g) => s + parseFloat(g.totalDebt||0), 0))}</span>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {debtGuests.map(g => (
+              <button key={g.contractId} onClick={() => setSelectedGuest(g)}
+                className="flex items-center gap-2 px-3 py-2 bg-white border border-rose-200 rounded-xl hover:border-rose-400 hover:shadow-sm transition-all text-left">
+                <div className="w-6 h-6 rounded-lg bg-rose-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[10px] font-black text-rose-600">{g.tenantName?.charAt(0)}</span>
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-800 leading-tight">{g.tenantName}</p>
+                  <p className="text-[10px] font-bold text-rose-600">{fmt(g.totalDebt)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Day navigator */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-gray-700">Guest Calendar by Day</h2>
+          <div className="flex items-center gap-2">
+            {centerOffset !== 0 && (
+              <button onClick={goToday}
+                className="px-3 py-1.5 text-xs font-black text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors">
+                Today
+              </button>
+            )}
+            <button onClick={() => navTo(-1)}
+              className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition-all">
+              <ChevronLeft className="w-4 h-4 text-slate-500" />
+            </button>
+            <button onClick={() => navTo(1)}
+              className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition-all">
+              <ChevronRight className="w-4 h-4 text-slate-500" />
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[-1, 0, 1].map(delta => {
+            const offset = centerOffset + delta
+            const isCenter = delta === 0
+            const data = getDayData(offset)
+            const isLoading = offset < -1 || offset > 1 ? extraDays[offset] === null : false
+            return (
+              <div key={offset} className={`transition-all duration-300 ${isLoading ? 'opacity-50' : ''}`}>
+                {isLoading ? (
+                  <div className="bg-white rounded-2xl border border-slate-100 p-8 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <DayColumn
+                    label={offsetLabel(offset)}
+                    dateLabel={fmtDay(offset)}
+                    data={data}
+                    onSelect={setSelectedGuest}
+                    highlight={isCenter && centerOffset === 0}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Guest detail modal */}

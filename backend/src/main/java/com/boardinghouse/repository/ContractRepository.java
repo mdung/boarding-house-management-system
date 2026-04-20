@@ -23,8 +23,11 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     List<Contract> findByEndDateAndStatus(LocalDate endDate, ContractStatus status);
     List<Contract> findByStartDateAndStatus(LocalDate startDate, ContractStatus status);
 
-    @Query("SELECT c FROM Contract c JOIN FETCH c.room r JOIN FETCH r.boardingHouse JOIN FETCH c.mainTenant WHERE c.status = 'ACTIVE' ORDER BY c.endDate ASC")
+    @Query("SELECT c FROM Contract c JOIN FETCH c.room r JOIN FETCH r.boardingHouse JOIN FETCH c.mainTenant WHERE c.status IN ('ACTIVE', 'EXPIRED', 'TERMINATED') ORDER BY c.endDate ASC")
     List<Contract> findAllActiveOrderByEndDate();
+
+    @Query("SELECT c FROM Contract c JOIN FETCH c.room r JOIN FETCH r.boardingHouse JOIN FETCH c.mainTenant WHERE c.status IN ('ACTIVE', 'EXPIRED', 'TERMINATED') AND (c.startDate BETWEEN :from AND :to OR c.endDate BETWEEN :from AND :to OR (c.startDate <= :from AND c.endDate >= :to)) ORDER BY c.endDate ASC")
+    List<Contract> findContractsInRange(@org.springframework.data.repository.query.Param("from") java.time.LocalDate from, @org.springframework.data.repository.query.Param("to") java.time.LocalDate to);
 
     // For tenant list: get active contract for a tenant
     @Query("SELECT c FROM Contract c JOIN FETCH c.room r JOIN FETCH r.boardingHouse WHERE c.mainTenant.id = :tenantId AND c.status = 'ACTIVE' ORDER BY c.startDate DESC")

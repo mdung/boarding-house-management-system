@@ -41,6 +41,8 @@ const TenantDetail = () => {
   const [payForm, setPayForm] = useState({ paidAmount: '', method: 'CASH', note: '', transactionCode: '', paymentDate: new Date().toISOString().split('T')[0] })
   const [paying, setPaying] = useState(false)
 
+  const [payments, setPayments] = useState([])
+
   useEffect(() => { fetchAll() }, [id])
   useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchAll) }, [id])
 
@@ -49,10 +51,23 @@ const TenantDetail = () => {
       const r = await api.get(`/tenants/${id}/detail`)
       setTenant(r.data)
       const active = r.data.contracts?.find(c => c.status === 'ACTIVE')
-      if (active) {
-        const s = await api.get(`/guest-charges/contract/${active.id}/summary`)
+      const mostRecent = r.data.contracts?.sort((a, b) => new Date(b.startDate) - new Date(a.startDate))[0]
+      const contractForSummary = active || mostRecent
+      if (contractForSummary) {
+        const s = await api.get(`/guest-charges/contract/${contractForSummary.id}/summary`)
         setSummary(s.data)
-      } else setSummary(null)
+        // Fetch payment history for this contract's invoices
+        try {
+          const invR = await api.get(`/invoices/contract/${contractForSummary.id}`)
+          const allPays = []
+          for (const inv of invR.data) {
+            const pR = await api.get(`/payments/invoice/${inv.id}`)
+            allPays.push(...pR.data)
+          }
+          allPays.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))
+          setPayments(allPays)
+        } catch { setPayments([]) }
+      } else { setSummary(null); setPayments([]) }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -66,11 +81,12 @@ const TenantDetail = () => {
 
   const handlePay = async (e) => {
     e.preventDefault()
-    const active = tenant.contracts?.find(c => c.status === 'ACTIVE')
-    if (!active) return
+    const contract = tenant.contracts?.find(c => c.status === 'ACTIVE')
+      || tenant.contracts?.sort((a, b) => new Date(b.startDate) - new Date(a.startDate))[0]
+    if (!contract) return
     setPaying(true)
     try {
-      await api.post(`/payments/contract/${active.id}`, { paidAmount: parseFloat(payForm.paidAmount), method: payForm.method, note: payForm.note, transactionCode: payForm.transactionCode, paymentDate: payForm.paymentDate ? new Date(payForm.paymentDate).toISOString() : null })
+      await api.post(`/payments/contract/${contract.id}`, { paidAmount: parseFloat(payForm.paidAmount), method: payForm.method, note: payForm.note, transactionCode: payForm.transactionCode, paymentDate: payForm.paymentDate ? new Date(payForm.paymentDate).toISOString() : null })
       setShowPayModal(false)
       setPayForm({ paidAmount: '', method: 'CASH', note: '', transactionCode: '', paymentDate: new Date().toISOString().split('T')[0] })
       eventBus.emit(EVENTS.PAYMENT_CHANGED); fetchAll()
@@ -88,6 +104,7 @@ const TenantDetail = () => {
   if (!tenant) return <div className="p-8 text-center text-rose-500 font-semibold">Guest not found</div>
 
   const activeContract = tenant.contracts?.find(c => c.status === 'ACTIVE')
+    || tenant.contracts?.sort((a, b) => new Date(b.startDate) - new Date(a.startDate))[0]
   const remaining = summary ? parseFloat(summary.remainingAmount) : 0
   const today = new Date(); today.setHours(0,0,0,0)
   const checkoutDate = activeContract ? new Date(activeContract.endDate + 'T00:00:00') : null
@@ -180,13 +197,13 @@ const TenantDetail = () => {
             </div>
           )}
 
-          {activeContract && remaining > 0 && (
+          {remaining > 0 && (
             <button onClick={() => { setPayForm(f => ({...f, paidAmount: remaining.toFixed(0)})); setShowPayModal(true) }}
               className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-2xl shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
               <CreditCard className="w-4 h-4" /> Collect {fmt(remaining)}
             </button>
           )}
-          {activeContract && (
+          {activeContract && activeContract.status === 'ACTIVE' && (
             <button onClick={() => navigate(`/admin/guest-charges?contractId=${activeContract.id}`)}
               className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 bg-white/70 hover:bg-white text-purple-700 text-sm font-bold rounded-2xl border border-purple-200 transition-all">
               <ShoppingCart className="w-4 h-4" /> Add Service Charge
@@ -309,9 +326,48 @@ const TenantDetail = () => {
         </div>
       )}
 
+      {/* Payment History */}
+      {payments.length > 0 && (
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-slate-500" />
+            <h2 className="font-black text-slate-900">Payment History</h2>
+            <span className="ml-auto text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{payments.length}</span>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {payments.map((p, i) => {
+              const methodIcon = { CASH: '💵', BANK_TRANSFER: '🏦', MOMO: '📱', CARD: '💳' }
+              return (
+                <div key={p.id} className={`flex items-center justify-between px-6 py-3.5 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-sm flex-shrink-0">
+                      {methodIcon[p.method] || '💰'}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{fmt(p.paidAmount)}</p>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        {p.method?.replace('_', ' ')} · {p.invoiceCode}
+                        {p.note && ` · ${p.note}`}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400 font-medium flex-shrink-0">
+                    {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('vi-VN') : '—'}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+          <div className="px-6 py-3 bg-slate-50/60 border-t border-slate-100 flex justify-between items-center">
+            <span className="text-xs font-bold text-slate-500">Total collected</span>
+            <span className="text-sm font-black text-emerald-600">{fmt(payments.reduce((s, p) => s + parseFloat(p.paidAmount || 0), 0))}</span>
+          </div>
+        </div>
+      )}
+
       {/* Payment Modal */}
       {showPayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowPayModal(false)}>
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowPayModal(false)}>
           <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="px-7 pt-7 pb-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -342,7 +398,7 @@ const TenantDetail = () => {
             <form onSubmit={handlePay}>
               <div className="px-7 py-5 space-y-4">
                 <Field label="Payment Amount (VND)">
-                  <input required type="number" min="1000" step="1000" value={payForm.paidAmount}
+                  <input required type="number" min="1" step="1" value={payForm.paidAmount}
                     onChange={e => setPayForm(f => ({...f, paidAmount: e.target.value}))}
                     className={inputCls + ' text-lg font-black'} placeholder="0" />
                   {payForm.paidAmount && summary && (

@@ -4,8 +4,8 @@ const ConfirmDialog = ({ isOpen, title, message, onConfirm, onCancel, confirmTex
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+    <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={onCancel}>
+      <div className="bg-white rounded-lg p-6 w-full max-w-md mb-safe" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">{title}</h3>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">

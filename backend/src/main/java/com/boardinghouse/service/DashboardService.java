@@ -161,6 +161,10 @@ public class DashboardService {
         return dto;
     }
 
+    public DashboardDto.DayActivityDto getDayActivity(LocalDate date) {
+        return buildDayActivity(date);
+    }
+
     private DashboardDto.DayActivityDto buildDayActivity(LocalDate date) {
         // Use ALL contracts except DRAFT so checked-out guests still appear
         List<Contract> all = contractRepository.findAll().stream()

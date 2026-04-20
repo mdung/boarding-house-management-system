@@ -430,7 +430,7 @@ const Inventory = () => {
 
       {/* ── Item Modal ── */}
       {showItemModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowItemModal(false)}>
+        <div className="fixed inset-0 z-50 modal-fix p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowItemModal(false)}>
           <div className={`bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden transition-all duration-300 ${animIn ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
             onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-5 flex items-center justify-between">
@@ -514,7 +514,7 @@ const Inventory = () => {
 
       {/* ── Transaction Modal ── */}
       {showTxModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowTxModal(false)}>
+        <div className="fixed inset-0 z-50 modal-fix p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowTxModal(false)}>
           <div className={`bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden transition-all duration-300 ${animIn ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
             onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-5 flex items-center justify-between">
@@ -579,7 +579,7 @@ const Inventory = () => {
 
       {/* ── Category Manager Modal ── */}
       {showCatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowCatModal(false)}>
+        <div className="fixed inset-0 z-50 modal-fix p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowCatModal(false)}>
           <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl scale-in" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-5 flex items-center justify-between rounded-t-3xl">
               <div>

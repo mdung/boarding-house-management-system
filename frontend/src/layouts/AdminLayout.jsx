@@ -253,7 +253,7 @@ const AdminLayout = () => {
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-slate-200 px-2 py-2 flex items-center justify-around z-50 shadow-[0_-4px_20px_rgba(0,0,0,0,05)]">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-slate-200 px-2 py-2 pb-safe flex items-center justify-around z-50 shadow-[0_-4px_20px_rgba(0,0,0,0,05)]">
           {[
             { path: '/admin/dashboard', icon: Home, label: 'Home' },
             { path: '/admin/rooms', icon: DoorOpen, label: 'Rooms' },

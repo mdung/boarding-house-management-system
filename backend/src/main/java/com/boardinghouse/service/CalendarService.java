@@ -36,7 +36,7 @@ public class CalendarService {
      */
     public List<CalendarEventDto> getEvents(LocalDate from, LocalDate to) {
         List<CalendarEventDto> result = new ArrayList<>();
-        List<Contract> contracts = contractRepository.findAllActiveOrderByEndDate();
+        List<Contract> contracts = contractRepository.findContractsInRange(from, to);
 
         for (Contract c : contracts) {
             // CHECKIN events

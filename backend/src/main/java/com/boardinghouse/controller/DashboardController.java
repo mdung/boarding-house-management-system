@@ -28,6 +28,12 @@ public class DashboardController {
         return ResponseEntity.ok(service.getDashboard());
     }
 
+    @GetMapping("/day")
+    public ResponseEntity<DashboardDto.DayActivityDto> getDayActivity(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(service.getDayActivity(date));
+    }
+
     @GetMapping("/calendar")
     public ResponseEntity<List<CalendarDayDto>> getCalendar(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,

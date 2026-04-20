@@ -11,3 +11,47 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Mobile modal fix ──────────────────────────────────────────────────────────
+   Problem: on mobile, when keyboard opens, 100vh doesn't shrink → modal buttons
+   get pushed below the visible area.
+   Solution: add class "modal-fix" to any fixed overlay div.
+   ─────────────────────────────────────────────────────────────────────────── */
+.modal-fix {
+  position: fixed !important;
+  inset: 0 !important;
+  height: 100dvh !important;   /* dvh = dynamic viewport height, shrinks with keyboard */
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  display: flex !important;
+  align-items: flex-end !important;   /* sheet from bottom on mobile */
+  justify-content: center !important;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 640px) {
+  .modal-fix {
+    align-items: center !important;   /* centered on desktop */
+    padding-bottom: 1rem;
+  }
+}
+
+.modal-fix > * {
+  max-height: calc(100dvh - 1rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 640px) {
+  .modal-fix > * {
+    max-height: calc(100dvh - 2rem);
+  }
+}
+
+/* Mobile safe area utilities */
+.mb-safe {
+  margin-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}

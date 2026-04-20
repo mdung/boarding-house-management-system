@@ -313,7 +313,7 @@ const Payments = () => {
 
       {/* Payment Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => { setShowModal(false); setSelectedInvoice(null) }}>
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => { setShowModal(false); setSelectedInvoice(null) }}>
           <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="px-7 pt-7 pb-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -414,7 +414,7 @@ const Payments = () => {
 
       {/* Delete Confirm */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => !deleting && setDeleteConfirm(null)}>
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => !deleting && setDeleteConfirm(null)}>
           <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="px-7 pt-7 pb-5 text-center">
               <div className="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-4">

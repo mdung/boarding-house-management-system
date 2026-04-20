@@ -4,6 +4,7 @@ import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
 import { useToast } from '../../context/ToastContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import ModalOverlay from '../../components/ModalOverlay'
 import BulkActionBar from '../../components/BulkActionBar'
 import { Plus, Edit, Trash2, Eye, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Search, Users, X, Phone, Mail, MapPin, CreditCard, DoorOpen, Calendar, ChevronDown, ChevronLeft, ChevronRight, Building2 } from 'lucide-react'
 
@@ -72,13 +73,38 @@ const Tenants = () => {
   const [roomSearch, setRoomSearch] = useState('')
   const [showRoomPicker, setShowRoomPicker] = useState(false)
 
-  const emptyForm = { fullName: '', phone: '', email: '', identityNumber: '', dateOfBirth: '', permanentAddress: '', status: 'ACTIVE', roomId: '', checkInDate: new Date().toISOString().split('T')[0], checkOutDate: '', monthlyRent: '', deposit: '' }
-  const [formData, setFormData] = useState(emptyForm)
+  const [formData, setFormData] = useState({ fullName: '', phone: '', email: '', identityNumber: '', dateOfBirth: '', permanentAddress: '', status: 'ACTIVE', roomId: '', checkInDate: '', checkOutDate: '', monthlyRent: '', deposit: '' })
+
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, checkInDate: new Date().toISOString().split('T')[0] }))
+  }, [])
+
+  const fetchData = async () => {
+    try { 
+      const r = await api.get('/rooms'); 
+      setAvailableRooms(Array.isArray(r.data) ? r.data.filter(r => r.status === 'AVAILABLE') : [])
+    } catch (err) {
+      console.error('Error fetching rooms:', err)
+      setAvailableRooms([])
+    }
+    try { 
+      const r = await api.get('/tenants'); 
+      setTenants(Array.isArray(r.data) ? r.data : [])
+    } catch (err) {
+      console.error('Error fetching tenants:', err)
+      setTenants([])
+    }
+    setLoading(false)
+  }
 
   useEffect(() => { fetchData() }, [])
-  useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchData) }, [])
+  useEffect(() => { 
+    const unsubscribe = eventBus.on(EVENTS.PAYMENT_CHANGED, fetchData)
+    return unsubscribe
+  }, [])
 
   const sorted = useMemo(() => {
+    if (!Array.isArray(tenants)) return []
     let f = tenants.filter(t =>
       [t.fullName, t.phone, t.activeRoomCode, t.email].some(v => v?.toLowerCase().includes(searchTerm.toLowerCase()))
     )
@@ -101,13 +127,15 @@ const Tenants = () => {
   const totalDebt = sorted.reduce((s, t) => s + (t.totalDebt > 0 ? t.totalDebt : 0), 0)
   const debtCount = sorted.filter(t => t.totalDebt > 0).length
 
-  const fetchData = async () => {
-    try { const r = await api.get('/rooms'); setAvailableRooms(r.data.filter(r => r.status === 'AVAILABLE')) } catch {}
-    try { const r = await api.get('/tenants'); setTenants(r.data) } catch {}
-    setLoading(false)
+  const openAdd = () => {
+    setEditing(null)
+    setFormData({
+      fullName: '', phone: '', email: '', identityNumber: '', dateOfBirth: '',
+      permanentAddress: '', status: 'ACTIVE', roomId: '', checkInDate: new Date().toISOString().split('T')[0],
+      checkOutDate: '', monthlyRent: '', deposit: ''
+    })
+    setShowModal(true)
   }
-
-  const openAdd = () => { setEditing(null); setFormData(emptyForm); setShowModal(true) }
   const openEdit = (t) => { setEditing(t); setFormData({ fullName: t.fullName, phone: t.phone||'', email: t.email||'', identityNumber: t.identityNumber||'', dateOfBirth: t.dateOfBirth||'', permanentAddress: t.permanentAddress||'', status: t.status, roomId: '', checkInDate: '', checkOutDate: '', monthlyRent: '', deposit: '' }); setShowModal(true) }
   const closeModal = () => { setShowModal(false); setEditing(null); setRoomSearch(''); setShowRoomPicker(false) }
   const set = (k) => (e) => setFormData(f => ({ ...f, [k]: e.target.value }))
@@ -343,7 +371,7 @@ const Tenants = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={closeModal}>
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={closeModal}>
           <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="px-8 pt-8 pb-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">

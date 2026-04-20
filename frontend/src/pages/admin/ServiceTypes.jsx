@@ -142,8 +142,8 @@ const ServiceTypes = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mb-safe" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold mb-4">{editing ? 'Edit' : 'Add'} Service Type</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>

@@ -140,8 +140,8 @@ const StaffManagement = () => {
 
       {/* Permission Modal */}
       {showModal && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowModal(false)}>
+          <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 mb-safe" onClick={e => e.stopPropagation()}>
             <div className="p-8 pb-4">
               <div className="flex justify-between items-start">
                 <div>
@@ -201,9 +201,9 @@ const StaffManagement = () => {
 
       {/* Delete Confirm Modal */}
       {showDeleteModal && userToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-8">
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowDeleteModal(false)}>
+          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 mb-safe" onClick={e => e.stopPropagation()}>
+            <div className="p-8" onClick={e => e.stopPropagation()}>
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center flex-shrink-0">
                   <AlertTriangle className="w-6 h-6 text-red-500" />
@@ -264,9 +264,9 @@ const StaffManagement = () => {
 
       {/* Add Staff Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <form onSubmit={handleAddStaff} className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden">
-            <div className="p-8">
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowAddModal(false)}>
+          <form onSubmit={handleAddStaff} className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden mb-safe" onClick={e => e.stopPropagation()}>
+            <div className="p-8" onClick={e => e.stopPropagation()}>
               <h2 className="text-2xl font-bold text-slate-900 mb-6">Create New Staff</h2>
               <div className="space-y-4">
                 <div>

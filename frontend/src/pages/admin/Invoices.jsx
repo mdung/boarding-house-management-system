@@ -328,7 +328,7 @@ const Invoices = () => {
 
       {/* Delete Confirm */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => !deleting && setShowDeleteConfirm(null)}>
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => !deleting && setShowDeleteConfirm(null)}>
           <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="px-7 pt-7 pb-5 text-center">
               <div className="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -350,7 +350,7 @@ const Invoices = () => {
 
       {/* Generate Invoice Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowModal(false)}>
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowModal(false)}>
           <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="px-8 pt-7 pb-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -383,7 +383,7 @@ const Invoices = () => {
 
       {/* Generate with Readings Modal */}
       {showReadingsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => { setShowReadingsModal(false); setReadingsData({ contractId: '', month: new Date().getMonth()+1, year: new Date().getFullYear(), readings: [] }); setRoomServices([]); setShowPreview(false); setPreviewInvoice(null) }}>
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => { setShowReadingsModal(false); setReadingsData({ contractId: '', month: new Date().getMonth()+1, year: new Date().getFullYear(), readings: [] }); setRoomServices([]); setShowPreview(false); setPreviewInvoice(null) }}>
           <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="px-8 pt-7 pb-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
