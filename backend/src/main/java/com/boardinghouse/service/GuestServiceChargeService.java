@@ -126,10 +126,7 @@ public class GuestServiceChargeService {
         // Tính tiền phòng từ dailyRate × số đêm (không phụ thuộc invoices)
         long nights = Math.max(1, java.time.temporal.ChronoUnit.DAYS.between(
                 contract.getStartDate(), contract.getEndDate()));
-        BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate()
-                : (contract.getMonthlyRent() != null
-                    ? contract.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO);
+        BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate() : BigDecimal.ZERO;
         BigDecimal totalRent = dailyRate.multiply(BigDecimal.valueOf(nights));
 
         BigDecimal totalAmount = totalCharges.add(totalRent);

@@ -90,10 +90,7 @@ public class PaymentService {
 
         // Calculate total bill: dailyRate × nights + guest charges
         long nights = Math.max(1, ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate()));
-        BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate()
-                : (contract.getMonthlyRent() != null
-                    ? contract.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO);
+        BigDecimal dailyRate = contract.getDailyRate() != null ? contract.getDailyRate() : BigDecimal.ZERO;
         BigDecimal roomCost = dailyRate.multiply(BigDecimal.valueOf(nights));
         BigDecimal charges = guestChargeRepository.sumAmountByContractId(contractId);
         BigDecimal totalBill = roomCost.add(charges);

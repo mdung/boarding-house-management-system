@@ -55,10 +55,7 @@ public class DashboardService {
         List<Contract> allContracts = contractRepository.findAll();
         for (Contract c : allContracts) {
             long nights = Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
-            BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
-                    : (c.getMonthlyRent() != null
-                        ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
-                        : BigDecimal.ZERO);
+            BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
             BigDecimal roomCost = dailyRate.multiply(BigDecimal.valueOf(nights));
             BigDecimal charges = guestChargeRepository.sumAmountByContractId(c.getId());
             BigDecimal paid = invoiceRepository.findByContractId(c.getId()).stream()
@@ -86,9 +83,8 @@ public class DashboardService {
         dto.setOverdueInvoices(overdueCount);
 
         // Revenue breakdown: Room vs Service for THIS MONTH
-        // Room revenue = sum of invoice.totalAmount where periodMonth = this month
+        // Room revenue = sum of payments received this month (by paymentDate)
         // Service revenue = sum of guest charges where chargeDate in this month
-        // This is consistent with Report "Earned" column
         LocalDate firstOfMonth = today.withDayOfMonth(1);
         LocalDate lastOfMonth = today.withDayOfMonth(today.lengthOfMonth());
         int thisMonth = today.getMonthValue();
@@ -98,22 +94,27 @@ public class DashboardService {
         BigDecimal serviceRevenue = BigDecimal.ZERO;
         java.util.List<DashboardDto.RevenueDetailDto> details = new java.util.ArrayList<>();
 
-        // Room revenue from invoices this month
+        // Room revenue = payments collected this month
         for (Invoice inv : invoiceRepository.findAll()) {
-            if (!inv.getPeriodMonth().equals(thisMonth) || !inv.getPeriodYear().equals(thisYear)) continue;
             if (inv.getContract().getStatus() == ContractStatus.DRAFT) continue;
-            roomRevenue = roomRevenue.add(inv.getTotalAmount());
+            List<Payment> payments = paymentRepository.findByInvoiceId(inv.getId());
+            for (Payment p : payments) {
+                if (p.getPaymentDate() == null) continue;
+                LocalDate payDate = p.getPaymentDate().toLocalDate();
+                if (payDate.isBefore(firstOfMonth) || payDate.isAfter(lastOfMonth)) continue;
+                roomRevenue = roomRevenue.add(p.getPaidAmount());
 
-            DashboardDto.RevenueDetailDto rd = new DashboardDto.RevenueDetailDto();
-            rd.setDate(inv.getContract().getStartDate());
-            rd.setInvoiceCode(inv.getCode());
-            rd.setRoomCode(inv.getRoom().getCode());
-            rd.setTenantName(inv.getContract().getMainTenant().getFullName());
-            rd.setBoardingHouseName(inv.getRoom().getBoardingHouse().getName());
-            rd.setDescription("Room – " + inv.getCode());
-            rd.setCategory("RENT");
-            rd.setAmount(inv.getTotalAmount());
-            details.add(rd);
+                DashboardDto.RevenueDetailDto rd = new DashboardDto.RevenueDetailDto();
+                rd.setDate(payDate);
+                rd.setInvoiceCode(inv.getCode());
+                rd.setRoomCode(inv.getRoom().getCode());
+                rd.setTenantName(inv.getContract().getMainTenant().getFullName());
+                rd.setBoardingHouseName(inv.getRoom().getBoardingHouse().getName());
+                rd.setDescription("Payment - " + inv.getCode());
+                rd.setCategory("RENT");
+                rd.setAmount(p.getPaidAmount());
+                details.add(rd);
+            }
         }
 
         // Service revenue from guest charges this month
@@ -218,8 +219,7 @@ public class DashboardService {
         g.setRoomReleased(isRoomReleased(c));
 
         // Daily rate & total days
-        BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
-                : (c.getMonthlyRent() != null ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO);
+        BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
         g.setDailyRate(dailyRate);
 
         long days = Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));

@@ -161,10 +161,7 @@ public class TenantService {
                 totalCharges = totalCharges.add(charges);
 
             long nights = Math.max(1, java.time.temporal.ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
-                BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
-                        : (c.getMonthlyRent() != null
-                            ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, java.math.RoundingMode.HALF_UP)
-                            : BigDecimal.ZERO);
+                BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
                 BigDecimal roomCost = dailyRate.multiply(BigDecimal.valueOf(nights));
 
                 BigDecimal paid = invoiceRepository.findByContractId(c.getId()).stream()

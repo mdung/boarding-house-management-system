@@ -1,25 +1,16 @@
 package com.boardinghouse.service;
 
-import com.boardinghouse.dto.GenerateInvoiceWithReadingsRequest;
-import com.boardinghouse.dto.InvoiceDetailDto;
-import com.boardinghouse.dto.InvoiceDto;
-import com.boardinghouse.dto.InvoiceItemDto;
-import com.boardinghouse.dto.PaymentDto;
-import com.boardinghouse.dto.UtilityReadingDto;
+import com.boardinghouse.dto.*;
 import com.boardinghouse.entity.*;
 import com.boardinghouse.entity.RoomService;
 import com.boardinghouse.exception.BadRequestException;
 import com.boardinghouse.exception.ResourceNotFoundException;
-import com.boardinghouse.repository.ContractRepository;
-import com.boardinghouse.repository.InvoiceRepository;
-import com.boardinghouse.repository.PaymentRepository;
-import com.boardinghouse.repository.RoomServiceRepository;
-import com.boardinghouse.repository.ServiceTypeRepository;
+import com.boardinghouse.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,414 +32,182 @@ public class InvoiceService {
         this.serviceTypeRepository = serviceTypeRepository;
     }
 
-    public List<InvoiceDto> getAll() {
-        return repository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
-    }
+    public List<InvoiceDto> getAll() { return repository.findAll().stream().map(this::toDto).collect(Collectors.toList()); }
+    public InvoiceDto getById(Long id) { return toDto(repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id))); }
+    public InvoiceDetailDto getDetailById(Long id) { return toDetailDto(repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id))); }
+    public List<InvoiceDto> getByContract(Long contractId) { return repository.findByContractId(contractId).stream().map(this::toDto).collect(Collectors.toList()); }
 
-    public InvoiceDto getById(Long id) {
-        Invoice invoice = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id));
-        return toDto(invoice);
-    }
-
-    public InvoiceDetailDto getDetailById(Long id) {
-        Invoice invoice = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id));
-        return toDetailDto(invoice);
-    }
-
-    public List<InvoiceDto> getByContract(Long contractId) {
-        return repository.findByContractId(contractId).stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+    private BigDecimal addRentItem(Invoice invoice, Contract contract) {
+        InvoiceItem ri = new InvoiceItem();
+        ri.setInvoice(invoice);
+        ri.setType(InvoiceItemType.RENT);
+        BigDecimal rate = contract.getDailyRate() != null ? contract.getDailyRate() : BigDecimal.ZERO;
+        long days = Math.max(1, ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate()));
+        BigDecimal amt = rate.multiply(BigDecimal.valueOf(days));
+        ri.setDescription("Room Rent (" + days + " days x " + rate + "/day)");
+        ri.setQuantity(BigDecimal.valueOf(days));
+        ri.setUnitPrice(rate);
+        ri.setAmount(amt);
+        invoice.getItems().add(ri);
+        return amt;
     }
 
     @Transactional
     public InvoiceDto generateInvoice(Long contractId, Integer month, Integer year) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
-
-        if (contract.getStatus() != ContractStatus.ACTIVE) {
-            throw new BadRequestException("Cannot generate invoice for non-active contract");
+        Contract contract = contractRepository.findById(contractId).orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+        if (contract.getStatus() != ContractStatus.ACTIVE) throw new BadRequestException("Cannot generate invoice for non-active contract");
+        if (!repository.findByContractIdAndPeriodMonthAndPeriodYear(contractId, month, year).isEmpty()) throw new BadRequestException("Invoice already exists for this period");
+        Invoice inv = new Invoice();
+        inv.setCode(generateInvoiceCode(contract.getCode(), month, year));
+        inv.setContract(contract); inv.setRoom(contract.getRoom());
+        inv.setPeriodMonth(month); inv.setPeriodYear(year);
+        inv.setDueDate(LocalDate.of(year, month, 1).plusMonths(1).minusDays(1));
+        inv.setStatus(PaymentStatus.UNPAID);
+        BigDecimal total = addRentItem(inv, contract);
+        for (RoomService rs : roomServiceRepository.findByRoomId(contract.getRoom().getId())) {
+            InvoiceItem si = new InvoiceItem(); si.setInvoice(inv); si.setDescription(rs.getServiceType().getName()); si.setType(InvoiceItemType.SERVICE);
+            if (rs.getServiceType().getCategory() == ServiceCategory.FIXED) {
+                BigDecimal p = rs.getFixedPrice() != null ? rs.getFixedPrice() : rs.getServiceType().getPricePerUnit();
+                si.setQuantity(BigDecimal.ONE); si.setUnitPrice(p); si.setAmount(p); total = total.add(p);
+            } else { si.setQuantity(BigDecimal.ZERO); si.setUnitPrice(rs.getPricePerUnit() != null ? rs.getPricePerUnit() : rs.getServiceType().getPricePerUnit()); si.setAmount(BigDecimal.ZERO); }
+            inv.getItems().add(si);
         }
-
-        // Check if invoice already exists
-        List<Invoice> existing = repository.findByContractIdAndPeriodMonthAndPeriodYear(contractId, month, year);
-        if (!existing.isEmpty()) {
-            throw new BadRequestException("Invoice already exists for this period");
-        }
-
-        Invoice invoice = new Invoice();
-        invoice.setCode(generateInvoiceCode(contract.getCode(), month, year));
-        invoice.setContract(contract);
-        invoice.setRoom(contract.getRoom());
-        invoice.setPeriodMonth(month);
-        invoice.setPeriodYear(year);
-        invoice.setDueDate(LocalDate.of(year, month, 1).plusMonths(1).minusDays(1));
-        invoice.setStatus(PaymentStatus.UNPAID);
-
-        BigDecimal totalAmount = BigDecimal.ZERO;
-
-        // Add rent item
-        InvoiceItem rentItem = new InvoiceItem();
-        rentItem.setInvoice(invoice);
-        rentItem.setDescription("Monthly Rent");
-        rentItem.setType(InvoiceItemType.RENT);
-        rentItem.setQuantity(BigDecimal.ONE);
-        rentItem.setUnitPrice(contract.getMonthlyRent());
-        rentItem.setAmount(contract.getMonthlyRent());
-        invoice.getItems().add(rentItem);
-        totalAmount = totalAmount.add(contract.getMonthlyRent());
-
-        // Add service items (simplified - in real app, you'd get actual readings)
-        List<RoomService> roomServices = roomServiceRepository.findByRoomId(contract.getRoom().getId());
-        for (RoomService roomService : roomServices) {
-            InvoiceItem serviceItem = new InvoiceItem();
-            serviceItem.setInvoice(invoice);
-            serviceItem.setDescription(roomService.getServiceType().getName());
-            serviceItem.setType(InvoiceItemType.SERVICE);
-
-            if (roomService.getServiceType().getCategory() == ServiceCategory.FIXED) {
-                BigDecimal price = roomService.getFixedPrice() != null ?
-                        roomService.getFixedPrice() : roomService.getServiceType().getPricePerUnit();
-                serviceItem.setQuantity(BigDecimal.ONE);
-                serviceItem.setUnitPrice(price);
-                serviceItem.setAmount(price);
-                totalAmount = totalAmount.add(price);
-            } else {
-                // For electricity/water, you'd need actual readings
-                // This is simplified - in production, you'd pass readings as parameters
-                serviceItem.setQuantity(BigDecimal.ZERO);
-                serviceItem.setUnitPrice(roomService.getPricePerUnit() != null ?
-                        roomService.getPricePerUnit() : roomService.getServiceType().getPricePerUnit());
-                serviceItem.setAmount(BigDecimal.ZERO);
-            }
-            invoice.getItems().add(serviceItem);
-        }
-
-        invoice.setTotalAmount(totalAmount);
-        return toDto(repository.save(invoice));
+        inv.setTotalAmount(total);
+        return toDto(repository.save(inv));
     }
 
     @Transactional
-    public InvoiceDto generateInvoiceWithReadings(GenerateInvoiceWithReadingsRequest request) {
-        Contract contract = contractRepository.findById(request.getContractId())
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
-
-        if (contract.getStatus() != ContractStatus.ACTIVE) {
-            throw new BadRequestException("Cannot generate invoice for non-active contract");
-        }
-
-        // Check if invoice already exists
-        List<Invoice> existing = repository.findByContractIdAndPeriodMonthAndPeriodYear(
-                request.getContractId(), request.getMonth(), request.getYear());
-        if (!existing.isEmpty()) {
-            throw new BadRequestException("Invoice already exists for this period");
-        }
-
-        Invoice invoice = new Invoice();
-        invoice.setCode(generateInvoiceCode(contract.getCode(), request.getMonth(), request.getYear()));
-        invoice.setContract(contract);
-        invoice.setRoom(contract.getRoom());
-        invoice.setPeriodMonth(request.getMonth());
-        invoice.setPeriodYear(request.getYear());
-        invoice.setDueDate(LocalDate.of(request.getYear(), request.getMonth(), 1).plusMonths(1).minusDays(1));
-        invoice.setStatus(PaymentStatus.UNPAID);
-
-        BigDecimal totalAmount = BigDecimal.ZERO;
-
-        // Add rent item
-        InvoiceItem rentItem = new InvoiceItem();
-        rentItem.setInvoice(invoice);
-        rentItem.setDescription("Monthly Rent");
-        rentItem.setType(InvoiceItemType.RENT);
-        rentItem.setQuantity(BigDecimal.ONE);
-        rentItem.setUnitPrice(contract.getMonthlyRent());
-        rentItem.setAmount(contract.getMonthlyRent());
-        invoice.getItems().add(rentItem);
-        totalAmount = totalAmount.add(contract.getMonthlyRent());
-
-        // Create a map of readings by service type ID
-        java.util.Map<Long, UtilityReadingDto> readingsMap = request.getReadings().stream()
-                .collect(Collectors.toMap(UtilityReadingDto::getServiceTypeId, r -> r));
-
-        // Add service items with actual readings
-        List<RoomService> roomServices = roomServiceRepository.findByRoomId(contract.getRoom().getId());
-        for (RoomService roomService : roomServices) {
-            InvoiceItem serviceItem = new InvoiceItem();
-            serviceItem.setInvoice(invoice);
-            serviceItem.setDescription(roomService.getServiceType().getName());
-            serviceItem.setType(InvoiceItemType.SERVICE);
-
-            if (roomService.getServiceType().getCategory() == ServiceCategory.FIXED) {
-                BigDecimal price = roomService.getFixedPrice() != null ?
-                        roomService.getFixedPrice() : roomService.getServiceType().getPricePerUnit();
-                serviceItem.setQuantity(BigDecimal.ONE);
-                serviceItem.setUnitPrice(price);
-                serviceItem.setAmount(price);
-                totalAmount = totalAmount.add(price);
+    public InvoiceDto generateInvoiceWithReadings(GenerateInvoiceWithReadingsRequest req) {
+        Contract contract = contractRepository.findById(req.getContractId()).orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+        if (contract.getStatus() != ContractStatus.ACTIVE) throw new BadRequestException("Cannot generate invoice for non-active contract");
+        if (!repository.findByContractIdAndPeriodMonthAndPeriodYear(req.getContractId(), req.getMonth(), req.getYear()).isEmpty()) throw new BadRequestException("Invoice already exists for this period");
+        Invoice inv = new Invoice();
+        inv.setCode(generateInvoiceCode(contract.getCode(), req.getMonth(), req.getYear()));
+        inv.setContract(contract); inv.setRoom(contract.getRoom());
+        inv.setPeriodMonth(req.getMonth()); inv.setPeriodYear(req.getYear());
+        inv.setDueDate(LocalDate.of(req.getYear(), req.getMonth(), 1).plusMonths(1).minusDays(1));
+        inv.setStatus(PaymentStatus.UNPAID);
+        BigDecimal total = addRentItem(inv, contract);
+        java.util.Map<Long, UtilityReadingDto> rm = req.getReadings().stream().collect(Collectors.toMap(UtilityReadingDto::getServiceTypeId, r -> r));
+        for (RoomService rs : roomServiceRepository.findByRoomId(contract.getRoom().getId())) {
+            InvoiceItem si = new InvoiceItem(); si.setInvoice(inv); si.setDescription(rs.getServiceType().getName()); si.setType(InvoiceItemType.SERVICE);
+            if (rs.getServiceType().getCategory() == ServiceCategory.FIXED) {
+                BigDecimal p = rs.getFixedPrice() != null ? rs.getFixedPrice() : rs.getServiceType().getPricePerUnit();
+                si.setQuantity(BigDecimal.ONE); si.setUnitPrice(p); si.setAmount(p); total = total.add(p);
             } else {
-                // For electricity/water, use readings
-                UtilityReadingDto reading = readingsMap.get(roomService.getServiceType().getId());
-                if (reading != null && reading.getOldIndex() != null && reading.getNewIndex() != null) {
-                    BigDecimal consumption = reading.getNewIndex().subtract(reading.getOldIndex());
-                    if (consumption.compareTo(BigDecimal.ZERO) < 0) {
-                        throw new BadRequestException("New index must be greater than or equal to old index for " + 
-                                roomService.getServiceType().getName());
-                    }
-                    BigDecimal unitPrice = roomService.getPricePerUnit() != null ?
-                            roomService.getPricePerUnit() : roomService.getServiceType().getPricePerUnit();
-                    BigDecimal amount = consumption.multiply(unitPrice);
-
-                    serviceItem.setOldIndex(reading.getOldIndex());
-                    serviceItem.setNewIndex(reading.getNewIndex());
-                    serviceItem.setQuantity(consumption);
-                    serviceItem.setUnitPrice(unitPrice);
-                    serviceItem.setAmount(amount);
-                    totalAmount = totalAmount.add(amount);
-                } else {
-                    throw new BadRequestException("Reading required for " + roomService.getServiceType().getName());
-                }
+                UtilityReadingDto rd = rm.get(rs.getServiceType().getId());
+                if (rd != null && rd.getOldIndex() != null && rd.getNewIndex() != null) {
+                    BigDecimal c = rd.getNewIndex().subtract(rd.getOldIndex());
+                    if (c.compareTo(BigDecimal.ZERO) < 0) throw new BadRequestException("New index must be >= old index for " + rs.getServiceType().getName());
+                    BigDecimal up = rs.getPricePerUnit() != null ? rs.getPricePerUnit() : rs.getServiceType().getPricePerUnit();
+                    si.setOldIndex(rd.getOldIndex()); si.setNewIndex(rd.getNewIndex()); si.setQuantity(c); si.setUnitPrice(up); si.setAmount(c.multiply(up)); total = total.add(c.multiply(up));
+                } else throw new BadRequestException("Reading required for " + rs.getServiceType().getName());
             }
-            invoice.getItems().add(serviceItem);
+            inv.getItems().add(si);
         }
-
-        invoice.setTotalAmount(totalAmount);
-        return toDto(repository.save(invoice));
+        inv.setTotalAmount(total);
+        return toDto(repository.save(inv));
     }
 
-    public InvoiceDto previewInvoiceWithReadings(GenerateInvoiceWithReadingsRequest request) {
-        Contract contract = contractRepository.findById(request.getContractId())
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
-
-        if (contract.getStatus() != ContractStatus.ACTIVE) {
-            throw new BadRequestException("Cannot generate invoice for non-active contract");
-        }
-
-        // Check if invoice already exists
-        List<Invoice> existing = repository.findByContractIdAndPeriodMonthAndPeriodYear(
-                request.getContractId(), request.getMonth(), request.getYear());
-        if (!existing.isEmpty()) {
-            throw new BadRequestException("Invoice already exists for this period");
-        }
-
-        Invoice invoice = new Invoice();
-        invoice.setCode(generateInvoiceCode(contract.getCode(), request.getMonth(), request.getYear()));
-        invoice.setContract(contract);
-        invoice.setRoom(contract.getRoom());
-        invoice.setPeriodMonth(request.getMonth());
-        invoice.setPeriodYear(request.getYear());
-        invoice.setDueDate(LocalDate.of(request.getYear(), request.getMonth(), 1).plusMonths(1).minusDays(1));
-        invoice.setStatus(PaymentStatus.UNPAID);
-
-        BigDecimal totalAmount = BigDecimal.ZERO;
-
-        // Add rent item
-        InvoiceItem rentItem = new InvoiceItem();
-        rentItem.setInvoice(invoice);
-        rentItem.setDescription("Monthly Rent");
-        rentItem.setType(InvoiceItemType.RENT);
-        rentItem.setQuantity(BigDecimal.ONE);
-        rentItem.setUnitPrice(contract.getMonthlyRent());
-        rentItem.setAmount(contract.getMonthlyRent());
-        invoice.getItems().add(rentItem);
-        totalAmount = totalAmount.add(contract.getMonthlyRent());
-
-        // Create a map of readings by service type ID
-        java.util.Map<Long, UtilityReadingDto> readingsMap = request.getReadings().stream()
-                .collect(Collectors.toMap(UtilityReadingDto::getServiceTypeId, r -> r));
-
-        // Add service items with actual readings
-        List<RoomService> roomServices = roomServiceRepository.findByRoomId(contract.getRoom().getId());
-        for (RoomService roomService : roomServices) {
-            InvoiceItem serviceItem = new InvoiceItem();
-            serviceItem.setInvoice(invoice);
-            serviceItem.setDescription(roomService.getServiceType().getName());
-            serviceItem.setType(InvoiceItemType.SERVICE);
-
-            if (roomService.getServiceType().getCategory() == ServiceCategory.FIXED) {
-                BigDecimal price = roomService.getFixedPrice() != null ?
-                        roomService.getFixedPrice() : roomService.getServiceType().getPricePerUnit();
-                serviceItem.setQuantity(BigDecimal.ONE);
-                serviceItem.setUnitPrice(price);
-                serviceItem.setAmount(price);
-                totalAmount = totalAmount.add(price);
+    public InvoiceDto previewInvoiceWithReadings(GenerateInvoiceWithReadingsRequest req) {
+        Contract contract = contractRepository.findById(req.getContractId()).orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+        if (contract.getStatus() != ContractStatus.ACTIVE) throw new BadRequestException("Cannot preview invoice for non-active contract");
+        if (!repository.findByContractIdAndPeriodMonthAndPeriodYear(req.getContractId(), req.getMonth(), req.getYear()).isEmpty()) throw new BadRequestException("Invoice already exists for this period");
+        Invoice inv = new Invoice();
+        inv.setCode(generateInvoiceCode(contract.getCode(), req.getMonth(), req.getYear()));
+        inv.setContract(contract); inv.setRoom(contract.getRoom());
+        inv.setPeriodMonth(req.getMonth()); inv.setPeriodYear(req.getYear());
+        inv.setDueDate(LocalDate.of(req.getYear(), req.getMonth(), 1).plusMonths(1).minusDays(1));
+        inv.setStatus(PaymentStatus.UNPAID);
+        BigDecimal total = addRentItem(inv, contract);
+        java.util.Map<Long, UtilityReadingDto> rm = req.getReadings().stream().collect(Collectors.toMap(UtilityReadingDto::getServiceTypeId, r -> r));
+        for (RoomService rs : roomServiceRepository.findByRoomId(contract.getRoom().getId())) {
+            InvoiceItem si = new InvoiceItem(); si.setInvoice(inv); si.setDescription(rs.getServiceType().getName()); si.setType(InvoiceItemType.SERVICE);
+            if (rs.getServiceType().getCategory() == ServiceCategory.FIXED) {
+                BigDecimal p = rs.getFixedPrice() != null ? rs.getFixedPrice() : rs.getServiceType().getPricePerUnit();
+                si.setQuantity(BigDecimal.ONE); si.setUnitPrice(p); si.setAmount(p); total = total.add(p);
             } else {
-                // For electricity/water, use readings
-                UtilityReadingDto reading = readingsMap.get(roomService.getServiceType().getId());
-                if (reading != null && reading.getOldIndex() != null && reading.getNewIndex() != null) {
-                    BigDecimal consumption = reading.getNewIndex().subtract(reading.getOldIndex());
-                    if (consumption.compareTo(BigDecimal.ZERO) < 0) {
-                        throw new BadRequestException("New index must be greater than or equal to old index for " +
-                                roomService.getServiceType().getName());
-                    }
-                    BigDecimal unitPrice = roomService.getPricePerUnit() != null ?
-                            roomService.getPricePerUnit() : roomService.getServiceType().getPricePerUnit();
-                    BigDecimal amount = consumption.multiply(unitPrice);
-
-                    serviceItem.setOldIndex(reading.getOldIndex());
-                    serviceItem.setNewIndex(reading.getNewIndex());
-                    serviceItem.setQuantity(consumption);
-                    serviceItem.setUnitPrice(unitPrice);
-                    serviceItem.setAmount(amount);
-                    totalAmount = totalAmount.add(amount);
-                } else {
-                    throw new BadRequestException("Reading required for " + roomService.getServiceType().getName());
-                }
+                UtilityReadingDto rd = rm.get(rs.getServiceType().getId());
+                if (rd != null && rd.getOldIndex() != null && rd.getNewIndex() != null) {
+                    BigDecimal c = rd.getNewIndex().subtract(rd.getOldIndex());
+                    if (c.compareTo(BigDecimal.ZERO) < 0) throw new BadRequestException("New index must be >= old index for " + rs.getServiceType().getName());
+                    BigDecimal up = rs.getPricePerUnit() != null ? rs.getPricePerUnit() : rs.getServiceType().getPricePerUnit();
+                    si.setOldIndex(rd.getOldIndex()); si.setNewIndex(rd.getNewIndex()); si.setQuantity(c); si.setUnitPrice(up); si.setAmount(c.multiply(up)); total = total.add(c.multiply(up));
+                } else throw new BadRequestException("Reading required for " + rs.getServiceType().getName());
             }
-            invoice.getItems().add(serviceItem);
+            inv.getItems().add(si);
         }
-
-        invoice.setTotalAmount(totalAmount);
-        // Don't save, just return preview
-        return toDto(invoice);
+        inv.setTotalAmount(total);
+        return toDto(inv);
     }
 
     @Transactional
     public void updateInvoiceStatus(Long invoiceId) {
-        Invoice invoice = repository.findById(invoiceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found"));
-
-        // Guard: never mark PAID if totalAmount is 0 (misconfigured invoice)
-        if (invoice.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            invoice.setStatus(PaymentStatus.UNPAID);
-            repository.save(invoice);
-            return;
-        }
-
-        BigDecimal totalPaid = paymentRepository.findByInvoiceId(invoiceId).stream()
-                .map(Payment::getPaidAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {
-            invoice.setStatus(PaymentStatus.UNPAID);
-        } else if (totalPaid.compareTo(invoice.getTotalAmount()) >= 0) {
-            invoice.setStatus(PaymentStatus.PAID);
-        } else {
-            invoice.setStatus(PaymentStatus.PARTIALLY_PAID);
-        }
-
-        // Check if overdue
-        if (invoice.getStatus() != PaymentStatus.PAID && LocalDate.now().isAfter(invoice.getDueDate())) {
-            invoice.setStatus(PaymentStatus.OVERDUE);
-        }
-
-        repository.save(invoice);
+        Invoice inv = repository.findById(invoiceId).orElseThrow(() -> new ResourceNotFoundException("Invoice not found"));
+        if (inv.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) { inv.setStatus(PaymentStatus.UNPAID); repository.save(inv); return; }
+        BigDecimal paid = paymentRepository.findByInvoiceId(invoiceId).stream().map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (paid.compareTo(BigDecimal.ZERO) == 0) inv.setStatus(PaymentStatus.UNPAID);
+        else if (paid.compareTo(inv.getTotalAmount()) >= 0) inv.setStatus(PaymentStatus.PAID);
+        else inv.setStatus(PaymentStatus.PARTIALLY_PAID);
+        if (inv.getStatus() != PaymentStatus.PAID && LocalDate.now().isAfter(inv.getDueDate())) inv.setStatus(PaymentStatus.OVERDUE);
+        repository.save(inv);
     }
 
-    private String generateInvoiceCode(String contractCode, Integer month, Integer year) {
-        return String.format("INV-%s-%02d-%d", contractCode, month, year);
-    }
-
-    private InvoiceDto toDto(Invoice invoice) {
-        InvoiceDto dto = new InvoiceDto();
-        dto.setId(invoice.getId());
-        dto.setCode(invoice.getCode());
-        dto.setContractId(invoice.getContract().getId());
-        dto.setContractCode(invoice.getContract().getCode());
-        dto.setRoomId(invoice.getRoom().getId());
-        dto.setRoomCode(invoice.getRoom().getCode());
-        dto.setTenantName(invoice.getContract().getMainTenant().getFullName());
-        dto.setPeriodMonth(invoice.getPeriodMonth());
-        dto.setPeriodYear(invoice.getPeriodYear());
-        dto.setTotalAmount(invoice.getTotalAmount());
-        dto.setStatus(invoice.getStatus());
-        dto.setDueDate(invoice.getDueDate());
-        dto.setCreatedDate(invoice.getCreatedDate());
-
-        BigDecimal paidAmount = paymentRepository.findByInvoiceId(invoice.getId()).stream()
-                .map(Payment::getPaidAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        dto.setPaidAmount(paidAmount);
-        dto.setRemainingAmount(invoice.getTotalAmount().subtract(paidAmount));
-
-        dto.setItems(invoice.getItems().stream().map(this::itemToDto).collect(Collectors.toList()));
-        return dto;
-    }
-
-    private InvoiceItemDto itemToDto(InvoiceItem item) {
-        InvoiceItemDto dto = new InvoiceItemDto();
-        dto.setId(item.getId());
-        dto.setDescription(item.getDescription());
-        dto.setType(item.getType());
-        dto.setQuantity(item.getQuantity());
-        dto.setUnitPrice(item.getUnitPrice());
-        dto.setAmount(item.getAmount());
-        dto.setOldIndex(item.getOldIndex());
-        dto.setNewIndex(item.getNewIndex());
-        return dto;
-    }
+    private String generateInvoiceCode(String cc, Integer m, Integer y) { return String.format("INV-%s-%02d-%d", cc, m, y); }
 
     @Transactional
     public void delete(Long id) {
-        Invoice invoice = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id));
-
-        // Only allow deleting invoices that have no payments
+        Invoice inv = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id));
         java.util.List<Payment> payments = paymentRepository.findByInvoiceId(id);
-        if (!payments.isEmpty()) {
-            throw new BadRequestException("Cannot delete invoice with " + payments.size() + " payment(s). Delete payments first.");
-        }
-
-        repository.delete(invoice);
+        if (!payments.isEmpty()) throw new BadRequestException("Cannot delete invoice with " + payments.size() + " payment(s). Delete payments first.");
+        repository.delete(inv);
     }
 
-    public int bulkDelete(java.util.List<Long> ids) {
-        int deleted = 0;
-        for (Long id : ids) {
-            try {
-                delete(id);
-                deleted++;
-            } catch (Exception e) {
-                // Skip invoices that can't be deleted
-            }
-        }
-        return deleted;
+    public int bulkDelete(java.util.List<Long> ids) { int d = 0; for (Long id : ids) { try { delete(id); d++; } catch (Exception e) {} } return d; }
+
+    private InvoiceDto toDto(Invoice inv) {
+        InvoiceDto d = new InvoiceDto();
+        d.setId(inv.getId()); d.setCode(inv.getCode());
+        d.setContractId(inv.getContract().getId()); d.setContractCode(inv.getContract().getCode());
+        d.setRoomId(inv.getRoom().getId()); d.setRoomCode(inv.getRoom().getCode());
+        d.setTenantName(inv.getContract().getMainTenant().getFullName());
+        d.setPeriodMonth(inv.getPeriodMonth()); d.setPeriodYear(inv.getPeriodYear());
+        d.setTotalAmount(inv.getTotalAmount()); d.setStatus(inv.getStatus());
+        d.setDueDate(inv.getDueDate()); d.setCreatedDate(inv.getCreatedDate());
+        BigDecimal pa = paymentRepository.findByInvoiceId(inv.getId()).stream().map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        d.setPaidAmount(pa); d.setRemainingAmount(inv.getTotalAmount().subtract(pa));
+        d.setItems(inv.getItems().stream().map(this::itemToDto).collect(Collectors.toList()));
+        return d;
     }
 
-    private InvoiceDetailDto toDetailDto(Invoice invoice) {
-        InvoiceDetailDto dto = new InvoiceDetailDto();
-        dto.setId(invoice.getId());
-        dto.setCode(invoice.getCode());
-        dto.setContractId(invoice.getContract().getId());
-        dto.setContractCode(invoice.getContract().getCode());
-        dto.setRoomId(invoice.getRoom().getId());
-        dto.setRoomCode(invoice.getRoom().getCode());
-        dto.setBoardingHouseName(invoice.getRoom().getBoardingHouse().getName());
-        dto.setPeriodMonth(invoice.getPeriodMonth());
-        dto.setPeriodYear(invoice.getPeriodYear());
-        dto.setTotalAmount(invoice.getTotalAmount());
-        dto.setStatus(invoice.getStatus());
-        dto.setDueDate(invoice.getDueDate());
-        dto.setCreatedDate(invoice.getCreatedDate());
+    private InvoiceItemDto itemToDto(InvoiceItem i) {
+        InvoiceItemDto d = new InvoiceItemDto();
+        d.setId(i.getId()); d.setDescription(i.getDescription()); d.setType(i.getType());
+        d.setQuantity(i.getQuantity()); d.setUnitPrice(i.getUnitPrice()); d.setAmount(i.getAmount());
+        d.setOldIndex(i.getOldIndex()); d.setNewIndex(i.getNewIndex());
+        return d;
+    }
 
-        BigDecimal paidAmount = paymentRepository.findByInvoiceId(invoice.getId()).stream()
-                .map(Payment::getPaidAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        dto.setPaidAmount(paidAmount);
-        dto.setRemainingAmount(invoice.getTotalAmount().subtract(paidAmount));
-
-        dto.setItems(invoice.getItems().stream().map(this::itemToDto).collect(Collectors.toList()));
-        dto.setPayments(paymentRepository.findByInvoiceId(invoice.getId()).stream()
-                .map(p -> {
-                    PaymentDto paymentDto = new PaymentDto();
-                    paymentDto.setId(p.getId());
-                    paymentDto.setInvoiceId(p.getInvoice().getId());
-                    paymentDto.setInvoiceCode(p.getInvoice().getCode());
-                    paymentDto.setPaidAmount(p.getPaidAmount());
-                    paymentDto.setPaymentDate(p.getPaymentDate());
-                    paymentDto.setMethod(p.getMethod());
-                    paymentDto.setNote(p.getNote());
-                    paymentDto.setTransactionCode(p.getTransactionCode());
-                    return paymentDto;
-                })
-                .collect(Collectors.toList()));
-
-        dto.setMainTenantName(invoice.getContract().getMainTenant().getFullName());
-        dto.setMainTenantPhone(invoice.getContract().getMainTenant().getPhone());
-        return dto;
+    private InvoiceDetailDto toDetailDto(Invoice inv) {
+        InvoiceDetailDto d = new InvoiceDetailDto();
+        d.setId(inv.getId()); d.setCode(inv.getCode());
+        d.setContractId(inv.getContract().getId()); d.setContractCode(inv.getContract().getCode());
+        d.setRoomId(inv.getRoom().getId()); d.setRoomCode(inv.getRoom().getCode());
+        d.setBoardingHouseName(inv.getRoom().getBoardingHouse().getName());
+        d.setPeriodMonth(inv.getPeriodMonth()); d.setPeriodYear(inv.getPeriodYear());
+        d.setTotalAmount(inv.getTotalAmount()); d.setStatus(inv.getStatus());
+        d.setDueDate(inv.getDueDate()); d.setCreatedDate(inv.getCreatedDate());
+        BigDecimal pa = paymentRepository.findByInvoiceId(inv.getId()).stream().map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        d.setPaidAmount(pa); d.setRemainingAmount(inv.getTotalAmount().subtract(pa));
+        d.setItems(inv.getItems().stream().map(this::itemToDto).collect(Collectors.toList()));
+        d.setPayments(paymentRepository.findByInvoiceId(inv.getId()).stream().map(p -> {
+            PaymentDto pd = new PaymentDto(); pd.setId(p.getId()); pd.setInvoiceId(p.getInvoice().getId());
+            pd.setInvoiceCode(p.getInvoice().getCode()); pd.setPaidAmount(p.getPaidAmount());
+            pd.setPaymentDate(p.getPaymentDate()); pd.setMethod(p.getMethod());
+            pd.setNote(p.getNote()); pd.setTransactionCode(p.getTransactionCode()); return pd;
+        }).collect(Collectors.toList()));
+        d.setMainTenantName(inv.getContract().getMainTenant().getFullName());
+        d.setMainTenantPhone(inv.getContract().getMainTenant().getPhone());
+        return d;
     }
 }
-

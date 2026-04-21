@@ -106,8 +106,7 @@ public class CalendarService {
         ev.setBoardingHouseName(c.getRoom().getBoardingHouse().getName());
         ev.setCheckInDate(c.getStartDate());
         ev.setCheckOutDate(c.getEndDate());
-        BigDecimal daily = c.getDailyRate() != null ? c.getDailyRate()
-                : (c.getMonthlyRent() != null ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, RoundingMode.HALF_UP) : BigDecimal.ZERO);
+        BigDecimal daily = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
         ev.setDailyRate(daily);
 
         // Calculate total debt for this contract
@@ -224,8 +223,7 @@ public class CalendarService {
         ev.setBoardingHouseName(c.getRoom().getBoardingHouse().getName());
         ev.setCheckInDate(c.getStartDate());
         ev.setCheckOutDate(c.getEndDate());
-        BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate()
-                : (c.getMonthlyRent() != null ? c.getMonthlyRent().divide(BigDecimal.valueOf(30), 0, RoundingMode.HALF_UP) : BigDecimal.ZERO);
+        BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
         ev.setDailyRate(dailyRate);
         ev.setTotalDays((int) Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate())));
         ev.setTotalDebt(debtInfo[0]);
