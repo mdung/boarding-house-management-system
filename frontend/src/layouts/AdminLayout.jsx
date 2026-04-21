@@ -5,6 +5,7 @@ import {
   Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard,
   LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History, XCircle
 } from 'lucide-react'
+import MobileAccess from '../components/MobileAccess'
 
 const menuGroups = [
   {
@@ -231,6 +232,7 @@ const AdminLayout = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+             <MobileAccess />
              <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-medium uppercase text-[10px] tracking-widest text-slate-400">
