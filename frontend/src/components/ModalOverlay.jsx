@@ -5,7 +5,7 @@
 const ModalOverlay = ({ children, onClick, className = '' }) => (
   <div
     onClick={onClick}
-    className={`fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto ${className}`}
+    className={`fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto ${className}`}
     style={{ height: '100dvh', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
   >
     <style>{`

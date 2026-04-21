@@ -389,7 +389,7 @@ const Tenants = () => {
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="px-8 py-6 space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="px-8 py-6 space-y-4">
                 <Field label="Full Name" icon={Users}>
                   <input required value={formData.fullName} onChange={set('fullName')} placeholder="e.g. Nguyễn Văn A" className={inputCls} />
                 </Field>
@@ -524,14 +524,15 @@ const Tenants = () => {
                     )}
                   </>
                 )}
-              </div>
 
-              <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <button type="button" onClick={closeModal} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="submit" disabled={saving}
-                  className="px-8 py-2.5 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
-                  {saving ? 'Saving...' : editing ? 'Save Changes' : 'Add Guest'}
-                </button>
+                {/* Action buttons - inside scroll area so always reachable */}
+                <div className="flex justify-end gap-3 pt-4 pb-2">
+                  <button type="button" onClick={closeModal} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                  <button type="submit" disabled={saving}
+                    className="px-8 py-2.5 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
+                    {saving ? 'Saving...' : editing ? 'Save Changes' : 'Add Guest'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

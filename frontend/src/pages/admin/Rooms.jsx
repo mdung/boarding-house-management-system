@@ -364,14 +364,15 @@ const Rooms = () => {
                 <Field label="Base Rent (VND)">
                   <input type="number" required min="0" value={formData.baseRent} onChange={set('baseRent')} placeholder="e.g. 2500000" className={inputCls} />
                 </Field>
-              </div>
 
-              <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <button type="button" onClick={closeModal} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="submit" disabled={saving}
-                  className="px-8 py-2.5 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
-                  {saving ? 'Saving...' : editing ? 'Save Changes' : 'Add Room'}
-                </button>
+                {/* Action buttons */}
+                <div className="flex justify-end gap-3 pt-4">
+                  <button type="button" onClick={closeModal} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                  <button type="submit" disabled={saving}
+                    className="px-8 py-2.5 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
+                    {saving ? 'Saving...' : editing ? 'Save Changes' : 'Add Room'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

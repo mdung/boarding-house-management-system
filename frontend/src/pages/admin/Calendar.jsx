@@ -239,7 +239,7 @@ const SuperCalendar = () => {
     dayEvts.forEach(e => { typeCounts[e.type] = (typeCounts[e.type] || 0) + 1 })
 
     return (
-      <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedDay(null)}>
+      <div className="fixed inset-0 z-[60] flex justify-end" onClick={() => setSelectedDay(null)}>
         <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
         <div className="relative bg-white w-full max-w-[360px] h-full shadow-2xl flex flex-col"
           style={{ animation: 'slideInRight 0.25s cubic-bezier(0.16,1,0.3,1)' }}

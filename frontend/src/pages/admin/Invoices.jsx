@@ -371,10 +371,12 @@ const Invoices = () => {
                   <Field label="Month"><input type="number" min="1" max="12" required value={formData.month} onChange={e => setFormData(f => ({...f, month: e.target.value}))} className={inputCls} /></Field>
                   <Field label="Year"><input type="number" required value={formData.year} onChange={e => setFormData(f => ({...f, year: e.target.value}))} className={inputCls} /></Field>
                 </div>
-              </div>
-              <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="submit" className="px-8 py-2.5 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5">Generate</button>
+
+                {/* Action buttons */}
+                <div className="flex justify-end gap-3 pt-4">
+                  <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                  <button type="submit" className="px-8 py-2.5 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5">Generate</button>
+                </div>
               </div>
             </form>
           </div>
@@ -459,13 +461,15 @@ const Invoices = () => {
                     </div>
                   </div>
                 )}
-              </div>
-              <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <button type="button" onClick={() => setShowReadingsModal(false)} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="button" onClick={handlePreview} className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all">
-                  <Calculator className="w-4 h-4" /> Preview
-                </button>
-                <button type="submit" className="px-8 py-2.5 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">Generate</button>
+
+                {/* Action buttons */}
+                <div className="flex justify-end gap-3 pt-4">
+                  <button type="button" onClick={() => setShowReadingsModal(false)} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                  <button type="button" onClick={handlePreview} className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all">
+                    <Calculator className="w-4 h-4" /> Preview
+                  </button>
+                  <button type="submit" className="px-8 py-2.5 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">Generate</button>
+                </div>
               </div>
             </form>
           </div>

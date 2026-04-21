@@ -26,6 +26,7 @@ body {
   align-items: flex-end !important;   /* sheet from bottom on mobile */
   justify-content: center !important;
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  z-index: 60 !important;            /* above mobile bottom nav (z-50) */
 }
 
 @media (min-width: 640px) {

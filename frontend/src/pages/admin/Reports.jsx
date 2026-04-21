@@ -526,7 +526,7 @@ const Reports = () => {
 
       {/* ── Service Drill-down Panel ── */}
       {selectedService && (
-        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedService(null)}>
+        <div className="fixed inset-0 z-[60] flex justify-end" onClick={() => setSelectedService(null)}>
           <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
           <div className="relative bg-white w-full max-w-[420px] h-full shadow-2xl flex flex-col"
             style={{ animation: 'slideInRight 0.25s cubic-bezier(0.16,1,0.3,1)' }}
@@ -714,7 +714,7 @@ const Reports = () => {
 
       {/* ── Property Detail Panel ── */}
       {selectedProperty && (
-        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedProperty(null)}>
+        <div className="fixed inset-0 z-[60] flex justify-end" onClick={() => setSelectedProperty(null)}>
           <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
           <div className="relative bg-white w-full max-w-[480px] h-full shadow-2xl flex flex-col"
             style={{ animation: 'slideInRight 0.25s cubic-bezier(0.16,1,0.3,1)' }}
@@ -824,7 +824,7 @@ const Reports = () => {
 
       {/* ── Month Detail Panel ── */}
       {selectedMonth && (
-        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedMonth(null)}>
+        <div className="fixed inset-0 z-[60] flex justify-end" onClick={() => setSelectedMonth(null)}>
           <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
           <div className="relative bg-white w-full max-w-[480px] h-full shadow-2xl flex flex-col"
             style={{ animation: 'slideInRight 0.25s cubic-bezier(0.16,1,0.3,1)' }}

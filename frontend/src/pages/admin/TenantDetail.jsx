@@ -423,13 +423,15 @@ const TenantDetail = () => {
                 <Field label="Note">
                   <input type="text" value={payForm.note} onChange={e => setPayForm(f => ({...f, note: e.target.value}))} placeholder="Optional note..." className={inputCls} />
                 </Field>
-              </div>
-              <div className="px-7 py-5 bg-slate-50 border-t border-slate-100 flex gap-3">
-                <button type="button" onClick={() => setShowPayModal(false)} className="flex-1 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="submit" disabled={paying}
-                  className="flex-1 py-2.5 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
-                  {paying ? 'Processing...' : 'Confirm Payment'}
-                </button>
+
+                {/* Action buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={() => setShowPayModal(false)} className="flex-1 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                  <button type="submit" disabled={paying}
+                    className="flex-1 py-2.5 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
+                    {paying ? 'Processing...' : 'Confirm Payment'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
