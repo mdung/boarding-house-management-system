@@ -83,38 +83,36 @@ public class DashboardService {
         dto.setOverdueInvoices(overdueCount);
 
         // Revenue breakdown: Room vs Service for THIS MONTH
-        // Room revenue = sum of payments received this month (by paymentDate)
+        // Room revenue = dailyRate x days for all non-DRAFT contracts that overlap this month
         // Service revenue = sum of guest charges where chargeDate in this month
         LocalDate firstOfMonth = today.withDayOfMonth(1);
         LocalDate lastOfMonth = today.withDayOfMonth(today.lengthOfMonth());
-        int thisMonth = today.getMonthValue();
-        int thisYear = today.getYear();
 
         BigDecimal roomRevenue = BigDecimal.ZERO;
         BigDecimal serviceRevenue = BigDecimal.ZERO;
         java.util.List<DashboardDto.RevenueDetailDto> details = new java.util.ArrayList<>();
 
-        // Room revenue = payments collected this month
-        for (Invoice inv : invoiceRepository.findAll()) {
-            if (inv.getContract().getStatus() == ContractStatus.DRAFT) continue;
-            List<Payment> payments = paymentRepository.findByInvoiceId(inv.getId());
-            for (Payment p : payments) {
-                if (p.getPaymentDate() == null) continue;
-                LocalDate payDate = p.getPaymentDate().toLocalDate();
-                if (payDate.isBefore(firstOfMonth) || payDate.isAfter(lastOfMonth)) continue;
-                roomRevenue = roomRevenue.add(p.getPaidAmount());
+        // Room revenue = dailyRate x days for contracts active this month
+        for (Contract c : allContracts) {
+            if (c.getStatus() == ContractStatus.DRAFT) continue;
+            // Contract must overlap with this month
+            if (c.getEndDate().isBefore(firstOfMonth) || c.getStartDate().isAfter(lastOfMonth)) continue;
+            BigDecimal rate = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
+            if (rate.compareTo(BigDecimal.ZERO) == 0) continue;
+            long days = Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
+            BigDecimal amount = rate.multiply(BigDecimal.valueOf(days));
+            roomRevenue = roomRevenue.add(amount);
 
-                DashboardDto.RevenueDetailDto rd = new DashboardDto.RevenueDetailDto();
-                rd.setDate(payDate);
-                rd.setInvoiceCode(inv.getCode());
-                rd.setRoomCode(inv.getRoom().getCode());
-                rd.setTenantName(inv.getContract().getMainTenant().getFullName());
-                rd.setBoardingHouseName(inv.getRoom().getBoardingHouse().getName());
-                rd.setDescription("Payment - " + inv.getCode());
-                rd.setCategory("RENT");
-                rd.setAmount(p.getPaidAmount());
-                details.add(rd);
-            }
+            DashboardDto.RevenueDetailDto rd = new DashboardDto.RevenueDetailDto();
+            rd.setDate(c.getStartDate());
+            rd.setInvoiceCode(c.getCode());
+            rd.setRoomCode(c.getRoom().getCode());
+            rd.setTenantName(c.getMainTenant().getFullName());
+            rd.setBoardingHouseName(c.getRoom().getBoardingHouse().getName());
+            rd.setDescription(days + " days x " + rate + "/day");
+            rd.setCategory("RENT");
+            rd.setAmount(amount);
+            details.add(rd);
         }
 
         // Service revenue from guest charges this month
