@@ -9,10 +9,10 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—'
 const methodLabel = { CASH: 'Cash', BANK_TRANSFER: 'Bank Transfer', MOMO: 'MoMo', OTHER: 'Other' }
 const methodIcon = { CASH: Banknote, BANK_TRANSFER: CreditCard, MOMO: Smartphone, OTHER: DollarSign }
 
-const inputCls = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all'
+const inputCls = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all'
 const Field = ({ label, children }) => (
   <div className="space-y-1.5">
-    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">{label}</label>
+    <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide ml-1">{label}</label>
     {children}
   </div>
 )
@@ -88,9 +88,9 @@ const Payments = () => {
 
   if (loading) return (
     <div className="space-y-4 animate-pulse">
-      <div className="h-10 w-40 bg-slate-100 rounded-2xl" />
-      <div className="h-48 bg-slate-100 rounded-3xl" />
-      <div className="h-64 bg-slate-100 rounded-3xl" />
+      <div className="h-10 w-40 bg-slate-100 rounded-xl" />
+      <div className="h-48 bg-slate-100 rounded-2xl" />
+      <div className="h-64 bg-slate-100 rounded-2xl" />
     </div>
   )
 
@@ -116,11 +116,11 @@ const Payments = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900">Payments</h1>
-          <p className="text-slate-500 mt-1 text-sm">{payments.length} total payments</p>
+          <h1 className="text-xl font-extrabold text-slate-900">Payments</h1>
+          <p className="text-slate-500 mt-1 text-[13px]">{payments.length} total payments</p>
         </div>
         <button onClick={() => { setSelectedInvoice(null); setFormData({ invoiceId: '', paidAmount: '', paymentDate: new Date().toISOString().split('T')[0], method: 'CASH', note: '', transactionCode: '' }); setShowModal(true) }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5">
+          className="flex items-center gap-2 px-3.5 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold text-[12.5px] shadow-sm transition-all">
           <Plus className="w-4 h-4" /> Add Payment
         </button>
       </div>
@@ -130,30 +130,30 @@ const Payments = () => {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-4 h-4 text-rose-500" />
-            <h2 className="text-xs font-black text-slate-500 uppercase tracking-wider">
+            <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
               Outstanding Debts · <span className="text-rose-600">{tenantsWithDebt.length} guests</span>
               <span className="ml-2 text-rose-600">{fmt(tenantsWithDebt.reduce((s,t) => s+(parseFloat(t.totalDebt)||0), 0))}</span>
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {tenantsWithDebt.map(t => (
-              <div key={t.id} className="bg-white border border-rose-100 rounded-3xl p-5 hover:border-rose-300 hover:shadow-md transition-all group">
+              <div key={t.id} className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 hover:shadow-md transition-all group">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-700 font-black text-base flex-shrink-0">
+                    <div className="w-9 h-9 bg-rose-100 rounded-lg flex items-center justify-center text-rose-700 font-extrabold text-sm flex-shrink-0">
                       {t.fullName?.charAt(0)?.toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-black text-slate-900 text-sm">{t.fullName}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Room {t.activeRoomCode || '—'}</p>
+                      <p className="text-[13px] font-extrabold text-slate-900">{t.fullName}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Room {t.activeRoomCode || '—'}</p>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-black rounded-xl">Debt</span>
+                  <span className="px-2 py-0.5 text-[10.5px] font-bold bg-rose-100 text-rose-600 rounded-full">Debt</span>
                 </div>
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Outstanding</p>
-                    <p className="text-xl font-black text-rose-600 mt-0.5">{fmt(t.totalDebt)}</p>
+                    <p className="text-[10.5px] font-semibold text-slate-400 uppercase tracking-wide">Outstanding</p>
+                    <p className="text-base font-extrabold text-rose-600 mt-0.5">{fmt(t.totalDebt)}</p>
                   </div>
                   {t.activeContractId && (
                     <button onClick={() => {
@@ -161,7 +161,7 @@ const Payments = () => {
                       if (sumInv) { openPaymentModal(sumInv) }
                       else { setSelectedInvoice(null); setFormData({ invoiceId: '', paidAmount: parseFloat(t.totalDebt).toFixed(0), paymentDate: new Date().toISOString().split('T')[0], method: 'CASH', note: '', transactionCode: '', _contractId: t.activeContractId, _tenantName: t.fullName, _roomCode: t.activeRoomCode, _totalDebt: t.totalDebt }); setShowModal(true) }
                     }}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-2xl shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-green-500 hover:bg-green-600 text-white text-[12.5px] font-semibold rounded-lg shadow-sm transition-all">
                       <DollarSign className="w-3.5 h-3.5" /> Pay
                     </button>
                   )}
@@ -176,61 +176,61 @@ const Payments = () => {
       <div>
         <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-slate-500" />
-            <h2 className="text-xs font-black text-slate-500 uppercase tracking-wider">Payment History ({filtered.length})</h2>
-            {filtered.length > 0 && <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">{fmt(totalPaid)}</span>}
+            <Receipt className="w-4 h-4 text-slate-400" />
+            <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Payment History ({filtered.length})</h2>
+            {filtered.length > 0 && <span className="text-[11px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">{fmt(totalPaid)}</span>}
           </div>
           <div className="relative flex-1 sm:flex-initial">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input value={paySearch} onChange={e => { setPaySearch(e.target.value); setPayPage(1) }} placeholder="Search payments..."
-              className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all w-full sm:w-64" />
+              className="pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all w-full sm:w-64" />
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/60">
                   {[['invoiceCode','Invoice'],['tenantName','Guest / Room'],['paidAmount','Amount'],['paymentDate','Date'],['method','Method'],['note','Note']].map(([f,l]) => (
-                    <th key={f} className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <th key={f} className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
                       <button onClick={() => toggleSort(f)} className="flex items-center gap-1 hover:text-slate-700 transition-colors">
                         {l} <SortIcon f={f} />
                       </button>
                     </th>
                   ))}
-                  <th className="px-5 py-4 w-12" />
+                  <th className="px-4 py-3 w-12" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {paged.length === 0 ? (
                   <tr><td colSpan={7} className="px-6 py-16 text-center text-slate-400">
                     <Receipt className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p className="font-semibold">No payments found</p>
+                    <p className="font-semibold text-[13px]">No payments found</p>
                   </td></tr>
                 ) : paged.map(p => {
                   const MIcon = methodIcon[p.method] || DollarSign
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/60 transition-colors group">
-                      <td className="px-5 py-3.5 text-sm font-bold text-slate-700">{p.invoiceCode}</td>
-                      <td className="px-5 py-3.5 text-sm">
-                        {p._inv ? <><span className="font-bold text-slate-800">{p._inv.tenantName}</span><span className="text-slate-400 ml-1.5 text-xs">· {p._inv.roomCode}</span></> : '—'}
+                      <td className="px-4 py-3 text-[13px] font-bold text-slate-700">{p.invoiceCode}</td>
+                      <td className="px-4 py-3 text-[13px]">
+                        {p._inv ? <><span className="font-bold text-slate-800">{p._inv.tenantName}</span><span className="text-slate-400 ml-1.5 text-[11px]">· {p._inv.roomCode}</span></> : '—'}
                       </td>
-                      <td className="px-5 py-3.5">
-                        <span className="font-black text-emerald-600 text-sm">{fmt(p.paidAmount)}</span>
+                      <td className="px-4 py-3">
+                        <span className="text-green-600 font-bold text-[13px]">{fmt(p.paidAmount)}</span>
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-slate-500">{fmtDate(p.paymentDate)}</td>
-                      <td className="px-5 py-3.5">
-                        <span className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                      <td className="px-4 py-3 text-[13px] text-slate-500">{fmtDate(p.paymentDate)}</td>
+                      <td className="px-4 py-3">
+                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
                           <MIcon className="w-3.5 h-3.5 text-slate-400" />
                           {methodLabel[p.method] || p.method}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-slate-400 max-w-[150px] truncate">{p.note || '—'}</td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-4 py-3 text-[13px] text-slate-400 max-w-[150px] truncate">{p.note || '—'}</td>
+                      <td className="px-4 py-3">
                         <button onClick={() => setDeleteConfirm(p)}
-                          className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-400 rounded-xl transition-all">
+                          className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-400 rounded-lg transition-all">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </td>
@@ -240,9 +240,9 @@ const Payments = () => {
               </tbody>
               {filtered.length > 0 && (
                 <tfoot>
-                  <tr className="border-t-2 border-slate-200 bg-emerald-50/40">
-                    <td colSpan={2} className="px-5 py-3 text-sm font-bold text-slate-600">Total · {filtered.length} payments</td>
-                    <td className="px-5 py-3 text-sm font-black text-emerald-600">{fmt(totalPaid)}</td>
+                  <tr className="border-t-2 border-slate-200 bg-green-50/40">
+                    <td colSpan={2} className="px-4 py-3 text-[13px] font-bold text-slate-600">Total · {filtered.length} payments</td>
+                    <td className="px-4 py-3 text-[13px] text-green-600 font-bold">{fmt(totalPaid)}</td>
                     <td colSpan={4} />
                   </tr>
                 </tfoot>
@@ -255,56 +255,56 @@ const Payments = () => {
              {paged.length === 0 ? (
                <div className="py-20 text-center text-slate-400">
                  <Receipt className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                 <p className="font-semibold">No payments found</p>
+                 <p className="font-semibold text-[13px]">No payments found</p>
                </div>
              ) : paged.map(p => {
                const MIcon = methodIcon[p.method] || DollarSign
                return (
-                 <div key={p.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
+                 <div key={p.id} className="p-4 rounded-xl border border-slate-200 space-y-3 hover:bg-slate-50/50 transition-colors">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-xs font-black text-blue-600 mb-0.5">{p.invoiceCode}</p>
-                        <p className="text-sm font-bold text-slate-900">{p._inv?.tenantName || 'Unknown Guest'}</p>
-                        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tight">Room {p._inv?.roomCode || '—'}</p>
+                        <p className="text-[11px] font-bold text-blue-600 mb-0.5">{p.invoiceCode}</p>
+                        <p className="text-[13px] font-bold text-slate-900">{p._inv?.tenantName || 'Unknown Guest'}</p>
+                        <p className="text-[10.5px] text-slate-400 font-semibold mt-1 uppercase tracking-tight">Room {p._inv?.roomCode || '—'}</p>
                       </div>
-                      <span className="font-black text-emerald-600 text-sm">{fmt(p.paidAmount)}</span>
+                      <span className="text-green-600 font-bold text-[13px]">{fmt(p.paidAmount)}</span>
                     </div>
 
                     <div className="flex items-center justify-between pt-1">
                       <div className="flex items-center gap-3">
-                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                         <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-slate-400">
                            <Calendar className="w-3 h-3" />
                            {fmtDate(p.paymentDate)}
                          </div>
-                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                         <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-slate-400">
                            <MIcon className="w-3 h-3" />
                            {methodLabel[p.method] || p.method}
                          </div>
                       </div>
-                      <button onClick={() => setDeleteConfirm(p)} className="p-2 text-rose-500 bg-rose-50 rounded-xl border border-rose-100 transition-colors">
+                      <button onClick={() => setDeleteConfirm(p)} className="p-2 text-rose-500 bg-rose-50 rounded-lg border border-rose-100 transition-colors">
                          <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    {p.note && <p className="text-[10px] text-slate-400 bg-slate-50 p-2 rounded-lg italic border border-slate-100">"{p.note}"</p>}
+                    {p.note && <p className="text-[10.5px] text-slate-400 bg-slate-50 p-2 rounded-lg italic border border-slate-100">"{p.note}"</p>}
                  </div>
                )
              })}
           </div>
 
           {totalPages > 1 && (
-            <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-xs font-bold text-slate-400 order-2 sm:order-1">{(payPage-1)*PAGE_SIZE+1}–{Math.min(payPage*PAGE_SIZE, filtered.length)} of {filtered.length}</p>
+            <div className="px-4 py-4 border-t border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-xs font-semibold text-slate-400 order-2 sm:order-1">{(payPage-1)*PAGE_SIZE+1}–{Math.min(payPage*PAGE_SIZE, filtered.length)} of {filtered.length}</p>
               <div className="flex items-center gap-1 order-1 sm:order-2">
-                <button disabled={payPage===1} onClick={() => setPayPage(p=>p-1)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all"><ChevronUp className="w-4 h-4 rotate-90" /></button>
+                <button disabled={payPage===1} onClick={() => setPayPage(p=>p-1)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all text-xs"><ChevronUp className="w-4 h-4 rotate-90" /></button>
                 {Array.from({length: Math.min(3, totalPages)}, (_,i) => {
                   let p = payPage
                   if (payPage === 1) p = 1 + i
                   else if (payPage === totalPages) p = totalPages - 2 + i
                   else p = payPage - 1 + i
                   if (p < 1 || p > totalPages) return null
-                  return <button key={p} onClick={() => setPayPage(p)} className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${p===payPage ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{p}</button>
+                  return <button key={p} onClick={() => setPayPage(p)} className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${p===payPage ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{p}</button>
                 })}
-                <button disabled={payPage===totalPages} onClick={() => setPayPage(p=>p+1)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all"><ChevronDown className="w-4 h-4 rotate-90" /></button>
+                <button disabled={payPage===totalPages} onClick={() => setPayPage(p=>p+1)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all text-xs"><ChevronDown className="w-4 h-4 rotate-90" /></button>
               </div>
             </div>
           )}
@@ -314,42 +314,42 @@ const Payments = () => {
       {/* Payment Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => { setShowModal(false); setSelectedInvoice(null) }}>
-          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="px-7 pt-7 pb-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-emerald-600" />
+                <div className="w-9 h-9 bg-green-50 rounded-lg flex items-center justify-center">
+                  <DollarSign className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-900">Collect Payment</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <h2 className="text-xl font-extrabold text-slate-900">Collect Payment</h2>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
                     {selectedInvoice ? `${selectedInvoice.tenantName} · Room ${selectedInvoice.roomCode}` : formData._tenantName ? `${formData._tenantName} · Room ${formData._roomCode}` : 'New payment'}
                   </p>
                 </div>
               </div>
-              <button onClick={() => { setShowModal(false); setSelectedInvoice(null) }} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+              <button onClick={() => { setShowModal(false); setSelectedInvoice(null) }} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
                 <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
 
             {/* Info banner */}
             {(selectedInvoice || formData._contractId) && (
-              <div className={`mx-7 mt-5 rounded-2xl p-4 ${selectedInvoice ? 'bg-blue-50 border border-blue-100' : 'bg-rose-50 border border-rose-100'}`}>
+              <div className={`mx-5 mt-4 rounded-lg p-3.5 ${selectedInvoice ? 'bg-blue-50 border border-blue-100' : 'bg-rose-50 border border-rose-100'}`}>
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{selectedInvoice ? 'Invoice' : 'Contract Debt'}</p>
-                    <p className="text-sm font-bold text-slate-800 mt-0.5">{selectedInvoice?.code || '—'}</p>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">{selectedInvoice ? 'Invoice' : 'Contract Debt'}</p>
+                    <p className="text-[13px] font-bold text-slate-800 mt-0.5">{selectedInvoice?.code || '—'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Remaining</p>
-                    <p className="text-lg font-black text-rose-600 mt-0.5">{fmt(selectedInvoice?.remainingAmount || formData._totalDebt)}</p>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Remaining</p>
+                    <p className="text-base font-extrabold text-rose-600 mt-0.5">{fmt(selectedInvoice?.remainingAmount || formData._totalDebt)}</p>
                   </div>
                 </div>
               </div>
             )}
 
             <form onSubmit={handleSubmit}>
-              <div className="px-7 py-5 space-y-4">
+              <div className="px-5 py-4 space-y-4">
                 {!selectedInvoice && !formData._contractId && (
                   <Field label="Select Invoice">
                     <select required value={formData.invoiceId}
@@ -369,9 +369,9 @@ const Payments = () => {
 
                 <Field label="Payment Amount (VND)">
                   <input required type="number" step="1000" min="1000" value={formData.paidAmount} onChange={set('paidAmount')}
-                    placeholder="0" className={inputCls + ' text-lg font-black'} />
+                    placeholder="0" className={inputCls + ' text-base font-extrabold'} />
                   {selectedInvoice && formData.paidAmount && (
-                    <p className={`text-xs mt-1 ml-1 font-bold ${parseFloat(formData.paidAmount) >= selectedInvoice.remainingAmount ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    <p className={`text-[11px] mt-1 ml-1 font-bold ${parseFloat(formData.paidAmount) >= selectedInvoice.remainingAmount ? 'text-green-600' : 'text-amber-600'}`}>
                       {parseFloat(formData.paidAmount) >= selectedInvoice.remainingAmount ? '✓ Full payment' : `Still owed ${fmt(selectedInvoice.remainingAmount - parseFloat(formData.paidAmount))}`}
                     </p>
                   )}
@@ -399,11 +399,11 @@ const Payments = () => {
                 </Field>
 
                 {/* Action buttons */}
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-3 pt-3">
                   <button type="button" onClick={() => { setShowModal(false); setSelectedInvoice(null) }}
-                    className="flex-1 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                    className="flex-1 py-2 rounded-lg font-semibold text-[12.5px] text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">Cancel</button>
                   <button type="submit" disabled={paying}
-                    className="flex-1 py-2.5 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
+                    className="flex-1 py-2 rounded-lg font-semibold text-[12.5px] text-white bg-green-500 hover:bg-green-600 disabled:opacity-60 shadow-sm transition-all">
                     {paying ? 'Processing...' : 'Confirm Payment'}
                   </button>
                 </div>
@@ -416,28 +416,28 @@ const Payments = () => {
       {/* Delete Confirm */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => !deleting && setDeleteConfirm(null)}>
-          <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="px-7 pt-7 pb-5 text-center">
-              <div className="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-7 h-7 text-rose-600" />
+          <div className="bg-white w-full max-w-sm rounded-xl shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="px-5 pt-5 pb-4 text-center">
+              <div className="w-12 h-12 bg-rose-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <AlertTriangle className="w-6 h-6 text-rose-600" />
               </div>
-              <h3 className="text-xl font-black text-slate-900">Delete Payment?</h3>
-              <p className="text-sm text-slate-500 mt-1">This will reverse the payment and update the invoice balance.</p>
+              <h3 className="text-xl font-extrabold text-slate-900">Delete Payment?</h3>
+              <p className="text-[13px] text-slate-500 mt-1">This will reverse the payment and update the invoice balance.</p>
             </div>
-            <div className="px-7 pb-5">
-              <div className="bg-slate-50 rounded-2xl p-4 space-y-2.5 text-sm mb-5">
+            <div className="px-5 pb-5">
+              <div className="bg-slate-50 rounded-xl p-3.5 space-y-2 text-[13px] mb-4">
                 {[['Invoice', deleteConfirm.invoiceCode], ['Amount', fmt(deleteConfirm.paidAmount)], ['Date', fmtDate(deleteConfirm.paymentDate)], ['Method', methodLabel[deleteConfirm.method] || deleteConfirm.method]].map(([l, v]) => (
                   <div key={l} className="flex justify-between">
                     <span className="text-slate-500">{l}</span>
-                    <span className={`font-bold ${l === 'Amount' ? 'text-emerald-600' : 'text-slate-800'}`}>{v}</span>
+                    <span className={`font-bold ${l === 'Amount' ? 'text-green-600' : 'text-slate-800'}`}>{v}</span>
                   </div>
                 ))}
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setDeleteConfirm(null)} disabled={deleting}
-                  className="flex-1 py-2.5 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
+                  className="flex-1 py-2 rounded-lg font-semibold text-[12.5px] text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">Cancel</button>
                 <button onClick={handleDeletePayment} disabled={deleting}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 shadow-lg shadow-rose-500/20 transition-all">
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-semibold text-[12.5px] text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 shadow-sm transition-all">
                   <Trash2 className="w-4 h-4" /> {deleting ? 'Deleting...' : 'Delete'}
                 </button>
               </div>

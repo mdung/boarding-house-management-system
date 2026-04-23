@@ -7,10 +7,10 @@ import { ArrowLeft, Edit2, Save, X, CreditCard, ShoppingCart, Phone, Mail, MapPi
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—'
 
-const inputCls = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all'
+const inputCls = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
 const Field = ({ label, children }) => (
   <div className="space-y-1.5">
-    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">{label}</label>
+    <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide ml-1">{label}</label>
     {children}
   </div>
 )
@@ -96,9 +96,9 @@ const TenantDetail = () => {
 
   if (loading) return (
     <div className="space-y-4 animate-pulse">
-      <div className="h-8 w-32 bg-slate-100 rounded-2xl" />
-      <div className="h-48 bg-slate-100 rounded-3xl" />
-      <div className="h-64 bg-slate-100 rounded-3xl" />
+      <div className="h-8 w-32 bg-slate-100 rounded-lg" />
+      <div className="h-48 bg-slate-100 rounded-2xl" />
+      <div className="h-64 bg-slate-100 rounded-2xl" />
     </div>
   )
   if (!tenant) return <div className="p-8 text-center text-rose-500 font-semibold">Guest not found</div>
@@ -118,291 +118,304 @@ const TenantDetail = () => {
   )
 
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-4 max-w-5xl">
       {/* Back */}
       <button onClick={() => navigate('/admin/tenants')}
-        className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors">
+        className="flex items-center gap-2 text-[12.5px] font-semibold text-slate-500 hover:text-blue-600 transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to Tenants
       </button>
 
-      {/* Top grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Profile card */}
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-blue-500/20 flex-shrink-0">
-              {tenant.fullName?.charAt(0)?.toUpperCase()}
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-slate-900">{tenant.fullName}</h1>
-              <p className="text-sm text-slate-500 mt-0.5">
-                {activeContract ? <span className="text-emerald-600 font-bold">● Staying · Room {activeContract.roomCode}</span> : <span className="text-slate-400">No active contract</span>}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              { icon: Phone,    label: 'Phone',        value: tenant.phone },
-              { icon: Mail,     label: 'Email',        value: tenant.email },
-              { icon: IdCard,   label: 'ID Number',    value: tenant.identityNumber },
-              { icon: Calendar, label: 'Date of Birth',value: fmtDate(tenant.dateOfBirth) },
-              { icon: MapPin,   label: 'Address',      value: tenant.permanentAddress, full: true },
-            ].map(({ icon: Icon, label, value, full }) => (
-              <div key={label} className={`flex items-start gap-3 p-3 bg-slate-50 rounded-2xl ${full ? 'sm:col-span-2' : ''}`}>
-                <div className="w-7 h-7 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <Icon className="w-3.5 h-3.5 text-slate-500" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
-                  <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">{value || '—'}</p>
-                </div>
+      {/* Detail layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+        {/* Left column */}
+        <div className="space-y-4">
+          {/* Profile card */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white text-xl font-black flex-shrink-0">
+                {tenant.fullName?.charAt(0)?.toUpperCase()}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Payment summary */}
-        <div className={`rounded-3xl border shadow-sm p-6 flex flex-col ${remaining > 0 ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'}`}>
-          <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
-            <Receipt className="w-4 h-4" /> Payment Summary
-          </h3>
-          {summary ? (
-            <div className="flex-1 space-y-2.5 text-sm">
+              <div>
+                <h1 className="text-xl font-extrabold text-slate-900">{tenant.fullName}</h1>
+                <p className="text-[13px] text-slate-500 mt-0.5">
+                  {activeContract ? <span className="text-emerald-600 font-semibold">● Staying · Room {activeContract.roomCode}</span> : <span className="text-slate-400">No active contract</span>}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                { label: 'Room charge', value: summary.totalRent },
-                { label: 'Services',    value: summary.totalCharges },
-                ...(summary.deposit > 0 ? [{ label: 'Deposit', value: summary.deposit, cls: 'text-blue-600' }] : []),
-                { label: 'Total',       value: summary.totalAmount, bold: true, border: true },
-                { label: 'Paid',        value: summary.totalPaid, cls: 'text-emerald-600' },
-              ].map(({ label, value, cls, bold, border }) => (
-                <div key={label} className={`flex justify-between ${border ? 'border-t border-slate-200 pt-2.5' : ''}`}>
-                  <span className={`${bold ? 'font-bold text-slate-700' : 'text-slate-500'}`}>{label}</span>
-                  <span className={`font-bold ${cls || 'text-slate-800'}`}>{fmt(value)}</span>
+                { icon: Phone,    label: 'Phone',        value: tenant.phone },
+                { icon: Mail,     label: 'Email',        value: tenant.email },
+                { icon: IdCard,   label: 'ID Number',    value: tenant.identityNumber },
+                { icon: Calendar, label: 'Date of Birth',value: fmtDate(tenant.dateOfBirth) },
+                { icon: MapPin,   label: 'Address',      value: tenant.permanentAddress, full: true },
+              ].map(({ icon: Icon, label, value, full }) => (
+                <div key={label} className={`flex items-start gap-3 p-3 bg-slate-50 rounded-lg ${full ? 'sm:col-span-2' : ''}`}>
+                  <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <Icon className="w-3.5 h-3.5 text-slate-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide">{label}</p>
+                    <p className="text-[13px] font-semibold text-slate-800 mt-0.5 truncate">{value || '—'}</p>
+                  </div>
                 </div>
               ))}
-              <div className="flex justify-between border-t border-slate-200 pt-2.5">
-                <span className="font-black text-slate-800">Remaining</span>
-                <span className={`font-black text-xl ${remaining > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmt(remaining)}</span>
-              </div>
             </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-sm text-slate-400 font-medium">No active contract</p>
-            </div>
-          )}
-
-          {checkoutAlert && (
-            <div className={`mt-4 px-3 py-2 rounded-2xl border text-xs font-bold text-center ${checkoutAlert.cls}`}>
-              {checkoutAlert.msg}
-            </div>
-          )}
-
-          {remaining > 0 && (
-            <button onClick={() => { setPayForm(f => ({...f, paidAmount: remaining.toFixed(0)})); setShowPayModal(true) }}
-              className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-2xl shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
-              <CreditCard className="w-4 h-4" /> Collect {fmt(remaining)}
-            </button>
-          )}
-          {activeContract && activeContract.status === 'ACTIVE' && (
-            <button onClick={() => navigate(`/admin/guest-charges?contractId=${activeContract.id}`)}
-              className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 bg-white/70 hover:bg-white text-purple-700 text-sm font-bold rounded-2xl border border-purple-200 transition-all">
-              <ShoppingCart className="w-4 h-4" /> Add Service Charge
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Contracts */}
-      {tenant.contracts?.length > 0 && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-slate-500" />
-            <h2 className="font-black text-slate-900">Rental Contracts</h2>
-            <span className="ml-auto text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{tenant.contracts.length}</span>
           </div>
-          <div className="p-4 space-y-3">
-            {tenant.contracts.map(c => {
-              const stCls = CONTRACT_STATUS[c.status]?.cls || CONTRACT_STATUS.EXPIRED.cls
-              return (
-                <div key={c.id} className={`rounded-2xl border p-4 ${c.status === 'ACTIVE' ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200'}`}>
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-blue-700 text-sm">{c.code}</span>
-                      <span className="flex items-center gap-1 px-2 py-0.5 bg-white rounded-xl border border-slate-200 text-xs font-bold text-slate-600">
-                        <DoorOpen className="w-3 h-3" /> {c.roomCode}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-xl border text-[10px] font-black ${stCls}`}>{c.status}</span>
-                    </div>
-                    <span className="text-sm font-black text-slate-700">
-                      {c.dailyRate ? `${fmt(c.dailyRate)}/ngày` : `${fmt(c.monthlyRent)}/tháng`}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-600">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      Check-in: <strong>{fmtDate(c.startDate)}</strong>
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      Check-out:
-                      {editingCheckout === c.id ? (
-                        <span className="flex items-center gap-1 ml-1">
-                          <input type="date" value={newCheckoutDate} onChange={e => setNewCheckoutDate(e.target.value)}
-                            className="px-2 py-1 border border-blue-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                          <button onClick={() => saveCheckout(c.id)} disabled={saving} className="w-7 h-7 flex items-center justify-center bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl transition-colors">
-                            <Save className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => setEditingCheckout(null)} className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+
+          {/* Contracts */}
+          {tenant.contracts?.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-500" />
+                <h2 className="text-sm font-extrabold text-slate-800">Rental Contracts</h2>
+                <span className="ml-auto text-[10.5px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{tenant.contracts.length}</span>
+              </div>
+              <div className="p-4 space-y-3">
+                {tenant.contracts.map(c => {
+                  const stCls = CONTRACT_STATUS[c.status]?.cls || CONTRACT_STATUS.EXPIRED.cls
+                  return (
+                    <div key={c.id} className={`rounded-lg border p-4 ${c.status === 'ACTIVE' ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-blue-700 text-[13px]">{c.code}</span>
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-white rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600">
+                            <DoorOpen className="w-3 h-3" /> {c.roomCode}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold border ${stCls}`}>{c.status}</span>
+                        </div>
+                        <span className="text-[13px] font-extrabold text-slate-700">
+                          {c.dailyRate ? `${fmt(c.dailyRate)}/ngày` : `${fmt(c.monthlyRent)}/tháng`}
                         </span>
-                      ) : (
-                        <span className="flex items-center gap-1 ml-1">
-                          <strong>{fmtDate(c.endDate)}</strong>
-                          {c.status === 'ACTIVE' && (
-                            <button onClick={() => { setEditingCheckout(c.id); setNewCheckoutDate(c.endDate) }}
-                              className="w-6 h-6 flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors">
-                              <Edit2 className="w-3 h-3" />
-                            </button>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-4 text-[13px] text-slate-600">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          Check-in: <strong>{fmtDate(c.startDate)}</strong>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          Check-out:
+                          {editingCheckout === c.id ? (
+                            <span className="flex items-center gap-1 ml-1">
+                              <input type="date" value={newCheckoutDate} onChange={e => setNewCheckoutDate(e.target.value)}
+                                className="px-2 py-1 border border-blue-300 rounded-lg text-[13px] bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                              <button onClick={() => saveCheckout(c.id)} disabled={saving} className="w-7 h-7 flex items-center justify-center bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg transition-colors">
+                                <Save className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => setEditingCheckout(null)} className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg transition-colors">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 ml-1">
+                              <strong>{fmtDate(c.endDate)}</strong>
+                              {c.status === 'ACTIVE' && (
+                                <button onClick={() => { setEditingCheckout(c.id); setNewCheckoutDate(c.endDate) }}
+                                  className="w-6 h-6 flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors">
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </span>
                           )}
                         </span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Invoices */}
-      {tenant.invoices?.length > 0 && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-slate-500" />
-            <h2 className="font-black text-slate-900">Invoices</h2>
-            <span className="ml-1 text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{tenant.totalInvoices}</span>
-            {tenant.unpaidInvoices > 0 && (
-              <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">{tenant.unpaidInvoices} unpaid</span>
-            )}
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60">
-                  {['Invoice Code','Period','Total','Paid','Remaining','Status',''].map(h => (
-                    <th key={h} className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {tenant.invoices.map(inv => {
-                  const st = INV_STATUS[inv.status] || INV_STATUS.UNPAID
-                  return (
-                    <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors group">
-                      <td className="px-5 py-3.5 text-sm font-bold text-slate-800">{inv.code}</td>
-                      <td className="px-5 py-3.5 text-sm text-slate-500">{inv.periodMonth}/{inv.periodYear}</td>
-                      <td className="px-5 py-3.5 text-sm font-semibold text-slate-700">{fmt(inv.totalAmount)}</td>
-                      <td className="px-5 py-3.5 text-sm font-bold text-emerald-600">{fmt(inv.paidAmount)}</td>
-                      <td className="px-5 py-3.5 text-sm font-bold text-rose-600">{fmt(inv.remainingAmount)}</td>
-                      <td className="px-5 py-3.5">
-                        <span className={`px-2.5 py-1 text-[10px] font-black rounded-xl border ${st.cls}`}>{st.label}</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {inv.status !== 'PAID' && (
-                          <button onClick={() => { setPayForm(f => ({...f, paidAmount: inv.remainingAmount?.toFixed(0) || ''})); setShowPayModal(true) }}
-                            className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl transition-all">
-                            <CreditCard className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          )}
 
-      {/* Payment History */}
-      {payments.length > 0 && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-slate-500" />
-            <h2 className="font-black text-slate-900">Payment History</h2>
-            <span className="ml-auto text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{payments.length}</span>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {payments.map((p, i) => {
-              const methodIcon = { CASH: '💵', BANK_TRANSFER: '🏦', MOMO: '📱', CARD: '💳' }
-              return (
-                <div key={p.id} className={`flex items-center justify-between px-6 py-3.5 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-sm flex-shrink-0">
-                      {methodIcon[p.method] || '💰'}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">{fmt(p.paidAmount)}</p>
-                      <p className="text-[10px] text-slate-400 font-medium">
-                        {p.method?.replace('_', ' ')} · {p.invoiceCode}
-                        {p.note && ` · ${p.note}`}
+          {/* Invoices */}
+          {tenant.invoices?.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-slate-500" />
+                <h2 className="text-sm font-extrabold text-slate-800">Invoices</h2>
+                <span className="ml-1 text-[10.5px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{tenant.totalInvoices}</span>
+                {tenant.unpaidInvoices > 0 && (
+                  <span className="text-[10.5px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">{tenant.unpaidInvoices} unpaid</span>
+                )}
+              </div>
+              <div className="overflow-x-auto border border-slate-200 rounded-lg m-4">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/60">
+                      {['Invoice Code','Period','Total','Paid','Remaining','Status',''].map(h => (
+                        <th key={h} className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {tenant.invoices.map(inv => {
+                      const st = INV_STATUS[inv.status] || INV_STATUS.UNPAID
+                      return (
+                        <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors group">
+                          <td className="px-4 py-3 text-[13px] font-semibold text-slate-800">{inv.code}</td>
+                          <td className="px-4 py-3 text-[13px] text-slate-500">{inv.periodMonth}/{inv.periodYear}</td>
+                          <td className="px-4 py-3 text-[13px] font-semibold text-slate-700">{fmt(inv.totalAmount)}</td>
+                          <td className="px-4 py-3 text-[13px] font-semibold text-emerald-600">{fmt(inv.paidAmount)}</td>
+                          <td className="px-4 py-3 text-[13px] font-semibold text-rose-600">{fmt(inv.remainingAmount)}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 text-[10.5px] font-bold rounded-full border ${st.cls}`}>{st.label}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {inv.status !== 'PAID' && (
+                              <button onClick={() => { setPayForm(f => ({...f, paidAmount: inv.remainingAmount?.toFixed(0) || ''})); setShowPayModal(true) }}
+                                className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg transition-all">
+                                <CreditCard className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Payment History */}
+          {payments.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-slate-500" />
+                <h2 className="text-sm font-extrabold text-slate-800">Payment History</h2>
+                <span className="ml-auto text-[10.5px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{payments.length}</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {payments.map((p, i) => {
+                  const methodIcon = { CASH: '💵', BANK_TRANSFER: '🏦', MOMO: '📱', CARD: '💳' }
+                  return (
+                    <div key={p.id} className={`flex items-center justify-between px-5 py-3 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                        <div>
+                          <p className="text-[13px] font-semibold text-slate-800">{fmt(p.paidAmount)}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">
+                            {p.method?.replace('_', ' ')} · {p.invoiceCode}
+                            {p.note && ` · ${p.note}`}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400 font-medium flex-shrink-0">
+                        {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('vi-VN') : '—'}
                       </p>
                     </div>
+                  )
+                })}
+              </div>
+              <div className="px-5 py-3 bg-slate-50/60 border-t border-slate-200 flex justify-between items-center">
+                <span className="text-xs font-semibold text-slate-500">Total collected</span>
+                <span className="text-[13px] font-semibold text-emerald-600">{fmt(payments.reduce((s, p) => s + parseFloat(p.paidAmount || 0), 0))}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right column — Payment summary */}
+        <div className="space-y-4">
+          <div className={`border rounded-2xl shadow-sm p-5 flex flex-col ${remaining > 0 ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'}`}>
+            <h3 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+              <Receipt className="w-4 h-4" /> Payment Summary
+            </h3>
+            {summary ? (
+              <div className="flex-1 space-y-2.5">
+                {[
+                  { label: 'Room charge', value: summary.totalRent },
+                  { label: 'Services',    value: summary.totalCharges },
+                  ...(summary.deposit > 0 ? [{ label: 'Deposit', value: summary.deposit, cls: 'text-blue-600' }] : []),
+                  { label: 'Total',       value: summary.totalAmount, bold: true, border: true },
+                  { label: 'Paid',        value: summary.totalPaid, cls: 'text-emerald-600' },
+                ].map(({ label, value, cls, bold, border }) => (
+                  <div key={label} className={`flex justify-between ${border ? 'border-t border-slate-200 pt-2.5' : ''}`}>
+                    <span className={`text-xs ${bold ? 'font-semibold text-slate-700' : 'text-slate-500'}`}>{label}</span>
+                    <span className={`text-[13px] font-semibold ${cls || 'text-slate-800'}`}>{fmt(value)}</span>
                   </div>
-                  <p className="text-xs text-slate-400 font-medium flex-shrink-0">
-                    {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('vi-VN') : '—'}
-                  </p>
+                ))}
+                <div className="flex justify-between border-t border-slate-200 pt-2.5">
+                  <span className="text-xs font-extrabold text-slate-800">Remaining</span>
+                  <span className={`text-[13px] font-extrabold ${remaining > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmt(remaining)}</span>
                 </div>
-              )
-            })}
-          </div>
-          <div className="px-6 py-3 bg-slate-50/60 border-t border-slate-100 flex justify-between items-center">
-            <span className="text-xs font-bold text-slate-500">Total collected</span>
-            <span className="text-sm font-black text-emerald-600">{fmt(payments.reduce((s, p) => s + parseFloat(p.paidAmount || 0), 0))}</span>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-[13px] text-slate-400 font-medium">No active contract</p>
+              </div>
+            )}
+
+            {checkoutAlert && (
+              <div className={`mt-4 px-3 py-2 rounded-lg border text-[10.5px] font-bold text-center ${checkoutAlert.cls}`}>
+                {checkoutAlert.msg}
+              </div>
+            )}
+
+            {remaining > 0 && (
+              <button onClick={() => { setPayForm(f => ({...f, paidAmount: remaining.toFixed(0)})); setShowPayModal(true) }}
+                className="mt-4 w-full flex items-center justify-center gap-2 px-3.5 py-2 bg-green-500 hover:bg-green-600 text-white text-[12.5px] font-semibold rounded-lg shadow-sm transition-all hover:-translate-y-0.5">
+                <CreditCard className="w-4 h-4" /> Collect {fmt(remaining)}
+              </button>
+            )}
+            {activeContract && activeContract.status === 'ACTIVE' && (
+              <button onClick={() => navigate(`/admin/guest-charges?contractId=${activeContract.id}`)}
+                className="mt-2 w-full flex items-center justify-center gap-2 px-3.5 py-2 border border-slate-200 text-slate-600 text-[12.5px] font-semibold rounded-lg hover:bg-white transition-all">
+                <ShoppingCart className="w-4 h-4" /> Add Service Charge
+              </button>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Payment Modal */}
       {showPayModal && (
         <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={() => setShowPayModal(false)}>
-          <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="px-7 pt-7 pb-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 mx-auto mt-[10vh]" onClick={e => e.stopPropagation()}>
+            <div className="px-5 pt-5 pb-4 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-emerald-600" />
+                <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center">
+                  <CreditCard className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-900">Collect Payment</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">{tenant.fullName} · Room {activeContract?.roomCode}</p>
+                  <h2 className="text-xl font-extrabold text-slate-900">Collect Payment</h2>
+                  <p className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide mt-0.5">{tenant.fullName} · Room {activeContract?.roomCode}</p>
                 </div>
               </div>
-              <button onClick={() => setShowPayModal(false)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+              <button onClick={() => setShowPayModal(false)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
                 <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
 
             {summary && (
-              <div className="mx-7 mt-5 bg-slate-50 rounded-2xl p-4 text-sm space-y-2">
+              <div className="mx-5 mt-4 bg-slate-50 rounded-lg p-4 space-y-2">
                 {[['Room charge', summary.totalRent], ['Services', summary.totalCharges], ['Paid', `-${fmt(summary.totalPaid)}`]].map(([l, v]) => (
-                  <div key={l} className="flex justify-between text-slate-500"><span>{l}</span><span className="font-semibold text-slate-700">{typeof v === 'string' ? v : fmt(v)}</span></div>
+                  <div key={l} className="flex justify-between text-xs text-slate-500"><span>{l}</span><span className="text-[13px] font-semibold text-slate-700">{typeof v === 'string' ? v : fmt(v)}</span></div>
                 ))}
-                <div className="flex justify-between border-t border-slate-200 pt-2 font-black text-slate-800">
-                  <span>Remaining</span><span className="text-rose-600">{fmt(summary.remainingAmount)}</span>
+                <div className="flex justify-between border-t border-slate-200 pt-2 text-xs font-extrabold text-slate-800">
+                  <span>Remaining</span><span className="text-[13px] text-rose-600">{fmt(summary.remainingAmount)}</span>
                 </div>
               </div>
             )}
 
             <form onSubmit={handlePay}>
-              <div className="px-7 py-5 space-y-4">
+              <div className="px-5 py-4 space-y-4">
                 <Field label="Payment Amount (VND)">
                   <input required type="number" min="1" step="1" value={payForm.paidAmount}
                     onChange={e => setPayForm(f => ({...f, paidAmount: e.target.value}))}
-                    className={inputCls + ' text-lg font-black'} placeholder="0" />
+                    className={inputCls + ' text-lg font-extrabold'} placeholder="0" />
+                  {summary && remaining > 0 && (
+                    <div className="flex gap-1.5 mt-2">
+                      {[remaining, Math.round(remaining / 2), 500000, 1000000].filter((v, i, a) => a.indexOf(v) === i && v > 0).slice(0, 4).map(amt => (
+                        <button key={amt} type="button" onClick={() => setPayForm(f => ({...f, paidAmount: amt.toFixed(0)}))}
+                          className="rounded-md text-[11px] font-bold px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+                          {fmt(amt)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {payForm.paidAmount && summary && (
-                    <p className={`text-xs mt-1 ml-1 font-bold ${parseFloat(payForm.paidAmount) >= parseFloat(summary.remainingAmount) ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    <p className={`text-[11px] mt-1 ml-1 font-semibold ${parseFloat(payForm.paidAmount) >= parseFloat(summary.remainingAmount) ? 'text-emerald-600' : 'text-amber-600'}`}>
                       {parseFloat(payForm.paidAmount) >= parseFloat(summary.remainingAmount) ? '✓ Full payment' : `Still owed ${fmt(parseFloat(summary.remainingAmount) - parseFloat(payForm.paidAmount))}`}
                     </p>
                   )}
@@ -425,10 +438,10 @@ const TenantDetail = () => {
                 </Field>
 
                 {/* Action buttons */}
-                <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={() => setShowPayModal(false)} className="flex-1 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                <div className="flex gap-3 pt-3">
+                  <button type="button" onClick={() => setShowPayModal(false)} className="flex-1 px-3.5 py-2 rounded-lg text-[12.5px] font-semibold border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">Cancel</button>
                   <button type="submit" disabled={paying}
-                    className="flex-1 py-2.5 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
+                    className="flex-1 px-3.5 py-2 rounded-lg text-[12.5px] font-semibold text-white bg-green-500 hover:bg-green-600 disabled:opacity-60 shadow-sm transition-all hover:-translate-y-0.5">
                     {paying ? 'Processing...' : 'Confirm Payment'}
                   </button>
                 </div>

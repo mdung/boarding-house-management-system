@@ -899,134 +899,328 @@ const Dashboard = () => {
     .filter(g => parseFloat(g.totalDebt) > 0)
     .sort((a, b) => parseFloat(b.totalDebt) - parseFloat(a.totalDebt))
 
+  // Mini calendar helpers
+  const calToday = new Date()
+  const calYear = calToday.getFullYear()
+  const calMonth = calToday.getMonth()
+  const calFirstDay = new Date(calYear, calMonth, 1).getDay()
+  const calDaysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+  const calMonthName = calToday.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  // Build calendar event map from today/yesterday/tomorrow data
+  const calendarEvents = {}
+  const todayData = getDayData(0)
+  const yesterdayData = getDayData(-1)
+  const tomorrowData = getDayData(1)
+  const markDay = (data, offset) => {
+    if (!data) return
+    const d = new Date(calToday)
+    d.setDate(d.getDate() + offset)
+    const dayNum = d.getDate()
+    if (d.getMonth() === calMonth) {
+      if (!calendarEvents[dayNum]) calendarEvents[dayNum] = []
+      if (data.checkIns?.length > 0) calendarEvents[dayNum].push('checkin')
+      if (data.checkOuts?.length > 0) calendarEvents[dayNum].push('checkout')
+      if (data.staying?.length > 0) calendarEvents[dayNum].push('staying')
+    }
+  }
+  markDay(yesterdayData, -1)
+  markDay(todayData, 0)
+  markDay(tomorrowData, 1)
+
+  // Room map data from dashboard
+  const roomMap = dashboard?.roomMap || []
+
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-10 sm:pb-0">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-[1440px] mx-auto space-y-5 animate-in fade-in duration-500 pb-8">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">Intelligence Dashboard</h1>
-          <p className="text-slate-500 mt-1 font-medium text-sm sm:text-base">Welcome back, Admin. Here's your boarding house status.</p>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white rounded-2xl border border-slate-200 shadow-sm">
-          <CalendarDays className="w-4 h-4 text-slate-400" />
-          <span className="text-sm font-bold text-slate-600">{new Date().toLocaleDateString('vi-VN', { dateStyle: 'full' })}</span>
-        </div>
-      </div>
-
-      {/* Reorderable Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-        {widgets.map((s, i) => {
-          const Icon = s.icon
-          return (
-            <div 
-              key={s.id}
-              draggable
-              onDragStart={() => handleDragStart(i)}
-              onDragOver={handleDragOver}
-              onDrop={() => handleDrop(i)}
-              onClick={() => navigate(s.link)}
-              className={`relative bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 cursor-move transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1 active:scale-95 group overflow-hidden ${draggedIdx === i ? 'opacity-40 grayscale' : ''}`}
-            >
-              {/* Decorative background element */}
-              <div className={`absolute -right-4 -top-4 w-12 h-12 sm:w-16 sm:h-16 rounded-full opacity-10 transition-transform group-hover:scale-150 duration-500 ${s.color}`} />
-              
-              <div className={`${s.color} w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 shadow-lg shadow-current/20`}>
-                <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-              </div>
-              <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{s.label}</p>
-              <p className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5 sm:mt-1 truncate">{s.value}</p>
-              
-              {/* Grab handle hint */}
-              <div className="absolute bottom-3 right-5 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
-                <div className="flex gap-0.5">
-                  <div className="w-1 h-1 bg-slate-200 rounded-full" />
-                  <div className="w-1 h-1 bg-slate-200 rounded-full" />
-                  <div className="w-1 h-1 bg-slate-200 rounded-full" />
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Revenue breakdown cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div onClick={() => setRevenueModal('RENT')}
-          className="relative bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2.5rem] p-8 cursor-pointer hover:shadow-2xl hover:shadow-blue-200 transition-all duration-500 group overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-700" />
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <BedDouble className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-blue-200 font-medium">Room Revenue This Month</p>
-                <p className="text-2xl font-bold text-white">{fmt(dashboard?.roomRevenue)}</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-blue-200 group-hover:text-white transition-colors" />
+          <div className="text-xl font-extrabold text-slate-900">Good morning, Admin 👋</div>
+          <div className="text-xs text-slate-400 mt-0.5">
+            Today: {todayData?.checkIns?.length || 0} check-in{(todayData?.checkIns?.length || 0) !== 1 ? 's' : ''}, {todayData?.checkOuts?.length || 0} check-out{(todayData?.checkOuts?.length || 0) !== 1 ? 's' : ''}
           </div>
         </div>
-        <div onClick={() => setRevenueModal('SERVICE')}
-          className="relative bg-gradient-to-br from-purple-600 to-pink-600 rounded-[2.5rem] p-8 cursor-pointer hover:shadow-2xl hover:shadow-purple-200 transition-all duration-500 group overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-700" />
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <Receipt className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-purple-200 font-medium">Service Revenue This Month</p>
-                <p className="text-2xl font-bold text-white">{fmt(dashboard?.serviceRevenue)}</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-purple-200 group-hover:text-white transition-colors" />
-          </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate('/admin/invoices')}
+            className="px-3.5 py-2 text-[12.5px] font-semibold border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            Export Report
+          </button>
+          <button
+            onClick={() => navigate('/admin/tenants')}
+            className="px-3.5 py-2 text-[12.5px] font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Guest
+          </button>
         </div>
       </div>
 
-      {/* Debt Alert Bar - always visible if any guest has debt */}
-      {debtGuests.length > 0 && (
-        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
+      {/* ── Stat Cards (4 in a row) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Room Revenue */}
+        <div
+          onClick={() => setRevenueModal('RENT')}
+          className="relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 cursor-pointer hover:shadow-lg hover:shadow-blue-200/50 transition-all group overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <BedDouble className="w-4 h-4 text-white" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/50 ml-auto group-hover:text-white/80 transition-colors" />
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-100">Room Revenue</p>
+            <p className="text-[28px] font-extrabold tracking-tight text-white leading-tight">{fmt(dashboard?.roomRevenue)}</p>
+            <p className="text-[10px] text-blue-200 mt-1">This month</p>
+          </div>
+        </div>
+
+        {/* Service Revenue */}
+        <div
+          onClick={() => setRevenueModal('SERVICE')}
+          className="relative bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-5 cursor-pointer hover:shadow-lg hover:shadow-purple-200/50 transition-all group overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <Receipt className="w-4 h-4 text-white" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/50 ml-auto group-hover:text-white/80 transition-colors" />
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-purple-100">Service Revenue</p>
+            <p className="text-[28px] font-extrabold tracking-tight text-white leading-tight">{fmt(dashboard?.serviceRevenue)}</p>
+            <p className="text-[10px] text-purple-200 mt-1">This month</p>
+          </div>
+        </div>
+
+        {/* Unpaid / Outstanding */}
+        <div
+          onClick={() => navigate('/admin/tenants')}
+          className="bg-white border border-slate-200 rounded-2xl p-5 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-rose-400"
+        >
           <div className="flex items-center gap-2 mb-3">
-            <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-            <span className="text-sm font-black text-rose-700">{debtGuests.length} guest{debtGuests.length > 1 ? 's' : ''} with outstanding debt</span>
-            <span className="ml-auto text-sm font-black text-rose-600">{fmt(debtGuests.reduce((s,g) => s + parseFloat(g.totalDebt||0), 0))}</span>
+            <div className="w-8 h-8 bg-rose-50 rounded-lg flex items-center justify-center">
+              <DollarSign className="w-4 h-4 text-rose-500" />
+            </div>
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Outstanding</p>
+          <p className="text-[28px] font-extrabold tracking-tight text-rose-500 leading-tight">{fmt(dashboard?.unpaidAmount)}</p>
+          <div className="flex items-center gap-2 mt-1">
+            {(dashboard?.overdueInvoices || 0) > 0 && (
+              <span className="text-[10.5px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                {dashboard.overdueInvoices} overdue
+              </span>
+            )}
+            {(dashboard?.lowStockItems || 0) > 0 && (
+              <span className="text-[10.5px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                {dashboard.lowStockItems} low stock
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Total Rooms */}
+        <div
+          onClick={() => navigate('/admin/rooms')}
+          className="bg-white border border-slate-200 rounded-2xl p-5 cursor-pointer hover:shadow-md transition-all"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+              <DoorOpen className="w-4 h-4 text-slate-600" />
+            </div>
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Total Rooms</p>
+          <p className="text-[28px] font-extrabold tracking-tight text-slate-900 leading-tight">{dashboard?.totalRooms || 0}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10.5px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              {dashboard?.occupiedRooms || 0} occupied
+            </span>
+            <span className="text-[10.5px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+              {dashboard?.availableRooms || 0} available
+            </span>
+            {(dashboard?.maintenanceRooms || 0) > 0 && (
+              <span className="text-[10.5px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                {dashboard.maintenanceRooms} maint.
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Debt Alert Bar ── */}
+      {debtGuests.length > 0 && (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl shadow-sm p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
+            <span className="text-[12.5px] font-semibold text-rose-700">{debtGuests.length} guest{debtGuests.length > 1 ? 's' : ''} with outstanding debt</span>
+            <span className="ml-auto text-[12.5px] font-extrabold text-rose-600">{fmt(debtGuests.reduce((s,g) => s + parseFloat(g.totalDebt||0), 0))}</span>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {debtGuests.map(g => (
-              <button key={g.contractId} onClick={() => setSelectedGuest(g)}
-                className="flex items-center gap-2 px-3 py-2 bg-white border border-rose-200 rounded-xl hover:border-rose-400 hover:shadow-sm transition-all text-left">
-                <div className="w-6 h-6 rounded-lg bg-rose-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] font-black text-rose-600">{g.tenantName?.charAt(0)}</span>
-                </div>
-                <div>
-                  <p className="text-xs font-black text-slate-800 leading-tight">{g.tenantName}</p>
-                  <p className="text-[10px] font-bold text-rose-600">{fmt(g.totalDebt)}</p>
-                </div>
-              </button>
-            ))}
+            {debtGuests.map(g => {
+              const overdueDays = g.overdueDays || 0
+              return (
+                <button key={g.contractId} onClick={() => setSelectedGuest(g)}
+                  className="flex items-center gap-2.5 px-3 py-2 bg-white border border-rose-200 rounded-lg hover:border-rose-400 hover:shadow-sm transition-all text-left">
+                  <div className="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[11px] font-extrabold text-rose-600">{g.tenantName?.charAt(0)}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 leading-tight truncate">{g.tenantName}</p>
+                    <p className="text-[10px] text-slate-400">Room {g.roomCode}</p>
+                  </div>
+                  <div className="flex flex-col items-end flex-shrink-0 ml-1">
+                    <span className="text-xs font-extrabold text-rose-600">{fmt(g.totalDebt)}</span>
+                    {overdueDays > 0 && (
+                      <span className="text-[10.5px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full mt-0.5">
+                        {overdueDays}d overdue
+                      </span>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
 
-      {/* Day navigator */}
+      {/* ── Calendar + Today Sidebar (2-column) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+        {/* LEFT: Mini Calendar */}
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-extrabold text-slate-800">{calMonthName}</h3>
+            <div className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1 text-[10.5px] font-bold text-green-600"><span className="w-2 h-2 rounded-full bg-green-400 inline-block" /> Check-in</span>
+              <span className="flex items-center gap-1 text-[10.5px] font-bold text-amber-600"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Check-out</span>
+              <span className="flex items-center gap-1 text-[10.5px] font-bold text-blue-600"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" /> Staying</span>
+            </div>
+          </div>
+          {/* Day headers */}
+          <div className="grid grid-cols-7 gap-1 mb-1">
+            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+              <div key={d} className="text-center text-[10px] font-semibold text-slate-400 uppercase py-1">{d}</div>
+            ))}
+          </div>
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: calFirstDay }).map((_, i) => (
+              <div key={`empty-${i}`} className="h-14" />
+            ))}
+            {Array.from({ length: calDaysInMonth }).map((_, i) => {
+              const day = i + 1
+              const isToday = day === calToday.getDate()
+              const events = calendarEvents[day] || []
+              return (
+                <div
+                  key={day}
+                  className={`h-14 rounded-lg p-1 text-center relative transition-colors ${
+                    isToday ? 'bg-blue-50 border-2 border-blue-300' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <span className={`text-xs font-semibold ${isToday ? 'text-blue-700' : 'text-slate-600'}`}>{day}</span>
+                  {events.length > 0 && (
+                    <div className="flex justify-center gap-0.5 mt-1 flex-wrap">
+                      {events.includes('checkin') && <span className="w-4 h-1.5 rounded-full bg-green-400" />}
+                      {events.includes('checkout') && <span className="w-4 h-1.5 rounded-full bg-amber-400" />}
+                      {events.includes('staying') && <span className="w-4 h-1.5 rounded-full bg-blue-400" />}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* RIGHT: Today + Outstanding Debts */}
+        <div className="space-y-4">
+          {/* Today Card */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+            <h3 className="text-sm font-extrabold text-slate-800 mb-3 flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-blue-500" /> Today
+            </h3>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-3 py-2 bg-green-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <LogIn className="w-3.5 h-3.5 text-green-600" />
+                  <span className="text-xs font-semibold text-green-700">Check-ins</span>
+                </div>
+                <span className="text-sm font-extrabold text-green-700">{todayData?.checkIns?.length || 0}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2 bg-amber-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <LogOut className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-xs font-semibold text-amber-700">Check-outs</span>
+                </div>
+                <span className="text-sm font-extrabold text-amber-700">{todayData?.checkOuts?.length || 0}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <BedDouble className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="text-xs font-semibold text-blue-700">Staying</span>
+                </div>
+                <span className="text-sm font-extrabold text-blue-700">{todayData?.staying?.length || 0}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Outstanding Debts Card */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+            <h3 className="text-sm font-extrabold text-slate-800 mb-3 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-500" /> Outstanding Debts
+              {debtGuests.length > 0 && (
+                <span className="text-[10.5px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full ml-auto">
+                  {debtGuests.length}
+                </span>
+              )}
+            </h3>
+            {debtGuests.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">No outstanding debts</p>
+            ) : (
+              <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                {debtGuests.slice(0, 8).map(g => (
+                  <button
+                    key={g.contractId}
+                    onClick={() => setSelectedGuest(g)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 bg-rose-50 border border-rose-100 rounded-lg hover:border-rose-300 transition-all text-left"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-rose-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[10px] font-extrabold text-rose-600">{g.tenantName?.charAt(0)}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-700 truncate">{g.tenantName}</p>
+                      <p className="text-[10px] text-slate-400">Room {g.roomCode}</p>
+                    </div>
+                    <span className="text-xs font-extrabold text-rose-600 flex-shrink-0">{fmt(g.totalDebt)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Day Navigator ── */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-700">Guest Calendar by Day</h2>
+          <h2 className="text-sm font-extrabold text-slate-800">Guest Calendar by Day</h2>
           <div className="flex items-center gap-2">
             {centerOffset !== 0 && (
               <button onClick={goToday}
-                className="px-3 py-1.5 text-xs font-black text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors">
+                className="px-3 py-1.5 text-[12.5px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
                 Today
               </button>
             )}
             <button onClick={() => navTo(-1)}
-              className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition-all">
-              <ChevronLeft className="w-4 h-4 text-slate-500" />
+              className="w-7 h-7 flex items-center justify-center bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm transition-all">
+              <ChevronLeft className="w-3.5 h-3.5 text-slate-500" />
             </button>
             <button onClick={() => navTo(1)}
-              className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition-all">
-              <ChevronRight className="w-4 h-4 text-slate-500" />
+              className="w-7 h-7 flex items-center justify-center bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm transition-all">
+              <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
             </button>
           </div>
         </div>
@@ -1039,7 +1233,7 @@ const Dashboard = () => {
             return (
               <div key={offset} className={`transition-all duration-300 ${isLoading ? 'opacity-50' : ''}`}>
                 {isLoading ? (
-                  <div className="bg-white rounded-2xl border border-slate-100 p-8 flex items-center justify-center">
+                  <div className="bg-white rounded-2xl border border-slate-200 p-8 flex items-center justify-center shadow-sm">
                     <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : (
@@ -1056,6 +1250,56 @@ const Dashboard = () => {
           })}
         </div>
       </div>
+
+      {/* ── Room Map ── */}
+      {roomMap.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-extrabold text-slate-800">Room Map</h3>
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1 text-[10.5px] font-bold text-green-600"><span className="w-2.5 h-2.5 rounded bg-green-100 border border-green-300 inline-block" /> Available</span>
+              <span className="flex items-center gap-1 text-[10.5px] font-bold text-blue-600"><span className="w-2.5 h-2.5 rounded bg-blue-100 border border-blue-300 inline-block" /> Occupied</span>
+              <span className="flex items-center gap-1 text-[10.5px] font-bold text-amber-600"><span className="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-300 inline-block" /> Maintenance</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {roomMap.map(room => {
+              const status = room.status?.toUpperCase()
+              const isOccupied = status === 'OCCUPIED'
+              const isMaintenance = status === 'MAINTENANCE'
+              const colorClasses = isMaintenance
+                ? 'bg-amber-50 border-amber-200 hover:border-amber-400'
+                : isOccupied
+                ? 'bg-blue-50 border-blue-200 hover:border-blue-400'
+                : 'bg-green-50 border-green-200 hover:border-green-400'
+              return (
+                <div
+                  key={room.id || room.roomCode}
+                  onClick={() => navigate('/admin/rooms')}
+                  className={`border rounded-xl p-3 cursor-pointer transition-all hover:shadow-sm ${colorClasses}`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-sm font-extrabold ${isMaintenance ? 'text-amber-700' : isOccupied ? 'text-blue-700' : 'text-green-700'}`}>
+                      {room.roomCode}
+                    </span>
+                    <span className={`text-[10.5px] font-bold rounded-full px-1.5 py-0.5 ${
+                      isMaintenance ? 'bg-amber-100 text-amber-600' : isOccupied ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
+                    }`}>
+                      {isMaintenance ? 'Maint.' : isOccupied ? 'In Use' : 'Free'}
+                    </span>
+                  </div>
+                  {isOccupied && room.tenantName && (
+                    <p className="text-[11px] text-slate-600 truncate">{room.tenantName}</p>
+                  )}
+                  {room.dailyRate > 0 && (
+                    <p className="text-[10px] text-slate-400 mt-0.5">{fmt(room.dailyRate)}/night</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Guest detail modal */}
       {selectedGuest && (

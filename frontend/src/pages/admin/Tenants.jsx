@@ -26,16 +26,16 @@ const CheckoutBadge = ({ checkOut }) => {
   if (!checkOut) return null
   const today = new Date(); today.setHours(0,0,0,0)
   const diff = Math.round((new Date(checkOut + 'T00:00:00') - today) / 86400000)
-  if (diff < 0)  return <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-100 text-red-600 rounded-lg">Overdue</span>
-  if (diff === 0) return <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-orange-100 text-orange-600 rounded-lg">Today</span>
-  if (diff === 1) return <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-600 rounded-lg">Tomorrow</span>
+  if (diff < 0)  return <span className="ml-1 px-2 py-0.5 text-[10.5px] font-bold bg-red-100 text-red-600 rounded-full">Overdue</span>
+  if (diff === 0) return <span className="ml-1 px-2 py-0.5 text-[10.5px] font-bold bg-orange-100 text-orange-600 rounded-full">Today</span>
+  if (diff === 1) return <span className="ml-1 px-2 py-0.5 text-[10.5px] font-bold bg-amber-100 text-amber-600 rounded-full">Tomorrow</span>
   return null
 }
 
-const inputCls = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all'
+const inputCls = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
 const Field = ({ label, icon: Icon, children }) => (
   <div className="space-y-1.5">
-    <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
+    <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wide ml-1">
       {Icon && <Icon className="w-3 h-3" />}{label}
     </label>
     {children}
@@ -43,7 +43,7 @@ const Field = ({ label, icon: Icon, children }) => (
 )
 
 const SortTh = ({ field, current, dir, onSort, children }) => (
-  <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+  <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
     <button onClick={() => onSort(field)} className="flex items-center gap-1 hover:text-slate-700 transition-colors group">
       {children}
       <span className="text-slate-300 group-hover:text-slate-500">
@@ -175,45 +175,43 @@ const Tenants = () => {
 
   if (loading) return (
     <div className="space-y-4">
-      <div className="h-10 w-32 bg-slate-100 rounded-2xl animate-pulse" />
-      <div className="h-96 bg-slate-100 rounded-3xl animate-pulse" />
+      <div className="h-8 w-32 bg-slate-100 rounded-lg animate-pulse" />
+      <div className="h-96 bg-slate-100 rounded-2xl animate-pulse" />
     </div>
   )
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900">Tenants</h1>
-          <p className="text-slate-500 mt-1 text-sm">{sorted.length} of {tenants.length} guests</p>
+          <h1 className="text-xl font-extrabold text-slate-900">Tenants</h1>
+          <p className="text-slate-400 text-xs font-medium mt-0.5">{sorted.length} of {tenants.length} guests</p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5">
-          <Plus className="w-4 h-4" /> Add New Guest
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold text-[12.5px] shadow-sm transition-colors">
+          <Plus className="w-3.5 h-3.5" /> Add New Guest
         </button>
       </div>
 
       {/* Search */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1) }}
-            placeholder="Search by name, phone, room, or email..."
-            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" />
-        </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1) }}
+          placeholder="Search by name, phone, room, or email..."
+          className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
       </div>
 
       {/* Table / Grid View */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60">
-                <th className="px-4 py-4 w-10">
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                <th className="px-4 py-3 w-10">
                   <input type="checkbox" checked={selected.size === sorted.length && sorted.length > 0} onChange={toggleAll}
-                    className="w-4 h-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                 </th>
                 <SortTh field="fullName" current={sortField} dir={sortDir} onSort={onSort}>Guest Name</SortTh>
                 <SortTh field="phone" current={sortField} dir={sortDir} onSort={onSort}>Phone</SortTh>
@@ -221,52 +219,52 @@ const Tenants = () => {
                 <SortTh field="checkInDate" current={sortField} dir={sortDir} onSort={onSort}>Check-in</SortTh>
                 <SortTh field="checkOutDate" current={sortField} dir={sortDir} onSort={onSort}>Check-out</SortTh>
                 <SortTh field="totalDebt" current={sortField} dir={sortDir} onSort={onSort}>Outstanding</SortTh>
-                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right pr-6">Status</th>
-                <th className="px-4 py-4 w-24" />
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wide text-right pr-6">Status</th>
+                <th className="px-4 py-3 w-24" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-100">
               {paginated.length === 0 ? (
                 <tr><td colSpan={9} className="px-6 py-16 text-center text-slate-400">
                   <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p className="font-semibold">No tenants found</p>
+                  <p className="font-semibold text-sm">No tenants found</p>
                 </td></tr>
               ) : paginated.map(t => {
                 const st = getStatus(t)
                 return (
                   <tr key={t.id} className={`hover:bg-slate-50/60 transition-colors group ${selected.has(t.id) ? 'bg-blue-50/40' : ''}`}>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3">
                       <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleSelect(t.id)}
-                        className="w-4 h-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500" />
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3">
                       <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)}
-                        className="font-bold text-blue-600 hover:text-blue-800 text-sm transition-colors">{t.fullName}</button>
+                        className="font-semibold text-blue-600 hover:text-blue-800 text-[13px] transition-colors">{t.fullName}</button>
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600 font-medium">{t.phone}</td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3 text-[13px] text-slate-600 font-medium">{t.phone}</td>
+                    <td className="px-4 py-3">
                       {t.activeRoomCode
-                        ? <span className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-black">{t.activeRoomCode}</span>
-                        : <span className="text-slate-300 text-sm">—</span>}
+                        ? <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10.5px] font-bold">{t.activeRoomCode}</span>
+                        : <span className="text-slate-300 text-[13px]">—</span>}
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-slate-500">{fmtDate(t.checkInDate)}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-500">
+                    <td className="px-4 py-3 text-[13px] text-slate-500">{fmtDate(t.checkInDate)}</td>
+                    <td className="px-4 py-3 text-[13px] text-slate-500">
                       {t.checkOutDate ? <span className="flex items-center">{fmtDate(t.checkOutDate)}<CheckoutBadge checkOut={t.checkOutDate} /></span> : '—'}
                     </td>
-                    <td className="px-4 py-3.5 text-sm">
+                    <td className="px-4 py-3 text-[13px]">
                       {t.totalDebt > 0
                         ? <span className="flex items-center gap-1 font-bold text-rose-600"><AlertCircle className="w-3.5 h-3.5" />{fmt(t.totalDebt)}</span>
                         : t.totalDebt === 0 ? <span className="text-emerald-600 text-xs font-bold">Paid</span>
                         : <span className="text-slate-300">—</span>}
                     </td>
-                    <td className="px-4 py-3.5 text-right pr-6">
-                      <span className={`px-2.5 py-1 text-[10px] font-black rounded-xl border ${st.cls}`}>{st.label}</span>
+                    <td className="px-4 py-3 text-right pr-6">
+                      <span className={`px-2 py-0.5 text-[10.5px] font-bold rounded-full border ${st.cls}`}>{st.label}</span>
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3">
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                        <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => openEdit(t)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Edit className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setConfirmDelete(t.id)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-xl transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-lg transition-colors"><Eye className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => openEdit(t)} className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-lg transition-colors"><Edit className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setConfirmDelete(t.id)} className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </td>
                   </tr>
@@ -275,11 +273,11 @@ const Tenants = () => {
             </tbody>
             {debtCount > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-slate-200 bg-rose-50/40">
-                  <td colSpan={6} className="px-4 py-3 text-sm font-bold text-slate-600">
+                <tr className="border-t border-slate-200 bg-rose-50/40">
+                  <td colSpan={6} className="px-4 py-2.5 text-xs font-semibold text-slate-600">
                     Total Outstanding · <span className="text-rose-600">{debtCount} guests with debt</span>
                   </td>
-                  <td className="px-4 py-3 text-sm font-black text-rose-600">{fmt(totalDebt)}</td>
+                  <td className="px-4 py-2.5 text-xs font-semibold text-rose-600">{fmt(totalDebt)}</td>
                   <td colSpan={2} />
                 </tr>
               </tfoot>
@@ -292,50 +290,50 @@ const Tenants = () => {
            {paginated.length === 0 ? (
              <div className="py-20 text-center text-slate-400">
                <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-               <p className="font-semibold">No tenants found</p>
+               <p className="font-semibold text-sm">No tenants found</p>
              </div>
            ) : paginated.map(t => {
              const st = getStatus(t)
              return (
-               <div key={t.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
+               <div key={t.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
                   <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                       <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-sm font-black text-blue-600">
+                    <div className="flex items-center gap-2.5">
+                       <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">
                         {t.fullName?.charAt(0)?.toUpperCase()}
                        </div>
                        <div>
-                         <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="text-sm font-black text-slate-900 text-left">{t.fullName}</button>
-                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{t.phone}</p>
+                         <button onClick={() => navigate(`/admin/tenants/${t.id}/detail`)} className="text-[13px] font-semibold text-slate-900 text-left">{t.fullName}</button>
+                         <p className="text-[11px] text-slate-400 font-medium">{t.phone}</p>
                        </div>
                     </div>
-                    <span className={`px-2.5 py-1 text-[9px] font-black rounded-xl border uppercase tracking-wider ${st.cls}`}>{st.label}</span>
+                    <span className={`px-2 py-0.5 text-[10.5px] font-bold rounded-full border ${st.cls}`}>{st.label}</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50">
-                      <p className="text-[9px] text-slate-400 font-bold uppercase mb-1 flex items-center gap-1"><DoorOpen className="w-2.5 h-2.5" /> Current Room</p>
-                      <p className="text-xs font-black text-slate-700">{t.activeRoomCode || 'Not Assigned'}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-2.5">
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase mb-0.5 flex items-center gap-1"><DoorOpen className="w-2.5 h-2.5" /> Current Room</p>
+                      <p className="text-xs font-bold text-slate-700">{t.activeRoomCode || 'Not Assigned'}</p>
                     </div>
-                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50">
-                      <p className="text-[9px] text-slate-400 font-bold uppercase mb-1 flex items-center gap-1"><AlertCircle className="w-2.5 h-2.5" /> Outstanding</p>
-                      <p className={`text-xs font-black ${t.totalDebt > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.totalDebt > 0 ? fmt(t.totalDebt) : 'Paid'}</p>
+                    <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-2.5">
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase mb-0.5 flex items-center gap-1"><AlertCircle className="w-2.5 h-2.5" /> Outstanding</p>
+                      <p className={`text-xs font-bold ${t.totalDebt > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.totalDebt > 0 ? fmt(t.totalDebt) : 'Paid'}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium pt-1">
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-0.5">
                     <div className="flex items-center gap-3">
                        <div className="flex flex-col">
-                         <span className="text-[8px] uppercase text-slate-400 font-black">Check-in</span>
+                         <span className="text-[10px] uppercase text-slate-400 font-semibold">Check-in</span>
                          <span>{fmtDate(t.checkInDate)}</span>
                        </div>
                        <div className="flex flex-col border-l border-slate-200 pl-3">
-                         <span className="text-[8px] uppercase text-slate-400 font-black">Check-out</span>
+                         <span className="text-[10px] uppercase text-slate-400 font-semibold">Check-out</span>
                          <span className="flex items-center">{fmtDate(t.checkOutDate)}<CheckoutBadge checkOut={t.checkOutDate} /></span>
                        </div>
                     </div>
-                    <div className="flex gap-2">
-                       <button onClick={() => openEdit(t)} className="p-2 text-slate-400 hover:text-blue-600 bg-white rounded-xl border border-slate-200 shadow-sm"><Edit className="w-3.5 h-3.5" /></button>
-                       <button onClick={() => setConfirmDelete(t.id)} className="p-2 text-slate-400 hover:text-rose-500 bg-white rounded-xl border border-slate-200 shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div className="flex gap-1.5">
+                       <button onClick={() => openEdit(t)} className="p-1.5 text-slate-400 hover:text-blue-600 bg-white rounded-lg border border-slate-200 shadow-sm"><Edit className="w-3.5 h-3.5" /></button>
+                       <button onClick={() => setConfirmDelete(t.id)} className="p-1.5 text-slate-400 hover:text-rose-500 bg-white rounded-lg border border-slate-200 shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </div>
                </div>
@@ -345,13 +343,13 @@ const Tenants = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs font-bold text-slate-400 order-2 sm:order-1">
+          <div className="px-4 py-3 border-t border-slate-200 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-xs font-semibold text-slate-400 order-2 sm:order-1">
               Showing {(page-1)*perPage+1}–{Math.min(page*perPage, sorted.length)} of {sorted.length}
             </p>
             <div className="flex items-center gap-1 order-1 sm:order-2">
-              <button disabled={page===1} onClick={() => setPage(p=>p-1)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all">
-                <ChevronLeft className="w-4 h-4" />
+              <button disabled={page===1} onClick={() => setPage(p=>p-1)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-colors">
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
               {Array.from({length: Math.min(3, totalPages)}, (_,i) => {
                 let p = page
@@ -359,10 +357,10 @@ const Tenants = () => {
                 else if (page === totalPages) p = totalPages - 2 + i
                 else p = page - 1 + i
                 if (p < 1 || p > totalPages) return null
-                return <button key={p} onClick={() => setPage(p)} className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${p===page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{p}</button>
+                return <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${p===page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{p}</button>
               })}
-              <button disabled={page===totalPages} onClick={() => setPage(p=>p+1)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-all">
-                <ChevronRight className="w-4 h-4" />
+              <button disabled={page===totalPages} onClick={() => setPage(p=>p+1)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50 shadow-sm transition-colors">
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -371,25 +369,25 @@ const Tenants = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={closeModal}>
-          <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="px-8 pt-8 pb-5 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
-                  <Users className="w-5 h-5 text-blue-600" />
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 p-4" onClick={closeModal}>
+          <div className="bg-white w-full max-w-lg rounded-xl shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="px-5 pt-5 pb-4 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <Users className="w-4 h-4 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-900">{editing ? 'Edit Guest' : 'Add New Guest'}</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">{editing ? `Editing ${editing.fullName}` : 'Register a new tenant'}</p>
+                  <h2 className="text-base font-extrabold text-slate-900">{editing ? 'Edit Guest' : 'Add New Guest'}</h2>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{editing ? `Editing ${editing.fullName}` : 'Register a new tenant'}</p>
                 </div>
               </div>
-              <button onClick={closeModal} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
-                <X className="w-4 h-4 text-slate-500" />
+              <button onClick={closeModal} className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                <X className="w-3.5 h-3.5 text-slate-500" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="px-8 py-6 space-y-4">
+              <div className="px-5 py-5 space-y-4">
                 <Field label="Full Name" icon={Users}>
                   <input required value={formData.fullName} onChange={set('fullName')} placeholder="e.g. Nguyễn Văn A" className={inputCls} />
                 </Field>
@@ -411,22 +409,22 @@ const Tenants = () => {
                 {!editing && (
                   <>
                     <div className="flex items-center gap-3 pt-1">
-                      <div className="flex-1 h-px bg-slate-100" />
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Room Assignment (optional)</span>
-                      <div className="flex-1 h-px bg-slate-100" />
+                      <div className="flex-1 h-px bg-slate-200" />
+                      <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Room Assignment (optional)</span>
+                      <div className="flex-1 h-px bg-slate-200" />
                     </div>
                     <Field label="Select Room" icon={DoorOpen}>
                       {/* Custom room picker */}
                       <div className="space-y-2">
                         {/* Search input */}
                         <div className="relative">
-                          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                           <input
                             value={roomSearch}
                             onChange={e => { setRoomSearch(e.target.value); setShowRoomPicker(true) }}
                             onFocus={() => setShowRoomPicker(true)}
                             placeholder="Search available rooms..."
-                            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                           />
                         </div>
 
@@ -435,21 +433,21 @@ const Tenants = () => {
                           const room = availableRooms.find(r => r.id === parseInt(formData.roomId))
                           if (!room) return null
                           return (
-                            <div className="flex items-center justify-between p-3 bg-blue-50 border-2 border-blue-200 rounded-2xl">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                                  <DoorOpen className="w-4 h-4 text-white" />
+                            <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <DoorOpen className="w-3.5 h-3.5 text-white" />
                                 </div>
                                 <div>
-                                  <p className="font-black text-blue-900 text-sm">{room.code}</p>
-                                  <p className="text-xs text-blue-600 flex items-center gap-1">
+                                  <p className="font-bold text-blue-900 text-[13px]">{room.code}</p>
+                                  <p className="text-[11px] text-blue-600 flex items-center gap-1">
                                     <Building2 className="w-3 h-3" />{room.boardingHouseName}
                                   </p>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-black text-blue-800">{fmt(room.baseRent)}</p>
-                                <p className="text-[10px] text-blue-500 font-bold">/tháng</p>
+                                <p className="text-[13px] font-bold text-blue-800">{fmt(room.baseRent)}</p>
+                                <p className="text-[10px] text-blue-500 font-semibold">/tháng</p>
                               </div>
                             </div>
                           )
@@ -457,15 +455,15 @@ const Tenants = () => {
 
                         {/* Room list */}
                         {showRoomPicker && (
-                          <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-lg bg-white max-h-52 overflow-y-auto">
+                          <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white max-h-52 overflow-y-auto">
                             {/* No room option */}
                             <button type="button"
                               onClick={() => { setFormData(f => ({ ...f, roomId: '', monthlyRent: '' })); setShowRoomPicker(false); setRoomSearch('') }}
-                              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-b border-slate-100 ${!formData.roomId ? 'bg-slate-50' : ''}`}>
-                              <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                <X className="w-3.5 h-3.5 text-slate-400" />
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors border-b border-slate-100 ${!formData.roomId ? 'bg-slate-50' : ''}`}>
+                              <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <X className="w-3 h-3 text-slate-400" />
                               </div>
-                              <span className="text-sm font-semibold text-slate-500">No room selected</span>
+                              <span className="text-[13px] font-medium text-slate-500">No room selected</span>
                             </button>
                             {availableRooms
                               .filter(r => !roomSearch || r.code.toLowerCase().includes(roomSearch.toLowerCase()) || r.boardingHouseName.toLowerCase().includes(roomSearch.toLowerCase()))
@@ -476,27 +474,27 @@ const Tenants = () => {
                                     setFormData(f => ({ ...f, roomId: r.id.toString(), monthlyRent: daily }))
                                     setShowRoomPicker(false); setRoomSearch('')
                                   }}
-                                  className={`w-full flex items-center justify-between px-4 py-3 text-left hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0
+                                  className={`w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-blue-50 transition-colors border-b border-slate-100 last:border-0
                                     ${formData.roomId === r.id.toString() ? 'bg-blue-50' : ''}`}>
-                                  <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${formData.roomId === r.id.toString() ? 'bg-blue-600' : 'bg-slate-100'}`}>
+                                  <div className="flex items-center gap-2.5">
+                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${formData.roomId === r.id.toString() ? 'bg-blue-600' : 'bg-slate-100'}`}>
                                       <DoorOpen className={`w-3.5 h-3.5 ${formData.roomId === r.id.toString() ? 'text-white' : 'text-slate-500'}`} />
                                     </div>
                                     <div>
-                                      <p className="text-sm font-black text-slate-800">{r.code}</p>
-                                      <p className="text-xs text-slate-500 flex items-center gap-1">
+                                      <p className="text-[13px] font-bold text-slate-800">{r.code}</p>
+                                      <p className="text-[11px] text-slate-500 flex items-center gap-1">
                                         <Building2 className="w-3 h-3" />{r.boardingHouseName}
                                       </p>
                                     </div>
                                   </div>
                                   <div className="text-right flex-shrink-0">
-                                    <p className="text-sm font-bold text-slate-700">{fmt(r.baseRent)}</p>
+                                    <p className="text-[13px] font-semibold text-slate-700">{fmt(r.baseRent)}</p>
                                     <p className="text-[10px] text-slate-400">/tháng</p>
                                   </div>
                                 </button>
                               ))}
                             {availableRooms.filter(r => !roomSearch || r.code.toLowerCase().includes(roomSearch.toLowerCase()) || r.boardingHouseName.toLowerCase().includes(roomSearch.toLowerCase())).length === 0 && (
-                              <div className="px-4 py-6 text-center text-slate-400 text-sm">No rooms found</div>
+                              <div className="px-4 py-6 text-center text-slate-400 text-[13px]">No rooms found</div>
                             )}
                           </div>
                         )}
@@ -527,9 +525,9 @@ const Tenants = () => {
 
                 {/* Action buttons - inside scroll area so always reachable */}
                 <div className="flex justify-end gap-3 pt-4 pb-2">
-                  <button type="button" onClick={closeModal} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                  <button type="button" onClick={closeModal} className="px-3.5 py-2 rounded-lg font-semibold text-[12.5px] text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">Cancel</button>
                   <button type="submit" disabled={saving}
-                    className="px-8 py-2.5 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
+                    className="px-5 py-2 rounded-lg font-semibold text-[12.5px] text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-60 shadow-sm transition-colors">
                     {saving ? 'Saving...' : editing ? 'Save Changes' : 'Add Guest'}
                   </button>
                 </div>

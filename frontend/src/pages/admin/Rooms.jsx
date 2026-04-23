@@ -9,17 +9,23 @@ import { Plus, Edit, Trash2, Eye, Search, ArrowUpDown, ArrowUp, ArrowDown, Chevr
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
 
 const STATUS_CFG = {
-  AVAILABLE:   { label: 'Available',   cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  AVAILABLE:   { label: 'Available',   cls: 'bg-green-50 text-green-700 border-green-200' },
   OCCUPIED:    { label: 'Occupied',    cls: 'bg-blue-50 text-blue-700 border-blue-200' },
   MAINTENANCE: { label: 'Maintenance', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
 }
 
-const inputCls = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all'
+const CARD_STATUS_CFG = {
+  AVAILABLE:   'bg-green-50 border-green-200',
+  OCCUPIED:    'bg-blue-50 border-blue-200',
+  MAINTENANCE: 'bg-amber-50 border-amber-200',
+}
+
+const inputCls = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
 const selectCls = inputCls + ' appearance-none'
 
 const Field = ({ label, children }) => (
   <div className="space-y-1.5">
-    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">{label}</label>
+    <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide ml-1">{label}</label>
     {children}
   </div>
 )
@@ -120,10 +126,16 @@ const Rooms = () => {
   const onSort = (field) => { if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortField(field); setSortDir('asc') } }
   const set = (k) => (e) => setFormData(f => ({ ...f, [k]: e.target.value }))
 
+  /* ---------- stat helpers ---------- */
+  const totalRooms = rooms.length
+  const availableCount = rooms.filter(r => r.status === 'AVAILABLE').length
+  const occupiedCount = rooms.filter(r => r.status === 'OCCUPIED').length
+  const maintenanceCount = rooms.filter(r => r.status === 'MAINTENANCE').length
+
   if (loading) return (
     <div className="space-y-4">
-      <div className="h-10 w-48 bg-slate-100 rounded-2xl animate-pulse" />
-      <div className="h-64 bg-slate-100 rounded-3xl animate-pulse" />
+      <div className="h-8 w-48 bg-slate-100 rounded-lg animate-pulse" />
+      <div className="h-48 bg-slate-100 rounded-2xl animate-pulse" />
     </div>
   )
 
@@ -132,92 +144,112 @@ const Rooms = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900">Rooms</h1>
-          <p className="text-slate-500 mt-1 text-sm">{visibleRooms.length} of {rooms.length} rooms</p>
+          <h1 className="text-xl font-extrabold text-slate-900">Rooms</h1>
+          <p className="text-slate-500 mt-0.5 text-xs">{visibleRooms.length} of {rooms.length} rooms</p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5">
-          <Plus className="w-4 h-4" /> Add Room
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-[12.5px] shadow-sm transition-all hover:-translate-y-0.5">
+          <Plus className="w-3.5 h-3.5" /> Add Room
         </button>
       </div>
 
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Total Rooms</p>
+          <p className="text-xl font-extrabold text-slate-900 mt-0.5">{totalRooms}</p>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3.5">
+          <p className="text-[11px] font-semibold text-green-600 uppercase tracking-wide">Available</p>
+          <p className="text-xl font-extrabold text-green-700 mt-0.5">{availableCount}</p>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5">
+          <p className="text-[11px] font-semibold text-blue-600 uppercase tracking-wide">Occupied</p>
+          <p className="text-xl font-extrabold text-blue-700 mt-0.5">{occupiedCount}</p>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5">
+          <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-wide">Maintenance</p>
+          <p className="text-xl font-extrabold text-amber-700 mt-0.5">{maintenanceCount}</p>
+        </div>
+      </div>
+
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
           <input value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1) }}
-            placeholder="Search rooms..." className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" />
+            placeholder="Search rooms..." className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
         </div>
         <div className="grid grid-cols-2 lg:flex gap-3">
           <select value={filterHouse} onChange={e => { setFilterHouse(e.target.value); setPage(1) }}
-            className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none min-w-[140px]">
+            className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none min-w-[140px]">
             <option value="ALL">All Properties</option>
             {houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
           <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
-            className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none min-w-[120px]">
+            className="px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none min-w-[120px]">
             <option value="ALL">All Status</option>
             <option value="AVAILABLE">Available</option>
             <option value="OCCUPIED">Occupied</option>
             <option value="MAINTENANCE">Maintenance</option>
           </select>
           <select value={perPage} onChange={e => { setPerPage(parseInt(e.target.value)); setPage(1) }}
-            className="hidden lg:block px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none">
+            className="hidden lg:block px-3 py-2 border border-slate-200 rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none">
             {[5,10,25,50].map(n => <option key={n} value={n}>{n} per page</option>)}
           </select>
         </div>
       </div>
 
       {/* List / Grid View */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         {/* Desktop Table */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60">
-                <th className="px-4 py-4 w-10">
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                <th className="px-4 py-3 w-10">
                   <input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={toggleAll}
-                    className="w-4 h-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                 </th>
                 {[['code','Code'],['boardingHouseName','Boarding House'],['floor','Floor'],['area','Area (m²)'],['baseRent','Rent'],['currentTenantName','Tenant'],['status','Status']].map(([f,l]) => (
-                  <th key={f} className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <th key={f} className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
                     <SortBtn field={f} current={sortField} dir={sortDir} onSort={onSort}>{l}</SortBtn>
                   </th>
                 ))}
-                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wide text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-100">
               {paginated.length === 0 ? (
                 <tr><td colSpan={9} className="px-6 py-16 text-center text-slate-400">
                   <DoorOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p className="font-semibold">No rooms found</p>
+                  <p className="font-semibold text-sm">No rooms found</p>
                 </td></tr>
               ) : paginated.map(r => {
                 const st = STATUS_CFG[r.status] || STATUS_CFG.AVAILABLE
                 return (
                   <tr key={r.id} className={`hover:bg-slate-50/60 transition-colors group ${selected.has(r.id) ? 'bg-blue-50/40' : ''}`}>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3">
                       <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)}
-                        className="w-4 h-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500" />
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3">
                       <button onClick={() => navigate(`/admin/rooms/${r.id}/detail`)}
-                        className="font-black text-blue-600 hover:text-blue-800 text-sm transition-colors">{r.code}</button>
+                        className="font-bold text-blue-600 hover:text-blue-800 text-[13px] transition-colors">{r.code}</button>
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600 font-medium">{r.boardingHouseName}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-500">{r.floor ?? '—'}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-500">{r.area ? `${r.area} m²` : '—'}</td>
-                    <td className="px-4 py-3.5 text-sm font-bold text-slate-700">{fmt(r.baseRent)}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600">{r.currentTenantName || <span className="text-slate-300">—</span>}</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`px-2.5 py-1 text-[10px] font-black rounded-xl border ${st.cls}`}>{st.label}</span>
+                    <td className="px-4 py-3 text-[13px] text-slate-600 font-medium">{r.boardingHouseName}</td>
+                    <td className="px-4 py-3 text-[13px] text-slate-500">{r.floor ?? '—'}</td>
+                    <td className="px-4 py-3 text-[13px] text-slate-500">{r.area ? `${r.area} m²` : '—'}</td>
+                    <td className="px-4 py-3 text-[13px] font-bold text-slate-700">{fmt(r.baseRent)}</td>
+                    <td className="px-4 py-3 text-[13px] text-slate-600">{r.currentTenantName || <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2.5 py-1 text-[10.5px] font-bold rounded-full border ${st.cls}`}>{st.label}</span>
                     </td>
-                    <td className="px-4 py-3.5 text-right">
+                    <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => navigate(`/admin/rooms/${r.id}/detail`)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => openEdit(r)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Edit className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setConfirmDelete(r.id)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-xl transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => navigate(`/admin/rooms/${r.id}/detail`)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-lg transition-colors"><Eye className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => openEdit(r)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-lg transition-colors"><Edit className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setConfirmDelete(r.id)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </td>
                   </tr>
@@ -228,49 +260,39 @@ const Rooms = () => {
         </div>
 
         {/* Mobile Grid View */}
-        <div className="md:hidden p-4 grid gap-4 grid-cols-1">
+        <div className="md:hidden p-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem' }}>
           {paginated.length === 0 ? (
-            <div className="py-12 text-center text-slate-400">
+            <div className="col-span-full py-12 text-center text-slate-400">
                <DoorOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
-               <p className="font-semibold">No rooms found</p>
+               <p className="font-semibold text-sm">No rooms found</p>
             </div>
           ) : paginated.map(r => {
             const st = STATUS_CFG[r.status] || STATUS_CFG.AVAILABLE
+            const cardBg = CARD_STATUS_CFG[r.status] || CARD_STATUS_CFG.AVAILABLE
             return (
-              <div key={r.id} className="bg-slate-50 rounded-[2rem] p-5 space-y-4 border border-slate-100">
+              <div key={r.id} className={`rounded-xl p-3 border-[1.5px] space-y-2 ${cardBg}`}>
                 <div className="flex justify-between items-start">
                   <div onClick={() => navigate(`/admin/rooms/${r.id}/detail`)} className="cursor-pointer">
-                    <h3 className="text-xl font-black text-slate-900">{r.code}</h3>
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-tight flex items-center gap-1.5 mt-0.5">
-                       <Building2 className="w-3 h-3" /> {r.boardingHouseName}
+                    <h3 className="text-base font-extrabold text-slate-900">{r.code}</h3>
+                    <p className="text-[10px] text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
+                       <Building2 className="w-2.5 h-2.5" /> {r.boardingHouseName}
                     </p>
                   </div>
-                  <span className={`px-2.5 py-1 text-[9px] font-black rounded-xl border uppercase tracking-wider ${st.cls}`}>{st.label}</span>
+                  <span className={`px-2 py-0.5 text-[10.5px] font-bold rounded-full border ${st.cls}`}>{st.label}</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white rounded-2xl p-3 border border-slate-100">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Monthly Rent</p>
-                    <p className="text-sm font-black text-blue-600">{fmt(r.baseRent)}</p>
-                  </div>
-                  <div className="bg-white rounded-2xl p-3 border border-slate-100">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Details</p>
-                    <p className="text-sm font-bold text-slate-700">{r.floor ? `F${r.floor}` : ''} · {r.area ? `${r.area}m²` : '-'}</p>
-                  </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] font-bold text-slate-700">{fmt(r.baseRent)}</p>
+                  <p className="text-[10px] text-slate-500">{r.floor ? `F${r.floor}` : ''}{r.floor && r.area ? ' · ' : ''}{r.area ? `${r.area}m²` : ''}</p>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-100">
-                      {r.currentTenantName?.charAt(0) || <Users className="w-3 h-3" />}
-                    </div>
-                    <p className="text-xs font-bold text-slate-600 truncate max-w-[120px]">
-                      {r.currentTenantName || 'No Tenant'}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => openEdit(r)} className="w-9 h-9 flex items-center justify-center bg-white text-slate-600 rounded-xl border border-slate-200 shadow-sm"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => setConfirmDelete(r.id)} className="w-9 h-9 flex items-center justify-center bg-white text-rose-500 rounded-xl border border-rose-100 shadow-sm"><Trash2 className="w-4 h-4" /></button>
+                <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60">
+                  <p className="text-[10px] font-semibold text-slate-500 truncate max-w-[80px]">
+                    {r.currentTenantName || 'No Tenant'}
+                  </p>
+                  <div className="flex gap-1">
+                    <button onClick={() => openEdit(r)} className="w-7 h-7 flex items-center justify-center bg-white/80 text-slate-600 rounded-lg border border-slate-200/60"><Edit className="w-3 h-3" /></button>
+                    <button onClick={() => setConfirmDelete(r.id)} className="w-7 h-7 flex items-center justify-center bg-white/80 text-rose-500 rounded-lg border border-rose-200/60"><Trash2 className="w-3 h-3" /></button>
                   </div>
                 </div>
               </div>
@@ -280,14 +302,14 @@ const Rooms = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs font-bold text-slate-400 order-2 sm:order-1">
+          <div className="px-4 py-3.5 border-t border-slate-200 bg-slate-50/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-[11px] font-semibold text-slate-400 order-2 sm:order-1">
               Showing {start + 1}–{Math.min(start + perPage, visibleRooms.length)} of {visibleRooms.length}
             </p>
             <div className="flex items-center gap-1 order-1 sm:order-2">
               <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-                className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 transition-all shadow-sm">
-                <ChevronLeft className="w-4 h-4" />
+                className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-all text-xs">
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
               {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
                 let p = page
@@ -297,14 +319,14 @@ const Rooms = () => {
                 if (p < 1 || p > totalPages) return null
                 return (
                   <button key={p} onClick={() => setPage(p)}
-                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${p === page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                    className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${p === page ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                     {p}
                   </button>
                 )
               })}
               <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)}
-                className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50 transition-all shadow-sm">
-                <ChevronRight className="w-4 h-4" />
+                className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-all text-xs">
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -314,25 +336,25 @@ const Rooms = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={closeModal}>
-          <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="px-8 pt-8 pb-5 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
-                  <DoorOpen className="w-5 h-5 text-blue-600" />
+          <div className="bg-white w-full max-w-lg rounded-xl shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="px-5 pt-5 pb-4 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <DoorOpen className="w-4.5 h-4.5 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-900">{editing ? 'Edit' : 'Add'} Room</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">{editing ? `Editing ${editing.code}` : 'Add a new room to a property'}</p>
+                  <h2 className="text-base font-extrabold text-slate-900">{editing ? 'Edit' : 'Add'} Room</h2>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{editing ? `Editing ${editing.code}` : 'Add a new room to a property'}</p>
                 </div>
               </div>
-              <button onClick={closeModal} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
-                <X className="w-4 h-4 text-slate-500" />
+              <button onClick={closeModal} className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                <X className="w-3.5 h-3.5 text-slate-500" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="px-8 py-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="px-5 py-5 space-y-3.5 max-h-[60vh] overflow-y-auto">
+                <div className="grid grid-cols-2 gap-3">
                   <Field label="Room Code">
                     <input required value={formData.code} onChange={set('code')} placeholder="e.g. A101" className={inputCls} />
                   </Field>
@@ -366,10 +388,10 @@ const Rooms = () => {
                 </Field>
 
                 {/* Action buttons */}
-                <div className="flex justify-end gap-3 pt-4">
-                  <button type="button" onClick={closeModal} className="px-6 py-2.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                <div className="flex justify-end gap-2.5 pt-3">
+                  <button type="button" onClick={closeModal} className="px-3.5 py-2 rounded-lg font-semibold text-[12.5px] text-slate-600 hover:bg-slate-100 transition-colors">Cancel</button>
                   <button type="submit" disabled={saving}
-                    className="px-8 py-2.5 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
+                    className="px-3.5 py-2 rounded-lg font-semibold text-[12.5px] text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0">
                     {saving ? 'Saving...' : editing ? 'Save Changes' : 'Add Room'}
                   </button>
                 </div>
