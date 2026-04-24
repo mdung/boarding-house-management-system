@@ -45,8 +45,11 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
   // Add Service Charge inline state
   const [showAddService, setShowAddService] = useState(false)
   const [catalog, setCatalog] = useState([])
+  const [serviceTypes, setServiceTypes] = useState([])
+  const [svcTab, setSvcTab] = useState('catalog')
   const [svcForm, setSvcForm] = useState({ chargeDate: new Date().toISOString().split('T')[0], description: '', quantity: '1', unitPrice: '', note: '' })
   const [savingService, setSavingService] = useState(false)
+  const [svcSuccess, setSvcSuccess] = useState(null)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -67,7 +70,10 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
   }
 
   useEffect(() => { fetchAll() }, [guest.contractId])
-  useEffect(() => { api.get('/service-catalog').then(r => setCatalog(r.data || [])).catch(() => {}) }, [])
+  useEffect(() => {
+    api.get('/service-catalog').then(r => setCatalog(r.data || [])).catch(() => {})
+    api.get('/service-types').then(r => setServiceTypes(r.data || [])).catch(() => {})
+  }, [])
 
   const handleAddService = async (e) => {
     e.preventDefault()
@@ -82,10 +88,11 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
         unitPrice: parseFloat(svcForm.unitPrice),
         note: svcForm.note
       })
-      setShowAddService(false)
+      setSvcSuccess(svcForm.description)
       setSvcForm({ chargeDate: new Date().toISOString().split('T')[0], description: '', quantity: '1', unitPrice: '', note: '' })
       fetchAll()
       eventBus.emit(EVENTS.PAYMENT_CHANGED)
+      setTimeout(() => setSvcSuccess(null), 2500)
     } catch (e) { alert(e.response?.data?.message || 'Failed to add charge') }
     finally { setSavingService(false) }
   }
@@ -588,86 +595,168 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
 
         {/* Add Service Charge Modal */}
         {showAddService && (
-          <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center z-10 p-4" onClick={() => setShowAddService(false)}>
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center z-10 p-3 animate-in fade-in duration-200" onClick={() => setShowAddService(false)}>
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+              {/* Header */}
               <div className="px-5 pt-5 pb-3 border-b border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
-                    <ShoppingCart className="w-4 h-4 text-purple-600" />
+                  <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <ShoppingCart className="w-4 h-4 text-white" />
                   </div>
                   <div>
                     <h3 className="text-base font-extrabold text-slate-900">Add Service Charge</h3>
                     <p className="text-[11px] text-slate-400">{guest.tenantName} · Room {guest.roomCode}</p>
                   </div>
                 </div>
-                <button onClick={() => setShowAddService(false)} className="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center">
+                <button onClick={() => setShowAddService(false)} className="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors">
                   <X className="w-3.5 h-3.5 text-slate-500" />
                 </button>
               </div>
 
-              <form onSubmit={handleAddService} className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
-                {/* Quick catalog buttons */}
-                {catalog.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide mb-2">Quick Add from Catalog</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {catalog.filter(c => c.isActive !== false).slice(0, 6).map(item => (
-                        <button key={item.id} type="button"
-                          onClick={() => setSvcForm(f => ({ ...f, description: item.name, unitPrice: item.defaultPrice?.toString() || '' }))}
-                          className={`p-2.5 rounded-lg border text-center transition-all ${svcForm.description === item.name ? 'bg-purple-50 border-purple-300' : 'border-slate-200 hover:border-purple-200 hover:bg-purple-50/50'}`}>
-                          <p className="text-xs font-semibold text-slate-700 truncate">{item.name}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{fmt(item.defaultPrice)}</p>
+              {/* Success toast */}
+              {svcSuccess && (
+                <div className="mx-5 mt-3 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-semibold text-emerald-700 animate-in slide-in-from-top duration-300">
+                  ✅ Added "{svcSuccess}" successfully
+                </div>
+              )}
+
+              {/* Tabs: Catalog / Service Types / Custom */}
+              <div className="px-5 pt-4 flex gap-1.5">
+                {[['catalog', '📋 Catalog'], ['types', '⚡ Service Types'], ['custom', '✏️ Custom']].map(([key, label]) => (
+                  <button key={key} type="button" onClick={() => setSvcTab(key)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${svcTab === key ? 'bg-purple-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <form onSubmit={handleAddService} className="p-5 space-y-4 max-h-[55vh] overflow-y-auto">
+                {/* Service Catalog tab */}
+                {svcTab === 'catalog' && catalog.length > 0 && (
+                  <div className="space-y-3">
+                    {(() => {
+                      const groups = {}
+                      catalog.filter(c => c.isActive !== false).forEach(c => {
+                        const cat = c.category || 'OTHER'
+                        if (!groups[cat]) groups[cat] = []
+                        groups[cat].push(c)
+                      })
+                      return Object.entries(groups).map(([cat, items]) => (
+                        <div key={cat}>
+                          <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-2">
+                            {cat === 'FOOD_DRINK' ? '🍺 Food & Drink' : cat === 'SERVICE' ? '🛵 Service' : cat}
+                          </p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {items.map(item => (
+                              <button key={item.id} type="button"
+                                onClick={() => setSvcForm(f => ({ ...f, description: item.name, unitPrice: item.defaultPrice?.toString() || '' }))}
+                                className={`p-3 rounded-lg border text-center transition-all duration-150 hover:scale-[1.02] ${svcForm.description === item.name ? 'bg-purple-50 border-purple-400 ring-2 ring-purple-200' : 'border-slate-200 hover:border-purple-300 hover:bg-purple-50/30'}`}>
+                                <p className="text-xs font-bold text-slate-800 truncate">{item.name}</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">{fmt(item.defaultPrice)}</p>
+                                {item.unit && <p className="text-[9px] text-slate-300 mt-0.5">per {item.unit}</p>}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    })()}
+                    {catalog.filter(c => c.isActive !== false).length === 0 && (
+                      <p className="text-xs text-slate-400 text-center py-4">No catalog items available</p>
+                    )}
+                  </div>
+                )}
+                {svcTab === 'catalog' && catalog.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-6">No catalog items. Add them in Service Catalog settings.</p>
+                )}
+
+                {/* Service Types tab */}
+                {svcTab === 'types' && (
+                  <div className="space-y-2">
+                    {serviceTypes.filter(s => s.isActive !== false).length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-6">No service types. Add them in Service Types settings.</p>
+                    ) : (
+                      serviceTypes.filter(s => s.isActive !== false).map(st => (
+                        <button key={st.id} type="button"
+                          onClick={() => setSvcForm(f => ({ ...f, description: st.name, unitPrice: st.pricePerUnit?.toString() || '' }))}
+                          className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all duration-150 text-left ${svcForm.description === st.name ? 'bg-purple-50 border-purple-400 ring-2 ring-purple-200' : 'border-slate-200 hover:border-purple-300 hover:bg-purple-50/30'}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${
+                              st.category === 'ELECTRICITY' ? 'bg-amber-50 text-amber-600' :
+                              st.category === 'WATER' ? 'bg-blue-50 text-blue-600' :
+                              'bg-slate-100 text-slate-600'
+                            }`}>
+                              {st.category === 'ELECTRICITY' ? '⚡' : st.category === 'WATER' ? '💧' : '📦'}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">{st.name}</p>
+                              <p className="text-[10px] text-slate-400">{st.category} · {st.unit || 'unit'}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs font-bold text-slate-700">{fmt(st.pricePerUnit)}</p>
+                            <p className="text-[9px] text-slate-400">/{st.unit || 'unit'}</p>
+                          </div>
                         </button>
-                      ))}
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Custom tab — just shows the form directly */}
+                {svcTab === 'custom' && (
+                  <p className="text-[10px] text-slate-400 font-semibold">Enter custom service details below</p>
+                )}
+
+                {/* Form fields — always visible */}
+                <div className="border-t border-slate-100 pt-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide block mb-1">Date</label>
+                      <input type="date" required value={svcForm.chargeDate} onChange={e => setSvcForm(f => ({...f, chargeDate: e.target.value}))}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px] focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide block mb-1">Description</label>
+                      <input type="text" required value={svcForm.description} onChange={e => setSvcForm(f => ({...f, description: e.target.value}))}
+                        placeholder="e.g. Beer, Electricity..." className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px] focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all" />
                     </div>
                   </div>
-                )}
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide block mb-1">Charge Date</label>
-                    <input type="date" required value={svcForm.chargeDate} onChange={e => setSvcForm(f => ({...f, chargeDate: e.target.value}))}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px]" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide block mb-1">Quantity</label>
+                      <input type="number" required min="1" step="1" value={svcForm.quantity} onChange={e => setSvcForm(f => ({...f, quantity: e.target.value}))}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px] focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide block mb-1">Unit Price (VND)</label>
+                      <input type="number" required min="0" step="1" value={svcForm.unitPrice} onChange={e => setSvcForm(f => ({...f, unitPrice: e.target.value}))}
+                        placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px] focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all" />
+                    </div>
                   </div>
+
+                  {/* Total preview */}
+                  {svcForm.quantity && svcForm.unitPrice && parseFloat(svcForm.unitPrice) > 0 && (
+                    <div className="flex items-center justify-between px-3 py-2.5 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 rounded-lg animate-in fade-in duration-200">
+                      <span className="text-xs font-semibold text-purple-700">Total</span>
+                      <span className="text-lg font-extrabold text-purple-700">{fmt(parseFloat(svcForm.quantity) * parseFloat(svcForm.unitPrice))}</span>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide block mb-1">Description</label>
-                    <input type="text" required value={svcForm.description} onChange={e => setSvcForm(f => ({...f, description: e.target.value}))}
-                      placeholder="e.g. Beer, Laundry..." className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px]" />
+                    <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide block mb-1">Note (Optional)</label>
+                    <input type="text" value={svcForm.note} onChange={e => setSvcForm(f => ({...f, note: e.target.value}))}
+                      placeholder="Additional notes..." className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px] focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all" />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide block mb-1">Quantity</label>
-                    <input type="number" required min="1" step="1" value={svcForm.quantity} onChange={e => setSvcForm(f => ({...f, quantity: e.target.value}))}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px]" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide block mb-1">Unit Price (VND)</label>
-                    <input type="number" required min="0" step="1" value={svcForm.unitPrice} onChange={e => setSvcForm(f => ({...f, unitPrice: e.target.value}))}
-                      placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px]" />
-                  </div>
-                </div>
-
-                {svcForm.quantity && svcForm.unitPrice && parseFloat(svcForm.unitPrice) > 0 && (
-                  <div className="flex items-center justify-between px-3 py-2 bg-purple-50 border border-purple-100 rounded-lg">
-                    <span className="text-xs font-semibold text-purple-700">Total</span>
-                    <span className="text-base font-extrabold text-purple-700">{fmt(parseFloat(svcForm.quantity) * parseFloat(svcForm.unitPrice))}</span>
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide block mb-1">Note (Optional)</label>
-                  <input type="text" value={svcForm.note} onChange={e => setSvcForm(f => ({...f, note: e.target.value}))}
-                    placeholder="Additional notes..." className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[13px]" />
-                </div>
-
-                <div className="flex gap-3 pt-2">
+                {/* Actions */}
+                <div className="flex gap-3 pt-1">
                   <button type="button" onClick={() => setShowAddService(false)}
-                    className="flex-1 px-3 py-2 rounded-lg text-[12.5px] font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50">Cancel</button>
-                  <button type="submit" disabled={savingService}
-                    className="flex-1 px-3 py-2 rounded-lg text-[12.5px] font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 shadow-sm">
-                    {savingService ? 'Adding...' : 'Add Charge'}
+                    className="flex-1 px-3 py-2.5 rounded-lg text-[12.5px] font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">Done</button>
+                  <button type="submit" disabled={savingService || !svcForm.description || !svcForm.unitPrice}
+                    className="flex-1 px-3 py-2.5 rounded-lg text-[12.5px] font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-40 shadow-sm transition-all active:scale-[0.98]">
+                    {savingService ? 'Adding...' : 'Add & Continue'}
                   </button>
                 </div>
               </form>
