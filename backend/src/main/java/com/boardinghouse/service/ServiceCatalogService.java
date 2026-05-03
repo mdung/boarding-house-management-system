@@ -1,9 +1,11 @@
 package com.boardinghouse.service;
 
 import com.boardinghouse.dto.ServiceCatalogDto;
+import com.boardinghouse.entity.BoardingHouse;
 import com.boardinghouse.entity.InventoryItem;
 import com.boardinghouse.entity.ServiceCatalog;
 import com.boardinghouse.exception.ResourceNotFoundException;
+import com.boardinghouse.repository.BoardingHouseRepository;
 import com.boardinghouse.repository.InventoryItemRepository;
 import com.boardinghouse.repository.ServiceCatalogRepository;
 import org.springframework.stereotype.Service;
@@ -16,11 +18,26 @@ import java.util.stream.Collectors;
 public class ServiceCatalogService {
     private final ServiceCatalogRepository repository;
     private final InventoryItemRepository inventoryItemRepository;
+    private final BoardingHouseRepository boardingHouseRepository;
 
     public ServiceCatalogService(ServiceCatalogRepository repository,
-                                 InventoryItemRepository inventoryItemRepository) {
+                                 InventoryItemRepository inventoryItemRepository,
+                                 BoardingHouseRepository boardingHouseRepository) {
         this.repository = repository;
         this.inventoryItemRepository = inventoryItemRepository;
+        this.boardingHouseRepository = boardingHouseRepository;
+    }
+
+    /** Active items for a specific boarding house only (not global) */
+    public List<ServiceCatalogDto> getByBoardingHouse(Long boardingHouseId) {
+        if (boardingHouseId == null) {
+            // No boardingHouseId → return only global items (boardingHouse IS NULL)
+            return repository.findByBoardingHouseIsNullAndIsActiveTrueOrderByCategoryAscSortOrderAsc()
+                    .stream().map(this::toDto).collect(Collectors.toList());
+        }
+        // Only return items belonging to this specific boarding house (not global)
+        return repository.findActiveByBoardingHouseOnly(boardingHouseId)
+                .stream().map(this::toDto).collect(Collectors.toList());
     }
 
     public List<ServiceCatalogDto> getAll() {
@@ -28,13 +45,23 @@ public class ServiceCatalogService {
                 .stream().map(this::toDto).collect(Collectors.toList());
     }
 
-    public List<ServiceCatalogDto> getAllIncludingInactive() {
+    /** For management page: show items of specific property only, or all if no filter */
+    public List<ServiceCatalogDto> getAllIncludingInactive(Long boardingHouseId) {
+        if (boardingHouseId != null) {
+            // Only show items belonging to this boarding house
+            return repository.findAllByBoardingHouseOnly(boardingHouseId)
+                    .stream().map(this::toDto).collect(Collectors.toList());
+        }
         return repository.findAll().stream()
                 .sorted((a, b) -> {
                     int cat = a.getCategory().compareTo(b.getCategory());
                     return cat != 0 ? cat : a.getSortOrder().compareTo(b.getSortOrder());
                 })
                 .map(this::toDto).collect(Collectors.toList());
+    }
+
+    public List<ServiceCatalogDto> getAllIncludingInactive() {
+        return getAllIncludingInactive(null);
     }
 
     @Transactional
@@ -73,6 +100,13 @@ public class ServiceCatalogService {
         } else {
             s.setInventoryItem(null);
         }
+        if (dto.getBoardingHouseId() != null) {
+            BoardingHouse bh = boardingHouseRepository.findById(dto.getBoardingHouseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Boarding house not found: " + dto.getBoardingHouseId()));
+            s.setBoardingHouse(bh);
+        } else {
+            s.setBoardingHouse(null);
+        }
         return s;
     }
 
@@ -89,6 +123,10 @@ public class ServiceCatalogService {
         if (s.getInventoryItem() != null) {
             dto.setInventoryItemId(s.getInventoryItem().getId());
             dto.setInventoryItemName(s.getInventoryItem().getName());
+        }
+        if (s.getBoardingHouse() != null) {
+            dto.setBoardingHouseId(s.getBoardingHouse().getId());
+            dto.setBoardingHouseName(s.getBoardingHouse().getName());
         }
         return dto;
     }

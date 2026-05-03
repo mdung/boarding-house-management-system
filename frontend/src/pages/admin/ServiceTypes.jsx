@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api'
+import { useProperty } from '../../context/PropertyContext'
 import { useToast } from '../../context/ToastContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 
 const ServiceTypes = () => {
   const { showToast } = useToast()
+  const { selectedId: propertyId, properties } = useProperty()
   const [serviceTypes, setServiceTypes] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -17,15 +19,15 @@ const ServiceTypes = () => {
     unit: '',
     pricePerUnit: '',
     isActive: true,
+    boardingHouseId: null,
   })
 
-  useEffect(() => {
-    fetchServiceTypes()
-  }, [])
+  useEffect(() => { fetchServiceTypes() }, [propertyId])
 
   const fetchServiceTypes = async () => {
     try {
-      const response = await api.get('/service-types')
+      const bhParam = propertyId !== 'ALL' ? `?boardingHouseId=${propertyId}` : ''
+      const response = await api.get(`/service-types${bhParam}`)
       setServiceTypes(response.data)
     } catch (error) {
       console.error('Failed to fetch service types:', error)
@@ -40,6 +42,7 @@ const ServiceTypes = () => {
       const payload = {
         ...formData,
         pricePerUnit: formData.pricePerUnit ? parseFloat(formData.pricePerUnit) : null,
+        boardingHouseId: formData.boardingHouseId || null,
       }
       if (editing) {
         await api.put(`/service-types/${editing.id}`, payload)
@@ -48,7 +51,7 @@ const ServiceTypes = () => {
       }
       setShowModal(false)
       setEditing(null)
-      setFormData({ name: '', category: 'ELECTRICITY', unit: '', pricePerUnit: '', isActive: true })
+      setFormData({ name: '', category: 'ELECTRICITY', unit: '', pricePerUnit: '', isActive: true, boardingHouseId: null })
       fetchServiceTypes()
       showToast(editing ? 'Updated successfully' : 'Service type added successfully', 'success')
     } catch (error) {
@@ -64,6 +67,7 @@ const ServiceTypes = () => {
       unit: serviceType.unit || '',
       pricePerUnit: serviceType.pricePerUnit?.toString() || '',
       isActive: serviceType.isActive,
+      boardingHouseId: serviceType.boardingHouseId || null,
     })
     setShowModal(true)
   }
@@ -105,6 +109,7 @@ const ServiceTypes = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price Per Unit</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -119,6 +124,9 @@ const ServiceTypes = () => {
                   {serviceType.pricePerUnit ? 
                     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(serviceType.pricePerUnit) : 
                     '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {serviceType.boardingHouseName || <span className="text-slate-300 italic">global</span>}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs rounded-full ${
@@ -146,6 +154,19 @@ const ServiceTypes = () => {
           <div className="bg-white rounded-lg p-6 w-full max-w-md mb-safe" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold mb-4">{editing ? 'Edit' : 'Add'} Service Type</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Boarding House</label>
+                <select
+                  value={formData.boardingHouseId || ''}
+                  onChange={(e) => setFormData({ ...formData, boardingHouseId: e.target.value ? parseInt(e.target.value) : null })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">— Global (all properties) —</option>
+                  {properties.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Name</label>
                 <input

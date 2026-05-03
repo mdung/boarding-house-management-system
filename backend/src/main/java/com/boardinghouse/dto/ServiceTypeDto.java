@@ -11,6 +11,8 @@ public class ServiceTypeDto {
     private String unit;
     private BigDecimal pricePerUnit;
     private Boolean isActive;
+    private Long boardingHouseId;
+    private String boardingHouseName;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -29,4 +31,10 @@ public class ServiceTypeDto {
 
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+
+    public Long getBoardingHouseId() { return boardingHouseId; }
+    public void setBoardingHouseId(Long boardingHouseId) { this.boardingHouseId = boardingHouseId; }
+
+    public String getBoardingHouseName() { return boardingHouseName; }
+    public void setBoardingHouseName(String boardingHouseName) { this.boardingHouseName = boardingHouseName; }
 }

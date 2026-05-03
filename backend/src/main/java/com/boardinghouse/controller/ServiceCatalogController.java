@@ -17,13 +17,15 @@ public class ServiceCatalogController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ServiceCatalogDto>> getAll() {
-        return ResponseEntity.ok(service.getAll());
+    public ResponseEntity<List<ServiceCatalogDto>> getAll(
+            @RequestParam(required = false) Long boardingHouseId) {
+        return ResponseEntity.ok(service.getByBoardingHouse(boardingHouseId));
     }
 
     @GetMapping("/all")
-    public ResponseEntity<List<ServiceCatalogDto>> getAllIncludingInactive() {
-        return ResponseEntity.ok(service.getAllIncludingInactive());
+    public ResponseEntity<List<ServiceCatalogDto>> getAllIncludingInactive(
+            @RequestParam(required = false) Long boardingHouseId) {
+        return ResponseEntity.ok(service.getAllIncludingInactive(boardingHouseId));
     }
 
     @PostMapping

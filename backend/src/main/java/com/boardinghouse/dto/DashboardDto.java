@@ -93,6 +93,7 @@ public class DashboardDto {
         private String tenantPhone;
         private String roomCode;
         private String boardingHouseName;
+        private Long boardingHouseId;
         private LocalDate checkInDate;
         private LocalDate checkOutDate;
         private BigDecimal dailyRate;
@@ -124,6 +125,9 @@ public class DashboardDto {
 
         public String getBoardingHouseName() { return boardingHouseName; }
         public void setBoardingHouseName(String boardingHouseName) { this.boardingHouseName = boardingHouseName; }
+
+        public Long getBoardingHouseId() { return boardingHouseId; }
+        public void setBoardingHouseId(Long boardingHouseId) { this.boardingHouseId = boardingHouseId; }
 
         public LocalDate getCheckInDate() { return checkInDate; }
         public void setCheckInDate(LocalDate checkInDate) { this.checkInDate = checkInDate; }

@@ -20,7 +20,14 @@ public class ServiceTypeController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ServiceTypeDto>> getAll(@RequestParam(required = false) Boolean active) {
+    public ResponseEntity<List<ServiceTypeDto>> getAll(
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) Long boardingHouseId) {
+        if (boardingHouseId != null) {
+            return ResponseEntity.ok(active != null && active
+                    ? service.getByBoardingHouse(boardingHouseId)
+                    : service.getAllByBoardingHouse(boardingHouseId));
+        }
         if (active != null && active) {
             return ResponseEntity.ok(service.getActive());
         }

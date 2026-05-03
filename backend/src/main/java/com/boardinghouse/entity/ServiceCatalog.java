@@ -28,6 +28,10 @@ public class ServiceCatalog {
     @JoinColumn(name = "inventory_item_id")
     private InventoryItem inventoryItem;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "boarding_house_id")
+    private BoardingHouse boardingHouse;
+
     private Boolean isActive = true;
 
     private Integer sortOrder = 0;
@@ -54,6 +58,9 @@ public class ServiceCatalog {
 
     public InventoryItem getInventoryItem() { return inventoryItem; }
     public void setInventoryItem(InventoryItem inventoryItem) { this.inventoryItem = inventoryItem; }
+
+    public BoardingHouse getBoardingHouse() { return boardingHouse; }
+    public void setBoardingHouse(BoardingHouse boardingHouse) { this.boardingHouse = boardingHouse; }
 
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }

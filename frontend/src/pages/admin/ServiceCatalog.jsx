@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api'
+import { useProperty } from '../../context/PropertyContext'
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -10,21 +11,23 @@ const CATEGORIES = [
 ]
 
 const ServiceCatalog = () => {
+  const { selectedId: propertyId, properties } = useProperty()
   const [items, setItems] = useState([])
   const [inventoryItems, setInventoryItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [formData, setFormData] = useState({
-    name: '', category: 'FOOD_DRINK', unit: '', defaultPrice: '', icon: '', isActive: true, sortOrder: 0, inventoryItemId: null,
+    name: '', category: 'FOOD_DRINK', unit: '', defaultPrice: '', icon: '', isActive: true, sortOrder: 0, inventoryItemId: null, boardingHouseId: null,
   })
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchData() }, [propertyId])
 
   const fetchData = async () => {
     try {
+      const bhParam = propertyId !== 'ALL' ? `?boardingHouseId=${propertyId}` : ''
       const [catalogRes, inventoryRes] = await Promise.all([
-        api.get('/service-catalog/all'),
+        api.get(`/service-catalog/all${bhParam}`),
         api.get('/inventory/items'),
       ])
       setItems(catalogRes.data)
@@ -35,7 +38,10 @@ const ServiceCatalog = () => {
 
   const openAdd = () => {
     setEditing(null)
-    setFormData({ name: '', category: 'FOOD_DRINK', unit: '', defaultPrice: '', icon: '', isActive: true, sortOrder: 0, inventoryItemId: null })
+    setFormData({
+      name: '', category: 'FOOD_DRINK', unit: '', defaultPrice: '', icon: '', isActive: true, sortOrder: 0, inventoryItemId: null,
+      boardingHouseId: propertyId !== 'ALL' ? parseInt(propertyId) : null,
+    })
     setShowModal(true)
   }
 
@@ -50,6 +56,7 @@ const ServiceCatalog = () => {
       isActive: item.isActive,
       sortOrder: item.sortOrder || 0,
       inventoryItemId: item.inventoryItemId || null,
+      boardingHouseId: item.boardingHouseId || null,
     })
     setShowModal(true)
   }
@@ -103,6 +110,7 @@ const ServiceCatalog = () => {
                   <th className="px-4 py-2 text-left">Name</th>
                   <th className="px-4 py-2 text-left">Unit</th>
                   <th className="px-4 py-2 text-left">Inventory</th>
+                  <th className="px-4 py-2 text-left">Property</th>
                   <th className="px-4 py-2 text-right">Default Price</th>
                   <th className="px-4 py-2 text-center">Status</th>
                   <th className="px-4 py-2"></th>
@@ -114,6 +122,7 @@ const ServiceCatalog = () => {
                     <td className="px-4 py-2 text-sm font-medium">{item.name}</td>
                     <td className="px-4 py-2 text-sm text-gray-500">{item.unit || '-'}</td>
                     <td className="px-4 py-2 text-sm text-gray-500">{item.inventoryItemName || '-'}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500">{item.boardingHouseName || <span className="text-slate-300 italic">global</span>}</td>
                     <td className="px-4 py-2 text-sm text-right">{fmt(item.defaultPrice)}</td>
                     <td className="px-4 py-2 text-center">
                       <span className={`px-2 py-0.5 text-xs rounded-full ${item.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -140,6 +149,17 @@ const ServiceCatalog = () => {
           <div className="bg-white rounded-lg p-6 w-full max-w-md mb-safe" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold mb-4">{editing ? 'Edit' : 'Add'} Service</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Boarding House</label>
+                <select value={formData.boardingHouseId || ''}
+                  onChange={e => setFormData({...formData, boardingHouseId: e.target.value ? parseInt(e.target.value) : null})}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">— Global (all properties) —</option>
+                  {properties.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Service Name *</label>
                 <input required type="text" value={formData.name}

@@ -73,9 +73,12 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
 
   useEffect(() => { fetchAll() }, [guest.contractId])
   useEffect(() => {
-    api.get('/service-catalog').then(r => setCatalog(r.data || [])).catch(() => {})
-    api.get('/service-types').then(r => setServiceTypes(r.data || [])).catch(() => {})
-  }, [])
+    // Always pass boardingHouseId so catalog is filtered per property
+    // If boardingHouseId is missing, fall back to global items only
+    const bhParam = guest.boardingHouseId ? `?boardingHouseId=${guest.boardingHouseId}` : ''
+    api.get(`/service-catalog${bhParam}`).then(r => setCatalog(r.data || [])).catch(() => {})
+    api.get(`/service-types${bhParam}`).then(r => setServiceTypes(r.data || [])).catch(() => {})
+  }, [guest.boardingHouseId, guest.contractId])
 
   const handleAddService = async (e) => {
     e.preventDefault()
@@ -668,7 +671,10 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
                   </div>
                 )}
                 {svcTab === 'catalog' && catalog.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-6">No catalog items. Add them in Service Catalog settings.</p>
+                  <div className="text-center py-6 space-y-2">
+                    <p className="text-xs text-slate-400">No catalog items for this property.</p>
+                    <p className="text-[10px] text-slate-300">Go to <strong>Service Catalog</strong> settings to add items for <strong>{guest.boardingHouseName}</strong>.</p>
+                  </div>
                 )}
 
                 {/* Service Types tab */}

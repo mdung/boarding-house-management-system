@@ -13,6 +13,8 @@ public class ServiceCatalogDto {
     private Integer sortOrder;
     private Long inventoryItemId;
     private String inventoryItemName;
+    private Long boardingHouseId;
+    private String boardingHouseName;
 
     public ServiceCatalogDto() {}
 
@@ -45,4 +47,10 @@ public class ServiceCatalogDto {
 
     public String getInventoryItemName() { return inventoryItemName; }
     public void setInventoryItemName(String inventoryItemName) { this.inventoryItemName = inventoryItemName; }
+
+    public Long getBoardingHouseId() { return boardingHouseId; }
+    public void setBoardingHouseId(Long boardingHouseId) { this.boardingHouseId = boardingHouseId; }
+
+    public String getBoardingHouseName() { return boardingHouseName; }
+    public void setBoardingHouseName(String boardingHouseName) { this.boardingHouseName = boardingHouseName; }
 }

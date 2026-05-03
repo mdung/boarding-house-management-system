@@ -49,10 +49,11 @@ const GuestCharges = () => {
 
   useEffect(() => {
     api.get('/contracts').then(r => setContracts(r.data)).catch(console.error)
-    api.get('/service-catalog').then(r => setCatalog(r.data)).catch(console.error)
+    const bhParam = propertyId !== 'ALL' ? `?boardingHouseId=${propertyId}` : ''
+    api.get(`/service-catalog${bhParam}`).then(r => setCatalog(r.data)).catch(console.error)
     const invParams = propertyId !== 'ALL' ? { boardingHouseId: propertyId } : {}
     api.get('/inventory/items', { params: invParams }).then(r => setInventoryItems(r.data)).catch(console.error)
-  }, [])
+  }, [propertyId])
 
   useEffect(() => { const cid = searchParams.get('contractId'); if (cid) setSelectedContractId(cid) }, [searchParams])
   useEffect(() => { if (selectedContractId) fetchSummary() }, [selectedContractId])
@@ -324,24 +325,31 @@ const GuestCharges = () => {
                   {activeTab === 'catalog' && (
                     <Field label="Choose from Catalog">
                       <div className="space-y-3 max-h-52 overflow-y-auto pr-1">
-                        {Object.entries(CATEGORIES).map(([catKey, catLabel]) => {
-                          const catItems = catalog.filter(c => c.category === catKey)
-                          if (!catItems.length) return null
-                          return (
-                            <div key={catKey}>
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">{catLabel}</p>
-                              <div className="grid grid-cols-2 gap-2">
-                                {catItems.map(item => (
-                                  <button key={item.id} type="button" onClick={() => handleCatalogSelect(item.id.toString())}
-                                    className={`p-3 text-left rounded-2xl border transition-all ${formData.catalogId === item.id.toString() ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-200' : 'bg-slate-50 border-slate-200 hover:border-blue-200 hover:bg-blue-50/50'}`}>
-                                    <p className="font-bold text-sm text-slate-800">{item.name}</p>
-                                    <p className="text-xs text-slate-500 mt-0.5">{fmt(item.defaultPrice)}</p>
-                                  </button>
-                                ))}
+                        {catalog.length === 0 ? (
+                          <div className="py-6 text-center text-slate-400 text-xs">
+                            <p className="font-semibold">No catalog items for this property.</p>
+                            <p className="mt-1 text-slate-300">Go to <strong>Service Catalog</strong> to add items.</p>
+                          </div>
+                        ) : (
+                          Object.entries(CATEGORIES).map(([catKey, catLabel]) => {
+                            const catItems = catalog.filter(c => c.category === catKey)
+                            if (!catItems.length) return null
+                            return (
+                              <div key={catKey}>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">{catLabel}</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {catItems.map(item => (
+                                    <button key={item.id} type="button" onClick={() => handleCatalogSelect(item.id.toString())}
+                                      className={`p-3 text-left rounded-2xl border transition-all ${formData.catalogId === item.id.toString() ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-200' : 'bg-slate-50 border-slate-200 hover:border-blue-200 hover:bg-blue-50/50'}`}>
+                                      <p className="font-bold text-sm text-slate-800">{item.name}</p>
+                                      <p className="text-xs text-slate-500 mt-0.5">{fmt(item.defaultPrice)}</p>
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )
-                        })}
+                            )
+                          })
+                        )}
                       </div>
                     </Field>
                   )}

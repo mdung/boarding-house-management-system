@@ -87,7 +87,10 @@ const Invoices = () => {
   const fetchData = async () => {
     try {
       const [ir, cr] = await Promise.all([api.get('/invoices'), api.get('/contracts')])
-      setInvoices(ir.data); setContracts(cr.data.filter(c => c.status === 'ACTIVE'))
+      setInvoices(ir.data)
+      // Filter contracts by allowed property for dropdown
+      const activeContracts = cr.data.filter(c => c.status === 'ACTIVE')
+      setContracts(activeContracts)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -137,6 +140,11 @@ const Invoices = () => {
   const totalTotal = filteredInvoices.reduce((s,i) => s+(parseFloat(i.totalAmount)||0), 0)
   const totalPaid  = filteredInvoices.reduce((s,i) => s+(parseFloat(i.paidAmount)||0), 0)
   const totalRem   = filteredInvoices.reduce((s,i) => s+(parseFloat(i.remainingAmount)||0), 0)
+
+  // Filter contracts for modal dropdowns by current property
+  const filteredContracts = propertyId !== 'ALL'
+    ? contracts.filter(c => c.boardingHouseId?.toString() === propertyId)
+    : contracts
 
   if (loading) return <div className="space-y-4 animate-pulse"><div className="h-10 w-40 bg-slate-100 rounded-2xl" /><div className="h-96 bg-slate-100 rounded-3xl" /></div>
 
@@ -367,7 +375,7 @@ const Invoices = () => {
                 <Field label="Contract">
                   <select required value={formData.contractId} onChange={e => setFormData(f => ({...f, contractId: e.target.value}))} className={inputCls + ' appearance-none'}>
                     <option value="">Select contract...</option>
-                    {contracts.map(c => <option key={c.id} value={c.id}>{c.code} · {c.roomCode} · {c.mainTenantName}</option>)}
+                    {filteredContracts.map(c => <option key={c.id} value={c.id}>{c.code} · {c.roomCode} · {c.mainTenantName}</option>)}
                   </select>
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
@@ -418,7 +426,7 @@ const Invoices = () => {
                     }}
                     className={inputCls + ' appearance-none'}>
                     <option value="">Select contract...</option>
-                    {contracts.map(c => <option key={c.id} value={c.id}>{c.code} · {c.roomCode} · {c.mainTenantName}</option>)}
+                    {filteredContracts.map(c => <option key={c.id} value={c.id}>{c.code} · {c.roomCode} · {c.mainTenantName}</option>)}
                   </select>
                 </Field>
                 <div className="grid grid-cols-2 gap-3">

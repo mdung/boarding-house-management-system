@@ -24,6 +24,10 @@ public class ServiceType {
     private BigDecimal pricePerUnit;
     private Boolean isActive = true;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "boarding_house_id")
+    private BoardingHouse boardingHouse;
+
     @OneToMany(mappedBy = "serviceType", cascade = CascadeType.ALL)
     private List<RoomService> roomServices = new ArrayList<>();
 
@@ -56,6 +60,9 @@ public class ServiceType {
 
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+
+    public BoardingHouse getBoardingHouse() { return boardingHouse; }
+    public void setBoardingHouse(BoardingHouse boardingHouse) { this.boardingHouse = boardingHouse; }
 
     public List<RoomService> getRoomServices() { return roomServices; }
     public void setRoomServices(List<RoomService> roomServices) { this.roomServices = roomServices; }

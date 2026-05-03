@@ -208,6 +208,7 @@ public class DashboardService {
         g.setTenantPhone(c.getMainTenant().getPhone());
         g.setRoomCode(c.getRoom().getCode());
         g.setBoardingHouseName(c.getRoom().getBoardingHouse().getName());
+        g.setBoardingHouseId(c.getRoom().getBoardingHouse().getId());
         g.setCheckInDate(c.getStartDate());
         g.setCheckOutDate(c.getEndDate());
         g.setActivityType(type);

@@ -1,8 +1,10 @@
 package com.boardinghouse.service;
 
 import com.boardinghouse.dto.ServiceTypeDto;
+import com.boardinghouse.entity.BoardingHouse;
 import com.boardinghouse.entity.ServiceType;
 import com.boardinghouse.exception.ResourceNotFoundException;
+import com.boardinghouse.repository.BoardingHouseRepository;
 import com.boardinghouse.repository.ServiceTypeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,9 +15,12 @@ import java.util.stream.Collectors;
 @Service
 public class ServiceTypeService {
     private final ServiceTypeRepository repository;
+    private final BoardingHouseRepository boardingHouseRepository;
 
-    public ServiceTypeService(ServiceTypeRepository repository) {
+    public ServiceTypeService(ServiceTypeRepository repository,
+                              BoardingHouseRepository boardingHouseRepository) {
         this.repository = repository;
+        this.boardingHouseRepository = boardingHouseRepository;
     }
 
     public List<ServiceTypeDto> getAll() {
@@ -28,6 +33,20 @@ public class ServiceTypeService {
         return repository.findByIsActiveTrue().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    public List<ServiceTypeDto> getByBoardingHouse(Long boardingHouseId) {
+        if (boardingHouseId == null) return getActive();
+        // Only return services belonging to this specific boarding house (not global)
+        return repository.findActiveByBoardingHouseOnly(boardingHouseId)
+                .stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    public List<ServiceTypeDto> getAllByBoardingHouse(Long boardingHouseId) {
+        if (boardingHouseId == null) return getAll();
+        // Only return services belonging to this specific boarding house (not global)
+        return repository.findAllByBoardingHouseOnly(boardingHouseId)
+                .stream().map(this::toDto).collect(Collectors.toList());
     }
 
     public ServiceTypeDto getById(Long id) {
@@ -44,6 +63,11 @@ public class ServiceTypeService {
         serviceType.setUnit(dto.getUnit());
         serviceType.setPricePerUnit(dto.getPricePerUnit());
         serviceType.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : true);
+        if (dto.getBoardingHouseId() != null) {
+            BoardingHouse bh = boardingHouseRepository.findById(dto.getBoardingHouseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Boarding house not found: " + dto.getBoardingHouseId()));
+            serviceType.setBoardingHouse(bh);
+        }
         return toDto(repository.save(serviceType));
     }
 
@@ -57,6 +81,13 @@ public class ServiceTypeService {
         serviceType.setPricePerUnit(dto.getPricePerUnit());
         if (dto.getIsActive() != null) {
             serviceType.setIsActive(dto.getIsActive());
+        }
+        if (dto.getBoardingHouseId() != null) {
+            BoardingHouse bh = boardingHouseRepository.findById(dto.getBoardingHouseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Boarding house not found: " + dto.getBoardingHouseId()));
+            serviceType.setBoardingHouse(bh);
+        } else {
+            serviceType.setBoardingHouse(null);
         }
         return toDto(repository.save(serviceType));
     }
@@ -77,6 +108,10 @@ public class ServiceTypeService {
         dto.setUnit(serviceType.getUnit());
         dto.setPricePerUnit(serviceType.getPricePerUnit());
         dto.setIsActive(serviceType.getIsActive());
+        if (serviceType.getBoardingHouse() != null) {
+            dto.setBoardingHouseId(serviceType.getBoardingHouse().getId());
+            dto.setBoardingHouseName(serviceType.getBoardingHouse().getName());
+        }
         return dto;
     }
 }

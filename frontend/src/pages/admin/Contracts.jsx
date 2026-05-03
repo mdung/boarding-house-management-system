@@ -38,7 +38,7 @@ const SortTh = ({ field, current, dir, onSort, children, className = '' }) => (
 const Contracts = () => {
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const { selectedId: propertyId } = useProperty()
+  const { selectedId: propertyId, properties: allowedProperties } = useProperty()
   const [contracts, setContracts] = useState([])
   const [rooms, setRooms] = useState([])
   const [tenants, setTenants] = useState([])
@@ -135,6 +135,22 @@ const Contracts = () => {
       <div className="h-96 bg-slate-100 rounded-3xl" />
     </div>
   )
+
+  // Filter rooms and tenants for modal dropdowns by current property
+  const filteredRooms = propertyId !== 'ALL'
+    ? rooms.filter(r => r.boardingHouseId?.toString() === propertyId)
+    : allowedProperties.length > 0
+      ? rooms.filter(r => allowedProperties.some(p => String(p.id) === String(r.boardingHouseId)))
+      : rooms
+
+  // Tenants: show all (tenant can be from any property, contract links them to a room)
+  // But filter by tenants who have active contracts in allowed properties, or no active contract
+  const filteredTenants = propertyId !== 'ALL'
+    ? tenants.filter(t =>
+        !t.activeBoardingHouseId ||
+        t.activeBoardingHouseId?.toString() === propertyId
+      )
+    : tenants
 
   return (
     <div className="space-y-5">
@@ -322,13 +338,13 @@ const Contracts = () => {
                   <Field label="Room">
                     <select required value={formData.roomId} onChange={set('roomId')} className={inputCls + ' appearance-none'}>
                       <option value="">Select room...</option>
-                      {rooms.map(r => <option key={r.id} value={r.id}>{r.code} — {r.boardingHouseName}</option>)}
+                      {filteredRooms.map(r => <option key={r.id} value={r.id}>{r.code} — {r.boardingHouseName}</option>)}
                     </select>
                   </Field>
                   <Field label="Main Tenant">
                     <select required value={formData.mainTenantId} onChange={set('mainTenantId')} className={inputCls + ' appearance-none'}>
                       <option value="">Select tenant...</option>
-                      {tenants.map(t => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+                      {filteredTenants.map(t => <option key={t.id} value={t.id}>{t.fullName}</option>)}
                     </select>
                   </Field>
                 </div>

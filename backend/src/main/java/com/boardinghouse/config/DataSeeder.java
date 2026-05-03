@@ -103,6 +103,7 @@ public class DataSeeder implements CommandLineRunner {
         addRoomServices(r401, electricity, water, internet);
         addRoomServices(r403, electricity, water, internet, parking);
 
+
         // ============ TENANTS ============
         Tenant t1 = makeTenant(u1, "Trần Thị Bích", "0912345678", "bich@gmail.com", "012345678901", LocalDate.of(1998, 3, 20), "45 Trần Hưng Đạo, Q.5");
         Tenant t2 = makeTenant(u2, "Lê Văn Cường", "0923456789", "cuong@gmail.com", "023456789012", LocalDate.of(1996, 7, 15), "78 Đinh Tiên Hoàng, Q.Bình Thạnh");

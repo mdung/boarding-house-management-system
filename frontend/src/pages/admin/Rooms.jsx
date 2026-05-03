@@ -43,7 +43,7 @@ const SortBtn = ({ field, current, dir, onSort, children }) => (
 const Rooms = () => {
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const { selectedId: propertyId } = useProperty()
+  const { selectedId: propertyId, properties: allowedProperties } = useProperty()
   const [rooms, setRooms] = useState([])
   const [houses, setHouses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -113,7 +113,13 @@ const Rooms = () => {
   }
 
   const openEdit = (r) => { setEditing(r); setFormData({ code: r.code, boardingHouseId: r.boardingHouseId?.toString(), floor: r.floor?.toString() || '', area: r.area?.toString() || '', maxOccupants: r.maxOccupants?.toString() || '', baseRent: r.baseRent?.toString() || '', status: r.status }); setShowModal(true) }
-  const openAdd = () => { setEditing(null); setFormData(empty); setShowModal(true) }
+  const openAdd = () => {
+    setEditing(null)
+    // Pre-fill boarding house from current property selection
+    const defaultHouseId = propertyId !== 'ALL' ? propertyId : (allowedProperties.length === 1 ? String(allowedProperties[0].id) : '')
+    setFormData({ ...empty, boardingHouseId: defaultHouseId })
+    setShowModal(true)
+  }
   const closeModal = () => { setShowModal(false); setEditing(null) }
 
   const handleDelete = async (id) => {
@@ -377,7 +383,7 @@ const Rooms = () => {
                 <Field label="Boarding House">
                   <select required value={formData.boardingHouseId} onChange={set('boardingHouseId')} className={selectCls}>
                     <option value="">Select a property...</option>
-                    {houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                    {allowedProperties.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
                   </select>
                 </Field>
                 <div className="grid grid-cols-3 gap-3">

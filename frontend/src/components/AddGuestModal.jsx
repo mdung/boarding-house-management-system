@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
+import { useProperty } from '../context/PropertyContext'
 import {
   Users, Phone, Mail, MapPin, CreditCard, DoorOpen,
   Calendar, Search, X, Building2, BookOpen
@@ -43,6 +44,7 @@ const EMPTY_FORM = {
  *   onSuccess(tenant) — called after successful save
  */
 const AddGuestModal = ({ onClose, onSuccess }) => {
+  const { selectedId: propertyId, properties: allowedProperties } = useProperty()
   const [formData, setFormData] = useState(EMPTY_FORM)
   const [availableRooms, setAvailableRooms] = useState([])
   const [roomSearch, setRoomSearch] = useState('')
@@ -52,9 +54,18 @@ const AddGuestModal = ({ onClose, onSuccess }) => {
 
   useEffect(() => {
     api.get('/rooms')
-      .then(r => setAvailableRooms(Array.isArray(r.data) ? r.data.filter(rm => rm.status === 'AVAILABLE') : []))
+      .then(r => {
+        const available = Array.isArray(r.data) ? r.data.filter(rm => rm.status === 'AVAILABLE') : []
+        // Filter by allowed properties
+        const filtered = propertyId !== 'ALL'
+          ? available.filter(rm => rm.boardingHouseId?.toString() === propertyId)
+          : allowedProperties.length > 0
+            ? available.filter(rm => allowedProperties.some(p => String(p.id) === String(rm.boardingHouseId)))
+            : available
+        setAvailableRooms(filtered)
+      })
       .catch(() => setAvailableRooms([]))
-  }, [])
+  }, [propertyId])
 
   const set = (k) => (e) => setFormData(f => ({ ...f, [k]: e.target.value }))
 
