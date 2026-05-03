@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
+import { useProperty } from '../../context/PropertyContext'
 import { Plus, Trash2, ChevronDown, ChevronUp, Search, Calendar, DollarSign, Package, ShoppingCart, Coffee, Car, Home, CheckCircle, AlertTriangle, X, Zap, Receipt } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 
@@ -31,6 +32,7 @@ const StatCard = ({ icon: Icon, label, value, color, bg, sub }) => (
 const GuestCharges = () => {
   const [searchParams] = useSearchParams()
   const { showToast } = useToast()
+  const { selectedId: propertyId } = useProperty()
   const [contracts, setContracts] = useState([])
   const [catalog, setCatalog] = useState([])
   const [inventoryItems, setInventoryItems] = useState([])
@@ -48,15 +50,19 @@ const GuestCharges = () => {
   useEffect(() => {
     api.get('/contracts').then(r => setContracts(r.data)).catch(console.error)
     api.get('/service-catalog').then(r => setCatalog(r.data)).catch(console.error)
-    api.get('/inventory/items').then(r => setInventoryItems(r.data)).catch(console.error)
+    const invParams = propertyId !== 'ALL' ? { boardingHouseId: propertyId } : {}
+    api.get('/inventory/items', { params: invParams }).then(r => setInventoryItems(r.data)).catch(console.error)
   }, [])
 
   useEffect(() => { const cid = searchParams.get('contractId'); if (cid) setSelectedContractId(cid) }, [searchParams])
   useEffect(() => { if (selectedContractId) fetchSummary() }, [selectedContractId])
 
   const filteredContracts = useMemo(() =>
-    contracts.filter(c => [c.mainTenantName, c.roomCode, c.code].some(v => v?.toLowerCase().includes(contractSearch.toLowerCase())))
-  , [contracts, contractSearch])
+    contracts.filter(c => {
+      if (propertyId !== 'ALL' && c.boardingHouseId?.toString() !== propertyId) return false
+      return [c.mainTenantName, c.roomCode, c.code].some(v => v?.toLowerCase().includes(contractSearch.toLowerCase()))
+    })
+  , [contracts, contractSearch, propertyId])
 
   const filteredChargesByDate = useMemo(() => {
     const charges = summary?.charges || []

@@ -1,11 +1,9 @@
 package com.boardinghouse.dto;
 
 import com.boardinghouse.entity.ServiceCategory;
-import lombok.Data;
 
 import java.math.BigDecimal;
 
-@Data
 public class ServiceTypeDto {
     private Long id;
     private String name;
@@ -13,5 +11,22 @@ public class ServiceTypeDto {
     private String unit;
     private BigDecimal pricePerUnit;
     private Boolean isActive;
-}
 
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public ServiceCategory getCategory() { return category; }
+    public void setCategory(ServiceCategory category) { this.category = category; }
+
+    public String getUnit() { return unit; }
+    public void setUnit(String unit) { this.unit = unit; }
+
+    public BigDecimal getPricePerUnit() { return pricePerUnit; }
+    public void setPricePerUnit(BigDecimal pricePerUnit) { this.pricePerUnit = pricePerUnit; }
+
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+}

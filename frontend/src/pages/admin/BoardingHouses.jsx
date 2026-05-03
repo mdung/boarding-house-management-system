@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api'
 import { useToast } from '../../context/ToastContext'
+import { useAuth } from '../../context/AuthContext'
+import { useProperty } from '../../context/PropertyContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { Plus, Edit, Trash2, Building2, MapPin, Layers, DoorOpen, Users, X } from 'lucide-react'
 
@@ -15,6 +17,8 @@ const inputCls = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2
 
 const BoardingHouses = () => {
   const { showToast } = useToast()
+  const { isAdmin } = useAuth()
+  const { properties: allowedProperties } = useProperty()
   const [houses, setHouses] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -59,18 +63,25 @@ const BoardingHouses = () => {
 
   const set = (k) => (e) => setFormData(f => ({ ...f, [k]: e.target.value }))
 
+  // Staff chỉ thấy nhà trọ được assign; admin thấy tất cả
+  const visibleHouses = isAdmin()
+    ? houses
+    : houses.filter(h => allowedProperties.some(p => String(p.id) === String(h.id)))
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black text-slate-900">Boarding Houses</h1>
-          <p className="text-slate-500 mt-1 text-sm">{houses.length} properties managed</p>
+          <p className="text-slate-500 mt-1 text-sm">{visibleHouses.length} properties managed</p>
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5">
-          <Plus className="w-4 h-4" /> Add Boarding House
-        </button>
+        {isAdmin() && (
+          <button onClick={openAdd}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5">
+            <Plus className="w-4 h-4" /> Add Boarding House
+          </button>
+        )}
       </div>
 
       {/* Loading */}
@@ -78,17 +89,19 @@ const BoardingHouses = () => {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[1,2,3].map(i => <div key={i} className="h-48 bg-slate-100 rounded-3xl animate-pulse" />)}
         </div>
-      ) : houses.length === 0 ? (
+      ) : visibleHouses.length === 0 ? (
         <div className="bg-white rounded-3xl border border-slate-100 p-16 text-center">
           <Building2 className="w-12 h-12 text-slate-200 mx-auto mb-4" />
           <p className="text-slate-400 font-semibold">No boarding houses yet</p>
-          <button onClick={openAdd} className="mt-4 px-5 py-2 bg-blue-600 text-white rounded-2xl text-sm font-bold hover:bg-blue-700 transition-colors">
-            Add your first property
-          </button>
+          {isAdmin() && (
+            <button onClick={openAdd} className="mt-4 px-5 py-2 bg-blue-600 text-white rounded-2xl text-sm font-bold hover:bg-blue-700 transition-colors">
+              Add your first property
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {houses.map(h => (
+          {visibleHouses.map(h => (
             <div key={h.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group">
               {/* Card top accent */}
               <div className="h-1.5 bg-gradient-to-r from-blue-500 to-indigo-500" />
@@ -106,14 +119,16 @@ const BoardingHouses = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openEdit(h)} className="w-8 h-8 flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors">
-                      <Edit className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => setConfirmDelete(h.id)} className="w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  {isAdmin() && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => openEdit(h)} className="w-8 h-8 flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors">
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => setConfirmDelete(h.id)} className="w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Stats */}
@@ -170,8 +185,8 @@ const BoardingHouses = () => {
         </div>
       )}
 
-      {/* Modal */}
-      {showModal && (
+      {/* Modal — admin only */}
+      {showModal && isAdmin() && (
         <div className="fixed inset-0 z-50 modal-fix bg-slate-900/50 backdrop-blur-sm p-4" onClick={closeModal}>
           <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             {/* Modal header */}

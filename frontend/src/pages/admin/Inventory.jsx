@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '../../services/api'
+import { useProperty } from '../../context/PropertyContext'
 import {
   Plus, Edit2, Trash2, Activity, Package, RefreshCw, Wand2,
   X, AlertTriangle, TrendingDown, TrendingUp, Search, ChevronRight,
-  Tag, Settings, Check, ArrowUp, ArrowDown, RotateCcw, ShoppingCart
+  Tag, Settings, Check, ArrowUp, ArrowDown, RotateCcw, ShoppingCart, Building2
 } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -21,6 +22,7 @@ const TYPE_CFG = {
 const inputCls = 'w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
 
 const Inventory = () => {
+  const { selectedId: propertyId, properties, selectedProperty } = useProperty()
   const [items, setItems] = useState([])
   const [transactions, setTransactions] = useState([])
   const [selectedItem, setSelectedItem] = useState(null)
@@ -43,13 +45,14 @@ const Inventory = () => {
     purchasePrice: '', salePrice: '',
     quantityOnHand: '0', reorderLevel: '5',
     isActive: true, note: '',
+    boardingHouseId: '',
   })
 
   const [txForm, setTxForm] = useState({
     itemId: '', type: 'PURCHASE', quantity: '1', unitPrice: '0', reference: '', note: '',
   })
 
-  useEffect(() => { fetchItems() }, [])
+  useEffect(() => { fetchItems() }, [propertyId])
   useEffect(() => { if (selectedItem) fetchTransactions(selectedItem.id); else setTransactions([]) }, [selectedItem])
   useEffect(() => { if (showItemModal || showTxModal) requestAnimationFrame(() => setAnimIn(true)); else setAnimIn(false) }, [showItemModal, showTxModal])
 
@@ -57,7 +60,11 @@ const Inventory = () => {
 
   const fetchItems = async () => {
     setLoading(true)
-    try { const r = await api.get('/inventory/items/all'); setItems(r.data) }
+    try {
+      const params = propertyId !== 'ALL' ? { boardingHouseId: propertyId } : {}
+      const r = await api.get('/inventory/items/all', { params })
+      setItems(r.data)
+    }
     catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -105,13 +112,24 @@ const Inventory = () => {
 
   const openAdd = () => {
     setEditingItem(null)
-    setItemForm({ sku: '', name: '', category: allCats[0] || '', unit: 'bottle', purchasePrice: '', salePrice: '', quantityOnHand: '0', reorderLevel: '5', isActive: true, note: '' })
+    setItemForm({
+      sku: '', name: '', category: allCats[0] || '', unit: 'bottle',
+      purchasePrice: '', salePrice: '', quantityOnHand: '0', reorderLevel: '5',
+      isActive: true, note: '',
+      boardingHouseId: propertyId !== 'ALL' ? propertyId : (properties[0]?.id?.toString() || ''),
+    })
     setShowItemModal(true)
   }
 
   const openEdit = (item) => {
     setEditingItem(item)
-    setItemForm({ sku: item.sku||'', name: item.name||'', category: item.category||'', unit: item.unit||'', purchasePrice: item.purchasePrice||'', salePrice: item.salePrice||'', quantityOnHand: item.quantityOnHand||'0', reorderLevel: item.reorderLevel||'0', isActive: item.isActive!==false, note: item.note||'' })
+    setItemForm({
+      sku: item.sku||'', name: item.name||'', category: item.category||'',
+      unit: item.unit||'', purchasePrice: item.purchasePrice||'', salePrice: item.salePrice||'',
+      quantityOnHand: item.quantityOnHand||'0', reorderLevel: item.reorderLevel||'0',
+      isActive: item.isActive!==false, note: item.note||'',
+      boardingHouseId: item.boardingHouseId?.toString() || '',
+    })
     setShowItemModal(true)
   }
 
@@ -124,7 +142,15 @@ const Inventory = () => {
   const handleItemSubmit = async (e) => {
     e.preventDefault()
     try {
-      const payload = { ...itemForm, sku: itemForm.sku || generateSKU(itemForm.name, itemForm.category), purchasePrice: parseFloat(itemForm.purchasePrice||0), salePrice: parseFloat(itemForm.salePrice||0), quantityOnHand: parseInt(itemForm.quantityOnHand||0), reorderLevel: parseInt(itemForm.reorderLevel||0) }
+      const payload = {
+        ...itemForm,
+        sku: itemForm.sku || generateSKU(itemForm.name, itemForm.category),
+        purchasePrice: parseFloat(itemForm.purchasePrice||0),
+        salePrice: parseFloat(itemForm.salePrice||0),
+        quantityOnHand: parseInt(itemForm.quantityOnHand||0),
+        reorderLevel: parseInt(itemForm.reorderLevel||0),
+        boardingHouseId: itemForm.boardingHouseId ? parseInt(itemForm.boardingHouseId) : null,
+      }
       if (editingItem) await api.put(`/inventory/items/${editingItem.id}`, payload)
       else await api.post('/inventory/items', payload)
       setShowItemModal(false); fetchItems()
@@ -274,7 +300,12 @@ const Inventory = () => {
                               </div>
                               <div>
                                 <p className="text-sm font-bold text-slate-800">{item.name}</p>
-                                <p className="text-[10px] text-slate-400">{item.unit || '—'} · {item.sku || '—'}</p>
+                                <p className="text-[10px] text-slate-400">
+                                  {item.unit || '—'} · {item.sku || '—'}
+                                  {item.boardingHouseName && propertyId === 'ALL' && (
+                                    <span className="ml-1.5 text-blue-500 font-semibold">· {item.boardingHouseName}</span>
+                                  )}
+                                </p>
                               </div>
                             </div>
                           </td>
@@ -459,6 +490,24 @@ const Inventory = () => {
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Name *</label>
                   <input type="text" required value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className={inputCls} />
                 </div>
+              </div>
+
+              {/* Boarding House selector */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  <Building2 className="w-3 h-3" /> Boarding House *
+                </label>
+                <select
+                  required
+                  value={itemForm.boardingHouseId}
+                  onChange={e => setItemForm({...itemForm, boardingHouseId: e.target.value})}
+                  className={inputCls}
+                >
+                  <option value="">— Select property —</option>
+                  {properties.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

@@ -1,9 +1,6 @@
 package com.boardinghouse.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -12,9 +9,6 @@ import java.util.List;
 
 @Entity
 @Table(name = "invoices")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class Invoice {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,7 +26,7 @@ public class Invoice {
     private Room room;
 
     @Column(nullable = false)
-    private Integer periodMonth; // 1-12
+    private Integer periodMonth;
 
     @Column(nullable = false)
     private Integer periodYear;
@@ -54,5 +48,42 @@ public class Invoice {
 
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL)
     private List<Payment> payments = new ArrayList<>();
-}
 
+    public Invoice() {}
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+
+    public Contract getContract() { return contract; }
+    public void setContract(Contract contract) { this.contract = contract; }
+
+    public Room getRoom() { return room; }
+    public void setRoom(Room room) { this.room = room; }
+
+    public Integer getPeriodMonth() { return periodMonth; }
+    public void setPeriodMonth(Integer periodMonth) { this.periodMonth = periodMonth; }
+
+    public Integer getPeriodYear() { return periodYear; }
+    public void setPeriodYear(Integer periodYear) { this.periodYear = periodYear; }
+
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+
+    public PaymentStatus getStatus() { return status; }
+    public void setStatus(PaymentStatus status) { this.status = status; }
+
+    public LocalDate getDueDate() { return dueDate; }
+    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
+
+    public LocalDate getCreatedDate() { return createdDate; }
+    public void setCreatedDate(LocalDate createdDate) { this.createdDate = createdDate; }
+
+    public List<InvoiceItem> getItems() { return items; }
+    public void setItems(List<InvoiceItem> items) { this.items = items; }
+
+    public List<Payment> getPayments() { return payments; }
+    public void setPayments(List<Payment> payments) { this.payments = payments; }
+}

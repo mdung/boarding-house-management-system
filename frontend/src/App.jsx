@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
+import { PropertyProvider } from './context/PropertyContext'
 import PrivateRoute from './components/PrivateRoute'
 import Login from './pages/Login'
 import AdminLayout from './layouts/AdminLayout'
@@ -35,6 +36,7 @@ function App() {
   return (
     <ToastProvider>
       <AuthProvider>
+        <PropertyProvider>
         <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -72,6 +74,7 @@ function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
+      </PropertyProvider>
       </AuthProvider>
     </ToastProvider>
   )

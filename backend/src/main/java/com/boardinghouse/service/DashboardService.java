@@ -36,23 +36,34 @@ public class DashboardService {
     }
 
     public DashboardDto getDashboard() {
+        return getDashboard(null);
+    }
+
+    public DashboardDto getDashboard(Long boardingHouseId) {
         // Auto-expire contracts where endDate < today → free rooms
         contractService.autoExpireContracts();
 
         DashboardDto dto = new DashboardDto();
 
-        dto.setTotalRooms((long) roomRepository.findAll().size());
-        dto.setOccupiedRooms((long) roomRepository.findByStatus(RoomStatus.OCCUPIED).size());
-        dto.setAvailableRooms((long) roomRepository.findByStatus(RoomStatus.AVAILABLE).size());
-        dto.setMaintenanceRooms((long) roomRepository.findByStatus(RoomStatus.MAINTENANCE).size());
+        // Filter rooms by boarding house if specified
+        List<com.boardinghouse.entity.Room> allRooms = boardingHouseId != null
+                ? roomRepository.findByBoardingHouseId(boardingHouseId)
+                : roomRepository.findAll();
+
+        dto.setTotalRooms((long) allRooms.size());
+        dto.setOccupiedRooms(allRooms.stream().filter(r -> r.getStatus() == RoomStatus.OCCUPIED).count());
+        dto.setAvailableRooms(allRooms.stream().filter(r -> r.getStatus() == RoomStatus.AVAILABLE).count());
+        dto.setMaintenanceRooms(allRooms.stream().filter(r -> r.getStatus() == RoomStatus.MAINTENANCE).count());
 
         LocalDate today = LocalDate.now();
 
+        // Filter contracts by boarding house if specified
+        List<Contract> allContracts = contractRepository.findAll().stream()
+                .filter(c -> boardingHouseId == null || c.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
+                .collect(Collectors.toList());
+
         // Unpaid = sum of debt across ALL contracts (including expired)
-        // Debt per contract = (dailyRate × nights) + guestCharges - totalPaid
-        // This matches the red "Debt" numbers shown on guest cards and tenant list
         BigDecimal unpaidAmount = BigDecimal.ZERO;
-        List<Contract> allContracts = contractRepository.findAll();
         for (Contract c : allContracts) {
             long nights = Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
             BigDecimal dailyRate = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
@@ -69,7 +80,12 @@ public class DashboardService {
 
         // Overdue invoices = invoices with remaining > 0 and past due date
         long overdueCount = 0;
-        for (Invoice inv : invoiceRepository.findAll()) {
+        List<Invoice> relevantInvoices = boardingHouseId != null
+                ? invoiceRepository.findAll().stream()
+                    .filter(inv -> inv.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
+                    .collect(Collectors.toList())
+                : invoiceRepository.findAll();
+        for (Invoice inv : relevantInvoices) {
             BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
                     .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal remaining = inv.getTotalAmount().subtract(paid);
@@ -173,13 +189,18 @@ public class DashboardService {
     }
 
     public DashboardDto.DayActivityDto getDayActivity(LocalDate date) {
-        return buildDayActivity(date);
+        return buildDayActivity(date, null);
     }
 
     private DashboardDto.DayActivityDto buildDayActivity(LocalDate date) {
+        return buildDayActivity(date, null);
+    }
+
+    private DashboardDto.DayActivityDto buildDayActivity(LocalDate date, Long boardingHouseId) {
         // Use ALL contracts except DRAFT so checked-out guests still appear
         List<Contract> all = contractRepository.findAll().stream()
                 .filter(c -> c.getStatus() != ContractStatus.DRAFT)
+                .filter(c -> boardingHouseId == null || c.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
                 .collect(Collectors.toList());
 
         DashboardDto.DayActivityDto day = new DashboardDto.DayActivityDto();

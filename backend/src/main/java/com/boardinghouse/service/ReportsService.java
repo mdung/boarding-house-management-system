@@ -195,7 +195,7 @@ public class ReportsService {
                 .map(contract -> contract.getMainTenant())
                 .filter(tenant -> tenant.getStatus() == TenantStatus.ACTIVE)
                 .distinct()
-                .map(tenant -> {
+                .map((com.boardinghouse.entity.Tenant tenant) -> {
                     TenantDto dto = new TenantDto();
                     dto.setId(tenant.getId());
                     dto.setUserId(tenant.getUser() != null ? tenant.getUser().getId() : null);

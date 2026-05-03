@@ -152,6 +152,7 @@ public class TenantService {
             displayContract.ifPresent(c -> {
                 dto.setActiveContractId(c.getId());
                 dto.setActiveRoomCode(c.getRoom().getCode());
+                dto.setActiveBoardingHouseId(c.getRoom().getBoardingHouse().getId());
                 dto.setCheckInDate(c.getStartDate());
                 dto.setCheckOutDate(c.getEndDate());
             });

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
 import { useToast } from '../../context/ToastContext'
+import { useProperty } from '../../context/PropertyContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import ModalOverlay from '../../components/ModalOverlay'
 import BulkActionBar from '../../components/BulkActionBar'
@@ -57,6 +58,7 @@ const SortTh = ({ field, current, dir, onSort, children }) => (
 const Tenants = () => {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { selectedId: propertyId } = useProperty()
   const [tenants, setTenants] = useState([])
   const [availableRooms, setAvailableRooms] = useState([])
   const [loading, setLoading] = useState(true)
@@ -109,6 +111,10 @@ const Tenants = () => {
     let f = tenants.filter(t =>
       [t.fullName, t.phone, t.activeRoomCode, t.email].some(v => v?.toLowerCase().includes(searchTerm.toLowerCase()))
     )
+    // Filter by selected property
+    if (propertyId !== 'ALL') {
+      f = f.filter(t => t.boardingHouseId?.toString() === propertyId || t.activeBoardingHouseId?.toString() === propertyId)
+    }
     f.sort((a, b) => {
       let av = sortField === 'checkInDate' || sortField === 'checkOutDate'
         ? (a[sortField] ? new Date(a[sortField]) : new Date(sortField === 'checkOutDate' ? '9999' : 0))

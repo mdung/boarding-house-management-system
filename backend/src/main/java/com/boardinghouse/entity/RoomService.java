@@ -1,17 +1,11 @@
 package com.boardinghouse.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "room_services")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class RoomService {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,5 +21,21 @@ public class RoomService {
 
     private BigDecimal pricePerUnit; // Override default price if needed
     private BigDecimal fixedPrice; // For FIXED category services
-}
 
+    public RoomService() {}
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public Room getRoom() { return room; }
+    public void setRoom(Room room) { this.room = room; }
+
+    public ServiceType getServiceType() { return serviceType; }
+    public void setServiceType(ServiceType serviceType) { this.serviceType = serviceType; }
+
+    public BigDecimal getPricePerUnit() { return pricePerUnit; }
+    public void setPricePerUnit(BigDecimal pricePerUnit) { this.pricePerUnit = pricePerUnit; }
+
+    public BigDecimal getFixedPrice() { return fixedPrice; }
+    public void setFixedPrice(BigDecimal fixedPrice) { this.fixedPrice = fixedPrice; }
+}

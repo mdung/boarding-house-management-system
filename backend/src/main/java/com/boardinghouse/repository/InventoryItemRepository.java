@@ -9,4 +9,10 @@ import java.util.List;
 @Repository
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, Long> {
     List<InventoryItem> findByIsActiveTrueOrderByCategoryAscNameAsc();
+
+    List<InventoryItem> findByBoardingHouseIdAndIsActiveTrueOrderByCategoryAscNameAsc(Long boardingHouseId);
+
+    List<InventoryItem> findByBoardingHouseIdOrderByCategoryAscNameAsc(Long boardingHouseId);
+
+    List<InventoryItem> findByBoardingHouseIsNullOrderByCategoryAscNameAsc();
 }

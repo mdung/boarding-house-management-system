@@ -1,8 +1,6 @@
 package com.boardinghouse.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
@@ -12,8 +10,6 @@ import java.time.LocalDateTime;
     @Index(name = "idx_audit_timestamp", columnList = "timestamp"),
     @Index(name = "idx_audit_module", columnList = "module")
 })
-@Data
-@NoArgsConstructor
 public class AuditLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,6 +34,8 @@ public class AuditLog {
     @Column(length = 45)
     private String ipAddress;
 
+    public AuditLog() {}
+
     public AuditLog(User user, String action, String module, String details) {
         this.user = user;
         this.action = action;
@@ -45,4 +43,25 @@ public class AuditLog {
         this.details = details;
         this.timestamp = LocalDateTime.now();
     }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+
+    public String getAction() { return action; }
+    public void setAction(String action) { this.action = action; }
+
+    public String getModule() { return module; }
+    public void setModule(String module) { this.module = module; }
+
+    public String getDetails() { return details; }
+    public void setDetails(String details) { this.details = details; }
+
+    public LocalDateTime getTimestamp() { return timestamp; }
+    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+
+    public String getIpAddress() { return ipAddress; }
+    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
 }

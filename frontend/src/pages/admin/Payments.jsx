@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
+import { useProperty } from '../../context/PropertyContext'
 import { Plus, DollarSign, Trash2, AlertTriangle, X, ChevronUp, ChevronDown, Search, CreditCard, Banknote, Smartphone, Receipt, Users, Calendar } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -19,6 +20,7 @@ const Field = ({ label, children }) => (
 
 const Payments = () => {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { selectedId: propertyId } = useProperty()
   const [payments, setPayments] = useState([])
   const [invoices, setInvoices] = useState([])
   const [allInvoices, setAllInvoices] = useState([])
@@ -96,6 +98,9 @@ const Payments = () => {
 
   // Filter + sort payments
   let filtered = payments.map(p => ({ ...p, _inv: getInvoiceInfo(p.invoiceId) }))
+  if (propertyId !== 'ALL') {
+    filtered = filtered.filter(p => p._inv?.boardingHouseId?.toString() === propertyId)
+  }
   if (paySearch) {
     const q = paySearch.toLowerCase()
     filtered = filtered.filter(p => [p.invoiceCode, p._inv?.tenantName, p._inv?.roomCode, p.note].some(v => v?.toLowerCase().includes(q)))

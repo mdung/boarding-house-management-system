@@ -296,6 +296,8 @@ public class ContractService {
         dto.setCode(contract.getCode());
         dto.setRoomId(contract.getRoom().getId());
         dto.setRoomCode(contract.getRoom().getCode());
+        dto.setBoardingHouseId(contract.getRoom().getBoardingHouse().getId());
+        dto.setBoardingHouseName(contract.getRoom().getBoardingHouse().getName());
         dto.setMainTenantId(contract.getMainTenant().getId());
         dto.setMainTenantName(contract.getMainTenant().getFullName());
         dto.setTenantIds(contract.getTenants().stream().map(Tenant::getId).collect(Collectors.toList()));

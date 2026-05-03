@@ -24,8 +24,9 @@ public class DashboardController {
     }
 
     @GetMapping
-    public ResponseEntity<DashboardDto> getDashboard() {
-        return ResponseEntity.ok(service.getDashboard());
+    public ResponseEntity<DashboardDto> getDashboard(
+            @RequestParam(required = false) Long boardingHouseId) {
+        return ResponseEntity.ok(service.getDashboard(boardingHouseId));
     }
 
     @GetMapping("/day")

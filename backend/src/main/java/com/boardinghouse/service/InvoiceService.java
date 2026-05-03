@@ -170,6 +170,8 @@ public class InvoiceService {
         d.setId(inv.getId()); d.setCode(inv.getCode());
         d.setContractId(inv.getContract().getId()); d.setContractCode(inv.getContract().getCode());
         d.setRoomId(inv.getRoom().getId()); d.setRoomCode(inv.getRoom().getCode());
+        d.setBoardingHouseId(inv.getRoom().getBoardingHouse().getId());
+        d.setBoardingHouseName(inv.getRoom().getBoardingHouse().getName());
         d.setTenantName(inv.getContract().getMainTenant().getFullName());
         d.setPeriodMonth(inv.getPeriodMonth()); d.setPeriodYear(inv.getPeriodYear());
         d.setTotalAmount(inv.getTotalAmount()); d.setStatus(inv.getStatus());

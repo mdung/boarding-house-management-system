@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
 import { useToast } from '../../context/ToastContext'
+import { useProperty } from '../../context/PropertyContext'
 import { Plus, Eye, Calculator, DollarSign, Trash2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, AlertTriangle, Search, Receipt, FileText } from 'lucide-react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 
@@ -37,6 +38,7 @@ const Invoices = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { showToast } = useToast()
+  const { selectedId: propertyId } = useProperty()
   const [invoices, setInvoices] = useState([])
   const [filteredInvoices, setFilteredInvoices] = useState([])
   const [contracts, setContracts] = useState([])
@@ -63,6 +65,7 @@ const Invoices = () => {
 
   useEffect(() => {
     let f = [...invoices]
+    if (propertyId !== 'ALL') f = f.filter(i => i.boardingHouseId?.toString() === propertyId)
     if (searchTerm) { const t = searchTerm.toLowerCase(); f = f.filter(i => [i.code, i.roomCode, i.tenantName].some(v => v?.toLowerCase().includes(t))) }
     if (statusFilter === 'NOT_PAID') f = f.filter(i => (parseFloat(i.remainingAmount)||0) > 0)
     else if (statusFilter === 'PAST_DUE') { const today = new Date().toISOString().split('T')[0]; f = f.filter(i => (parseFloat(i.remainingAmount)||0) > 0 && i.dueDate && i.dueDate < today) }
@@ -73,7 +76,7 @@ const Invoices = () => {
       return sortDir === 'asc' ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0)
     })
     setFilteredInvoices(f); setPage(1); setSelected(new Set())
-  }, [invoices, searchTerm, statusFilter, sortField, sortDir])
+  }, [invoices, propertyId, searchTerm, statusFilter, sortField, sortDir])
 
   const totalPages = Math.ceil(filteredInvoices.length / PAGE_SIZE)
   const paged = filteredInvoices.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)

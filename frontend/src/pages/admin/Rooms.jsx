@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
+import { useProperty } from '../../context/PropertyContext'
 import { useToast } from '../../context/ToastContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import BulkActionBar from '../../components/BulkActionBar'
@@ -42,6 +43,7 @@ const SortBtn = ({ field, current, dir, onSort, children }) => (
 const Rooms = () => {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { selectedId: propertyId } = useProperty()
   const [rooms, setRooms] = useState([])
   const [houses, setHouses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +62,12 @@ const Rooms = () => {
   const [perPage, setPerPage] = useState(10)
   const empty = { code: '', boardingHouseId: '', floor: '', area: '', maxOccupants: '', baseRent: '', status: 'AVAILABLE' }
   const [formData, setFormData] = useState(empty)
+
+  // Sync local filter with global property context
+  useEffect(() => {
+    setFilterHouse(propertyId)
+    setPage(1)
+  }, [propertyId])
 
   useEffect(() => { fetchData() }, [])
 

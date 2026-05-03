@@ -10,6 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/inventory")
+@CrossOrigin(origins = "*")
 public class InventoryController {
     private final InventoryService inventoryService;
 
@@ -17,13 +18,28 @@ public class InventoryController {
         this.inventoryService = inventoryService;
     }
 
+    /**
+     * GET /inventory/items?boardingHouseId=1  → items của nhà trọ 1 (active only)
+     * GET /inventory/items                    → tất cả items active (legacy / admin)
+     */
     @GetMapping("/items")
-    public ResponseEntity<List<InventoryItemDto>> getItems() {
+    public ResponseEntity<List<InventoryItemDto>> getItems(
+            @RequestParam(required = false) Long boardingHouseId) {
+        if (boardingHouseId != null) {
+            return ResponseEntity.ok(inventoryService.getByBoardingHouse(boardingHouseId));
+        }
         return ResponseEntity.ok(inventoryService.getAll());
     }
 
+    /**
+     * GET /inventory/items/all?boardingHouseId=1  → bao gồm inactive
+     */
     @GetMapping("/items/all")
-    public ResponseEntity<List<InventoryItemDto>> getItemsIncludingInactive() {
+    public ResponseEntity<List<InventoryItemDto>> getItemsIncludingInactive(
+            @RequestParam(required = false) Long boardingHouseId) {
+        if (boardingHouseId != null) {
+            return ResponseEntity.ok(inventoryService.getByBoardingHouseIncludingInactive(boardingHouseId));
+        }
         return ResponseEntity.ok(inventoryService.getAllIncludingInactive());
     }
 

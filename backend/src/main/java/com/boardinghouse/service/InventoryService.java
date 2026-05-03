@@ -2,11 +2,13 @@ package com.boardinghouse.service;
 
 import com.boardinghouse.dto.InventoryItemDto;
 import com.boardinghouse.dto.InventoryTransactionDto;
+import com.boardinghouse.entity.BoardingHouse;
 import com.boardinghouse.entity.InventoryItem;
 import com.boardinghouse.entity.InventoryTransaction;
 import com.boardinghouse.entity.InventoryTransactionType;
 import com.boardinghouse.exception.BadRequestException;
 import com.boardinghouse.exception.ResourceNotFoundException;
+import com.boardinghouse.repository.BoardingHouseRepository;
 import com.boardinghouse.repository.InventoryItemRepository;
 import com.boardinghouse.repository.InventoryTransactionRepository;
 import org.springframework.stereotype.Service;
@@ -20,13 +22,16 @@ import java.util.stream.Collectors;
 public class InventoryService {
     private final InventoryItemRepository itemRepository;
     private final InventoryTransactionRepository transactionRepository;
+    private final BoardingHouseRepository boardingHouseRepository;
     private final AuditLogService auditLogService;
 
     public InventoryService(InventoryItemRepository itemRepository,
                             InventoryTransactionRepository transactionRepository,
+                            BoardingHouseRepository boardingHouseRepository,
                             AuditLogService auditLogService) {
         this.itemRepository = itemRepository;
         this.transactionRepository = transactionRepository;
+        this.boardingHouseRepository = boardingHouseRepository;
         this.auditLogService = auditLogService;
     }
 
@@ -45,6 +50,16 @@ public class InventoryService {
                 .collect(Collectors.toList());
     }
 
+    public List<InventoryItemDto> getByBoardingHouse(Long boardingHouseId) {
+        return itemRepository.findByBoardingHouseIdAndIsActiveTrueOrderByCategoryAscNameAsc(boardingHouseId)
+                .stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    public List<InventoryItemDto> getByBoardingHouseIncludingInactive(Long boardingHouseId) {
+        return itemRepository.findByBoardingHouseIdOrderByCategoryAscNameAsc(boardingHouseId)
+                .stream().map(this::toDto).collect(Collectors.toList());
+    }
+
     public InventoryItemDto getById(Long id) {
         InventoryItem item = itemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + id));
@@ -55,7 +70,8 @@ public class InventoryService {
     public InventoryItemDto create(InventoryItemDto dto) {
         InventoryItem item = new InventoryItem();
         InventoryItem saved = itemRepository.save(fromDto(item, dto));
-        auditLogService.log("CREATE", "INVENTORY", "Created item: " + saved.getName() + " (SKU: " + saved.getSku() + ")");
+        auditLogService.log("CREATE", "INVENTORY", "Created item: " + saved.getName() + " (SKU: " + saved.getSku() + ")"
+                + (saved.getBoardingHouse() != null ? " for " + saved.getBoardingHouse().getName() : ""));
         return toDto(saved);
     }
 
@@ -82,17 +98,12 @@ public class InventoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + dto.getItemId()));
 
         BigDecimal quantity = dto.getQuantity();
-        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
+        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0)
             throw new BadRequestException("Quantity must be greater than zero");
-        }
-
-        if (dto.getUnitPrice() == null || dto.getUnitPrice().compareTo(BigDecimal.ZERO) < 0) {
+        if (dto.getUnitPrice() == null || dto.getUnitPrice().compareTo(BigDecimal.ZERO) < 0)
             throw new BadRequestException("Unit price must be set");
-        }
-
-        if (dto.getType() == null) {
+        if (dto.getType() == null)
             throw new BadRequestException("Transaction type is required");
-        }
 
         BigDecimal newQuantity = item.getQuantityOnHand();
         switch (dto.getType()) {
@@ -101,9 +112,8 @@ public class InventoryService {
                 newQuantity = newQuantity.add(quantity);
                 break;
             case SALE:
-                if (newQuantity.compareTo(quantity) < 0) {
-                    throw new BadRequestException("Insufficient stock for sale. Available: " + newQuantity);
-                }
+                if (newQuantity.compareTo(quantity) < 0)
+                    throw new BadRequestException("Insufficient stock. Available: " + newQuantity);
                 newQuantity = newQuantity.subtract(quantity);
                 break;
             case ADJUSTMENT:
@@ -115,7 +125,8 @@ public class InventoryService {
 
         item.setQuantityOnHand(newQuantity);
         itemRepository.save(item);
-        auditLogService.log(dto.getType().name(), "INVENTORY", "Recorded " + dto.getType() + " for " + item.getName() + ": " + dto.getQuantity() + " " + item.getUnit());
+        auditLogService.log(dto.getType().name(), "INVENTORY",
+                "Recorded " + dto.getType() + " for " + item.getName() + ": " + dto.getQuantity() + " " + item.getUnit());
 
         InventoryTransaction transaction = new InventoryTransaction();
         transaction.setItem(item);
@@ -126,8 +137,7 @@ public class InventoryService {
         transaction.setReference(dto.getReference());
         transaction.setNote(dto.getNote());
 
-        InventoryTransaction saved = transactionRepository.save(transaction);
-        return toDto(saved);
+        return toDto(transactionRepository.save(transaction));
     }
 
     public List<InventoryTransactionDto> getTransactions(Long itemId) {
@@ -148,6 +158,10 @@ public class InventoryService {
         dto.setReorderLevel(item.getReorderLevel());
         dto.setIsActive(item.getIsActive());
         dto.setNote(item.getNote());
+        if (item.getBoardingHouse() != null) {
+            dto.setBoardingHouseId(item.getBoardingHouse().getId());
+            dto.setBoardingHouseName(item.getBoardingHouse().getName());
+        }
         return dto;
     }
 
@@ -162,6 +176,13 @@ public class InventoryService {
         item.setReorderLevel(dto.getReorderLevel() != null ? dto.getReorderLevel() : BigDecimal.ZERO);
         item.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : true);
         item.setNote(dto.getNote());
+        if (dto.getBoardingHouseId() != null) {
+            BoardingHouse bh = boardingHouseRepository.findById(dto.getBoardingHouseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Boarding house not found: " + dto.getBoardingHouseId()));
+            item.setBoardingHouse(bh);
+        } else {
+            item.setBoardingHouse(null);
+        }
         return item;
     }
 

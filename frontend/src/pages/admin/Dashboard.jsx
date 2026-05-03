@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
 import AddGuestModal from '../../components/AddGuestModal'
+import { useProperty } from '../../context/PropertyContext'
 import {
   DoorOpen, Users, DollarSign, AlertCircle, LogIn, LogOut,
   BedDouble, CreditCard, X, ExternalLink, ShoppingCart, Receipt,
@@ -1010,20 +1011,22 @@ const RevenueDetailModal = ({ category, details, onClose, navigate }) => {
 
 const Dashboard = () => {
   const navigate = useNavigate()
+  const { selectedId: propertyId } = useProperty()
   const [dashboard, setDashboard] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedGuest, setSelectedGuest] = useState(null)
   const [revenueModal, setRevenueModal] = useState(null)
-  const [centerOffset, setCenterOffset] = useState(0)   // 0 = today, -1 = yesterday, etc.
-  const [extraDays, setExtraDays] = useState({})         // cache: offset → DayActivityDto
+  const [centerOffset, setCenterOffset] = useState(0)
+  const [extraDays, setExtraDays] = useState({})
   const [showAddGuest, setShowAddGuest] = useState(false)
 
   const fetchDashboard = () => {
-    api.get('/dashboard').then(r => setDashboard(r.data)).catch(console.error).finally(() => setLoading(false))
+    const params = propertyId !== 'ALL' ? { boardingHouseId: propertyId } : {}
+    api.get('/dashboard', { params }).then(r => setDashboard(r.data)).catch(console.error).finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchDashboard() }, [])
-  useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchDashboard) }, [])
+  useEffect(() => { fetchDashboard() }, [propertyId])
+  useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchDashboard) }, [propertyId])
 
   // Fetch a specific day by offset from today
   const fetchDay = (offset) => {

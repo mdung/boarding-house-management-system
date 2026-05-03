@@ -60,11 +60,42 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (permission) => {
     if (isAdmin()) return true
-    return user?.permissions?.includes(permission)
+    // Support scoped permissions: "MANAGE_ROOMS:1,2" means only for property 1 and 2
+    return user?.permissions?.some(p => {
+      const base = p.split(':')[0]
+      return base === permission
+    })
+  }
+
+  /**
+   * Returns the list of allowed property IDs for a given permission.
+   * Returns null if ALL properties are allowed (admin or unscoped permission).
+   * Returns [] if no access at all.
+   */
+  const getAllowedPropertyIds = (permission) => {
+    if (isAdmin()) return null // null = all
+    const match = user?.permissions?.find(p => p.split(':')[0] === permission)
+    if (!match) return [] // no access
+    const parts = match.split(':')
+    if (parts.length === 1) return null // unscoped = all
+    return parts[1].split(',').map(id => id.trim()).filter(Boolean)
+  }
+
+  /**
+   * Check if user has access to a specific property for a given permission.
+   * propertyId = 'ALL' means checking global access.
+   */
+  const hasPropertyAccess = (permission, propertyId) => {
+    if (isAdmin()) return true
+    const allowed = getAllowedPropertyIds(permission)
+    if (allowed === null) return true // all properties
+    if (allowed.length === 0) return false
+    if (!propertyId || propertyId === 'ALL') return allowed.length > 0
+    return allowed.includes(String(propertyId))
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isStaff, isTenant, hasPermission }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isStaff, isTenant, hasPermission, getAllowedPropertyIds, hasPropertyAccess }}>
       {children}
     </AuthContext.Provider>
   )

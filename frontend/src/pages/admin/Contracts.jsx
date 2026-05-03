@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useToast } from '../../context/ToastContext'
+import { useProperty } from '../../context/PropertyContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import BulkActionBar from '../../components/BulkActionBar'
 import { Plus, Edit, X, Eye, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, DoorOpen, Users, Calendar } from 'lucide-react'
@@ -37,6 +38,7 @@ const SortTh = ({ field, current, dir, onSort, children, className = '' }) => (
 const Contracts = () => {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { selectedId: propertyId } = useProperty()
   const [contracts, setContracts] = useState([])
   const [rooms, setRooms] = useState([])
   const [tenants, setTenants] = useState([])
@@ -69,6 +71,7 @@ const Contracts = () => {
 
   const visible = useMemo(() => {
     let f = (contracts || []).filter(c => {
+      if (propertyId !== 'ALL' && c.boardingHouseId?.toString() !== propertyId) return false
       if (statusFilter !== 'ALL' && c.status !== statusFilter) return false
       if (searchTerm) {
         const t = searchTerm.toLowerCase()

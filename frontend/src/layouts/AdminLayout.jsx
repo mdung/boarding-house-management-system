@@ -1,9 +1,10 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useProperty } from '../context/PropertyContext'
 import { useState } from 'react'
 import {
   Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard,
-  LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History, XCircle, HardDriveDownload
+  LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History, XCircle, HardDriveDownload, ChevronDown
 } from 'lucide-react'
 import MobileAccess from '../components/MobileAccess'
 
@@ -49,6 +50,7 @@ const menuGroups = [
 
 const AdminLayout = () => {
   const { user, logout, hasPermission, isAdmin: checkIsAdmin } = useAuth()
+  const { properties, selectedId, selectedProperty, select } = useProperty()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarWidth, setSidebarWidth] = useState(256)
@@ -234,6 +236,28 @@ const AdminLayout = () => {
 
           <div className="flex items-center gap-2 sm:gap-4">
              <MobileAccess />
+             {/* Property filter dropdown */}
+             {properties.length > 1 && (
+               <div className="relative">
+                 <select
+                   value={selectedId}
+                   onChange={e => select(e.target.value)}
+                   className="appearance-none pl-3 pr-8 py-1.5 text-[12px] font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer max-w-[160px] truncate"
+                 >
+                   {checkIsAdmin() && <option value="ALL">🏠 All Properties</option>}
+                   {properties.map(p => (
+                     <option key={p.id} value={p.id}>{p.name}</option>
+                   ))}
+                 </select>
+                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+               </div>
+             )}
+             {!checkIsAdmin() && properties.length === 1 && (
+               <div className="flex items-center gap-1.5 pl-3 pr-3 py-1.5 text-[12px] font-semibold bg-slate-50 border border-slate-200 rounded-xl text-slate-700 max-w-[160px] truncate">
+                 <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                 <span className="truncate">{properties[0].name}</span>
+               </div>
+             )}
              <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-medium uppercase text-[10px] tracking-widest text-slate-400">
