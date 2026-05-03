@@ -62,31 +62,28 @@ public class DashboardService {
                 .filter(c -> boardingHouseId == null || c.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
                 .collect(Collectors.toList());
 
-        // Unpaid & Overdue — both calculated from invoices for consistency
-        // unpaidAmount = sum of remaining across all unpaid invoices
-        // overdueCount = number of invoices with remaining > 0 AND dueDate < today
-        BigDecimal unpaidAmount = BigDecimal.ZERO;
-        long overdueCount = 0;
-
-        List<Invoice> relevantInvoices = boardingHouseId != null
-                ? invoiceRepository.findAll().stream()
-                    .filter(inv -> inv.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
-                    .collect(Collectors.toList())
-                : invoiceRepository.findAll();
-
-        for (Invoice inv : relevantInvoices) {
-            BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
-                    .map(Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal remaining = inv.getTotalAmount().subtract(paid);
-            if (remaining.compareTo(BigDecimal.ZERO) > 0) {
-                unpaidAmount = unpaidAmount.add(remaining);
-                if (inv.getDueDate() != null && inv.getDueDate().isBefore(today)) {
-                    overdueCount++;
-                }
+        // Outstanding debts: ALL non-DRAFT contracts with debt > 0
+        // debt = roomCost + charges - paid (contract-level, same as guest detail modal)
+        List<DashboardDto.GuestActivityDto> outstandingDebts = new java.util.ArrayList<>();
+        for (Contract c : allContracts) {
+            if (c.getStatus() == ContractStatus.DRAFT) continue;
+            DashboardDto.GuestActivityDto g = toGuestActivity(c, "DEBT");
+            if (g.getTotalDebt().compareTo(BigDecimal.ZERO) > 0) {
+                outstandingDebts.add(g);
             }
         }
+        outstandingDebts.sort((a, b) -> b.getTotalDebt().compareTo(a.getTotalDebt()));
+        dto.setOutstandingDebts(outstandingDebts);
 
-        dto.setMonthlyRevenue(BigDecimal.ZERO); // hidden on frontend
+        // unpaidAmount and overdueCount derived from outstandingDebts for consistency
+        // A debt is "overdue" when the contract end date (checkOutDate) has passed
+        BigDecimal unpaidAmount = outstandingDebts.stream()
+                .map(DashboardDto.GuestActivityDto::getTotalDebt)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long overdueCount = outstandingDebts.stream()
+                .filter(g -> g.getCheckOutDate() != null && g.getCheckOutDate().isBefore(today))
+                .count();
+
         dto.setUnpaidAmount(unpaidAmount);
         dto.setOverdueInvoices(overdueCount);
 
@@ -164,18 +161,6 @@ public class DashboardService {
         dto.setYesterday(buildDayActivity(today.minusDays(1), boardingHouseId));
         dto.setToday(buildDayActivity(today, boardingHouseId));
         dto.setTomorrow(buildDayActivity(today.plusDays(1), boardingHouseId));
-
-        // Outstanding debts: ALL contracts with debt > 0 (consistent with unpaidAmount calculation)
-        List<DashboardDto.GuestActivityDto> outstandingDebts = new java.util.ArrayList<>();
-        for (Contract c : allContracts) {
-            if (c.getStatus() == ContractStatus.DRAFT) continue;
-            DashboardDto.GuestActivityDto g = toGuestActivity(c, "DEBT");
-            if (g.getTotalDebt().compareTo(BigDecimal.ZERO) > 0) {
-                outstandingDebts.add(g);
-            }
-        }
-        outstandingDebts.sort((a, b) -> b.getTotalDebt().compareTo(a.getTotalDebt()));
-        dto.setOutstandingDebts(outstandingDebts);
 
         return dto;
     }
