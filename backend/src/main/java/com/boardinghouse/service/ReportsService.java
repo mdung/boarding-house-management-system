@@ -43,8 +43,14 @@ public class ReportsService {
     }
 
     public List<RevenueByMonthDto> getRevenueByMonth(Integer year) {
+        return getRevenueByMonth(year, null);
+    }
+
+    public List<RevenueByMonthDto> getRevenueByMonth(Integer year, Long boardingHouseId) {
             // ── Cash collected: payments actually received in each month ──────────
-            List<com.boardinghouse.entity.Payment> allPayments = paymentRepository.findAll();
+            List<com.boardinghouse.entity.Payment> allPayments = paymentRepository.findAll().stream()
+                    .filter(p -> boardingHouseId == null || p.getInvoice().getRoom().getBoardingHouse().getId().equals(boardingHouseId))
+                    .collect(Collectors.toList());
             Map<Integer, BigDecimal> collectedByMonth = allPayments.stream()
                     .filter(p -> p.getPaymentDate().getYear() == year)
                     .collect(Collectors.groupingBy(
@@ -52,18 +58,18 @@ public class ReportsService {
                             Collectors.reducing(BigDecimal.ZERO, com.boardinghouse.entity.Payment::getPaidAmount, BigDecimal::add)));
 
             // ── Earned revenue: room cost from contracts + service charges ──
-            // Room earned = dailyRate x days for contracts overlapping each month
             Map<Integer, BigDecimal> earnedRoomByMonth = new java.util.TreeMap<>();
             Map<Integer, BigDecimal> earnedServiceByMonth = new java.util.TreeMap<>();
 
-            List<com.boardinghouse.entity.Contract> allContracts = contractRepository.findAll();
+            List<com.boardinghouse.entity.Contract> allContracts = contractRepository.findAll().stream()
+                    .filter(c -> boardingHouseId == null || c.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
+                    .collect(Collectors.toList());
             for (com.boardinghouse.entity.Contract c : allContracts) {
                 if (c.getStatus() == com.boardinghouse.entity.ContractStatus.DRAFT) continue;
                 BigDecimal rate = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
                 if (rate.compareTo(BigDecimal.ZERO) == 0) continue;
                 long days = Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
                 BigDecimal roomCost = rate.multiply(BigDecimal.valueOf(days));
-                // Assign to the month the contract starts in (or overlaps)
                 for (int m = 1; m <= 12; m++) {
                     LocalDate mStart = LocalDate.of(year, m, 1);
                     LocalDate mEnd = mStart.withDayOfMonth(mStart.lengthOfMonth());
@@ -81,11 +87,13 @@ public class ReportsService {
             }
 
             // ── Invoice counts ────────────────────────────────────────────────────
-            Map<Integer, Long> invoiceCountByMonth = invoiceRepository.findAll().stream()
+            List<Invoice> relevantInvoices = invoiceRepository.findAll().stream()
+                    .filter(inv -> boardingHouseId == null || inv.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
                     .filter(inv -> inv.getPeriodYear().equals(year))
+                    .collect(Collectors.toList());
+            Map<Integer, Long> invoiceCountByMonth = relevantInvoices.stream()
                     .collect(Collectors.groupingBy(Invoice::getPeriodMonth, Collectors.counting()));
-            Map<Integer, Long> paidInvoiceCountByMonth = invoiceRepository.findAll().stream()
-                    .filter(inv -> inv.getPeriodYear().equals(year))
+            Map<Integer, Long> paidInvoiceCountByMonth = relevantInvoices.stream()
                     .filter(inv -> {
                         BigDecimal paid = paymentRepository.findByInvoiceId(inv.getId()).stream()
                                 .map(com.boardinghouse.entity.Payment::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -123,12 +131,17 @@ public class ReportsService {
 
 
     public List<RevenueByBoardingHouseDto> getRevenueByBoardingHouse(LocalDate startDate, LocalDate endDate) {
+        return getRevenueByBoardingHouse(startDate, endDate, null);
+    }
+
+    public List<RevenueByBoardingHouseDto> getRevenueByBoardingHouse(LocalDate startDate, LocalDate endDate, Long boardingHouseId) {
         // Room revenue: dailyRate x days for contracts overlapping the date range, grouped by boarding house
         Map<Long, BigDecimal> roomByHouse = new java.util.HashMap<>();
         Map<Long, String> houseNames = new java.util.HashMap<>();
 
         for (com.boardinghouse.entity.Contract c : contractRepository.findAll()) {
             if (c.getStatus() == ContractStatus.DRAFT) continue;
+            if (boardingHouseId != null && !c.getRoom().getBoardingHouse().getId().equals(boardingHouseId)) continue;
             if (c.getEndDate().isBefore(startDate) || c.getStartDate().isAfter(endDate)) continue;
             BigDecimal rate = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
             if (rate.compareTo(BigDecimal.ZERO) == 0) continue;
@@ -190,8 +203,13 @@ public class ReportsService {
     }
 
     public List<TenantDto> getTenantsCurrentlyRenting() {
+        return getTenantsCurrentlyRenting(null);
+    }
+
+    public List<TenantDto> getTenantsCurrentlyRenting(Long boardingHouseId) {
         return contractRepository.findByStatus(ContractStatus.ACTIVE).stream()
                 .filter(c -> !Boolean.TRUE.equals(c.getRoomReleased()))
+                .filter(c -> boardingHouseId == null || c.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
                 .map(contract -> contract.getMainTenant())
                 .filter(tenant -> tenant.getStatus() == TenantStatus.ACTIVE)
                 .distinct()
@@ -212,7 +230,12 @@ public class ReportsService {
     }
 
     public List<ServiceRevenueDto> getServiceRevenue(LocalDate startDate, LocalDate endDate) {
+        return getServiceRevenue(startDate, endDate, null);
+    }
+
+    public List<ServiceRevenueDto> getServiceRevenue(LocalDate startDate, LocalDate endDate, Long boardingHouseId) {
         return guestChargeRepository.findByChargeDateBetween(startDate, endDate).stream()
+                .filter(gc -> boardingHouseId == null || gc.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
                 .collect(Collectors.groupingBy(c -> c.getDescription().trim()))
                 .entrySet().stream()
                 .map(entry -> {
@@ -244,7 +267,12 @@ public class ReportsService {
     }
 
     public List<OutstandingDebtDto> getOutstandingDebts() {
+        return getOutstandingDebts(null);
+    }
+
+    public List<OutstandingDebtDto> getOutstandingDebts(Long boardingHouseId) {
         return invoiceRepository.findAll().stream()
+                .filter(inv -> boardingHouseId == null || inv.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
                 .map(invoice -> {
                     BigDecimal paidAmount = paymentRepository.findByInvoiceId(invoice.getId()).stream()
                             .map(p -> p.getPaidAmount())
@@ -342,15 +370,19 @@ public class ReportsService {
     }
 
     public java.util.Map<String, Object> getRevenueByMonthDetail(Integer year, Integer month) {
+        return getRevenueByMonthDetail(year, month, null);
+    }
+
+    public java.util.Map<String, Object> getRevenueByMonthDetail(Integer year, Integer month, Long boardingHouseId) {
         LocalDate mStart = LocalDate.of(year, month, 1);
         LocalDate mEnd = mStart.withDayOfMonth(mStart.lengthOfMonth());
 
-        // Room revenue from contracts overlapping this month
         java.util.List<java.util.Map<String, Object>> contractRows = new java.util.ArrayList<>();
         BigDecimal totalRoom = BigDecimal.ZERO;
 
         for (com.boardinghouse.entity.Contract c : contractRepository.findAll()) {
             if (c.getStatus() == ContractStatus.DRAFT) continue;
+            if (boardingHouseId != null && !c.getRoom().getBoardingHouse().getId().equals(boardingHouseId)) continue;
             if (c.getEndDate().isBefore(mStart) || c.getStartDate().isAfter(mEnd)) continue;
             BigDecimal rate = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
             long days = Math.max(1, ChronoUnit.DAYS.between(c.getStartDate(), c.getEndDate()));
@@ -370,7 +402,9 @@ public class ReportsService {
 
         // Service charges for this month
         List<com.boardinghouse.entity.GuestServiceCharge> charges =
-                guestChargeRepository.findByChargeDateBetween(mStart, mEnd);
+                guestChargeRepository.findByChargeDateBetween(mStart, mEnd).stream()
+                        .filter(gc -> boardingHouseId == null || gc.getRoom().getBoardingHouse().getId().equals(boardingHouseId))
+                        .collect(Collectors.toList());
 
         java.util.List<java.util.Map<String, Object>> chargeRows = charges.stream()
                 .sorted((a, b) -> b.getChargeDate().compareTo(a.getChargeDate()))
@@ -389,9 +423,10 @@ public class ReportsService {
 
         BigDecimal totalSvc = charges.stream().map(gc -> gc.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Collected = payments in this month
+        // Collected = payments in this month (filtered by boarding house)
         BigDecimal totalCollected = paymentRepository.findAll().stream()
                 .filter(p -> p.getPaymentDate() != null)
+                .filter(p -> boardingHouseId == null || p.getInvoice().getRoom().getBoardingHouse().getId().equals(boardingHouseId))
                 .filter(p -> {
                     LocalDate pd = p.getPaymentDate().toLocalDate();
                     return !pd.isBefore(mStart) && !pd.isAfter(mEnd);

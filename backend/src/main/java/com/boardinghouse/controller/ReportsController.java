@@ -25,50 +25,48 @@ public class ReportsController {
 
     @GetMapping("/revenue-by-month")
     public ResponseEntity<List<RevenueByMonthDto>> getRevenueByMonth(
-            @RequestParam(required = false) Integer year) {
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Long boardingHouseId) {
         if (year == null) {
             year = LocalDate.now().getYear();
         }
-        return ResponseEntity.ok(service.getRevenueByMonth(year));
+        return ResponseEntity.ok(service.getRevenueByMonth(year, boardingHouseId));
     }
 
     @GetMapping("/revenue-by-boarding-house")
     public ResponseEntity<List<RevenueByBoardingHouseDto>> getRevenueByBoardingHouse(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return ResponseEntity.ok(service.getRevenueByBoardingHouse(startDate, endDate));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) Long boardingHouseId) {
+        return ResponseEntity.ok(service.getRevenueByBoardingHouse(startDate, endDate, boardingHouseId));
     }
 
     @GetMapping("/tenants-currently-renting")
-    public ResponseEntity<List<TenantDto>> getTenantsCurrentlyRenting() {
-        return ResponseEntity.ok(service.getTenantsCurrentlyRenting());
+    public ResponseEntity<List<TenantDto>> getTenantsCurrentlyRenting(
+            @RequestParam(required = false) Long boardingHouseId) {
+        return ResponseEntity.ok(service.getTenantsCurrentlyRenting(boardingHouseId));
     }
 
     @GetMapping("/outstanding-debts")
-    public ResponseEntity<List<OutstandingDebtDto>> getOutstandingDebts() {
-        return ResponseEntity.ok(service.getOutstandingDebts());
-    }
-
-    @GetMapping("/revenue-by-boarding-house-detail")
-    public ResponseEntity<?> getRevenueByBoardingHouseDetail(
-            @RequestParam Long boardingHouseId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return ResponseEntity.ok(service.getRevenueByBoardingHouseDetail(boardingHouseId, startDate, endDate));
-    }
-
-    @GetMapping("/revenue-by-month-detail")
-    public ResponseEntity<?> getRevenueByMonthDetail(
-            @RequestParam Integer year,
-            @RequestParam Integer month) {
-        return ResponseEntity.ok(service.getRevenueByMonthDetail(year, month));
+    public ResponseEntity<List<OutstandingDebtDto>> getOutstandingDebts(
+            @RequestParam(required = false) Long boardingHouseId) {
+        return ResponseEntity.ok(service.getOutstandingDebts(boardingHouseId));
     }
 
     @GetMapping("/service-revenue")
     public ResponseEntity<List<ServiceRevenueDto>> getServiceRevenue(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return ResponseEntity.ok(service.getServiceRevenue(startDate, endDate));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) Long boardingHouseId) {
+        return ResponseEntity.ok(service.getServiceRevenue(startDate, endDate, boardingHouseId));
+    }
+
+    @GetMapping("/revenue-by-month-detail")
+    public ResponseEntity<?> getRevenueByMonthDetail(
+            @RequestParam Integer year,
+            @RequestParam Integer month,
+            @RequestParam(required = false) Long boardingHouseId) {
+        return ResponseEntity.ok(service.getRevenueByMonthDetail(year, month, boardingHouseId));
     }
 }
 

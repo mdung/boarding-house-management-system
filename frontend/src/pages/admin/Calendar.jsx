@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
+import { useProperty } from '../../context/PropertyContext'
 import {
   ChevronLeft, ChevronRight, LogIn, LogOut, Receipt, AlertTriangle,
   CreditCard, Calendar as CalIcon, X, ExternalLink,
@@ -42,6 +43,7 @@ function groupByContract(events) {
 
 const SuperCalendar = () => {
   const navigate = useNavigate()
+  const { selectedId: propertyId, selectedProperty, properties } = useProperty()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -50,6 +52,11 @@ const SuperCalendar = () => {
   const [selectedDay, setSelectedDay] = useState(null)
   const [filterType, setFilterType] = useState('ALL')
   const [filterHouse, setFilterHouse] = useState('ALL')
+
+  // Sync filterHouse with global property selector
+  useEffect(() => {
+    setFilterHouse(propertyId)
+  }, [propertyId])
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -97,7 +104,7 @@ const SuperCalendar = () => {
 
   const filtered = useMemo(() => events.filter(e => {
     if (filterType !== 'ALL' && e.type !== filterType) return false
-    if (filterHouse !== 'ALL' && e.boardingHouseName !== filterHouse) return false
+    if (filterHouse !== 'ALL' && String(e.boardingHouseId) !== String(filterHouse)) return false
     return true
   }), [events, filterType, filterHouse])
 
@@ -488,13 +495,13 @@ const SuperCalendar = () => {
               <X className="w-3 h-3" /> Clear
             </button>
           )}
-          {houses.length > 1 && (
+          {properties.length > 1 && (
             <div className="relative">
               <Building2 className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
               <select value={filterHouse} onChange={e => setFilterHouse(e.target.value)}
                 className="pl-6 pr-2 py-1 text-[11px] font-semibold bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none">
                 <option value="ALL">All properties</option>
-                {houses.map(h => <option key={h} value={h}>{h}</option>)}
+                {properties.map(p => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
               </select>
             </div>
           )}

@@ -31,8 +31,9 @@ public class DashboardController {
 
     @GetMapping("/day")
     public ResponseEntity<DashboardDto.DayActivityDto> getDayActivity(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(service.getDayActivity(date));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Long boardingHouseId) {
+        return ResponseEntity.ok(service.getDayActivity(date, boardingHouseId));
     }
 
     @GetMapping("/calendar")

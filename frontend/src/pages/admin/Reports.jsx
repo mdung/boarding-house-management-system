@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
+import { useProperty } from '../../context/PropertyContext'
 import {
   TrendingUp, Building2, Users, AlertTriangle, ShoppingBag,
   ChevronLeft, ChevronRight, Calendar, RefreshCw, ArrowUpRight,
@@ -90,6 +91,7 @@ const StatCard = ({ label, value, sub, icon: Icon, color, trend }) => (
 
 const Reports = () => {
   const [tab, setTab] = useState('revenue-month')
+  const { selectedId: propertyId } = useProperty()
   const [revenueByMonth, setRevenueByMonth] = useState([])
   const [revenueByHouse, setRevenueByHouse] = useState([])
   const [serviceRevenue, setServiceRevenue] = useState([])
@@ -107,28 +109,29 @@ const Reports = () => {
 
   const fetch = async (t = tab) => {
     setLoading(true)
+    const bhParam = propertyId !== 'ALL' ? `&boardingHouseId=${propertyId}` : ''
     try {
       if (t === 'revenue-month') {
-        const r = await api.get(`/reports/revenue-by-month?year=${year}`)
+        const r = await api.get(`/reports/revenue-by-month?year=${year}${bhParam}`)
         setRevenueByMonth(r.data)
       } else if (t === 'revenue-house') {
-        const r = await api.get(`/reports/revenue-by-boarding-house?startDate=${startDate}&endDate=${endDate}`)
+        const r = await api.get(`/reports/revenue-by-boarding-house?startDate=${startDate}&endDate=${endDate}${bhParam}`)
         setRevenueByHouse(r.data)
       } else if (t === 'services') {
-        const r = await api.get(`/reports/service-revenue?startDate=${startDate}&endDate=${endDate}`)
+        const r = await api.get(`/reports/service-revenue?startDate=${startDate}&endDate=${endDate}${bhParam}`)
         setServiceRevenue(r.data)
       } else if (t === 'tenants') {
-        const r = await api.get('/reports/tenants-currently-renting')
+        const r = await api.get(`/reports/tenants-currently-renting${propertyId !== 'ALL' ? `?boardingHouseId=${propertyId}` : ''}`)
         setTenants(r.data)
       } else if (t === 'debts') {
-        const r = await api.get('/reports/outstanding-debts')
+        const r = await api.get(`/reports/outstanding-debts${propertyId !== 'ALL' ? `?boardingHouseId=${propertyId}` : ''}`)
         setDebts(r.data)
       }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetch(tab) }, [tab, year, startDate, endDate])
+  useEffect(() => { fetch(tab) }, [tab, year, startDate, endDate, propertyId])
   useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, () => fetch(tab)) }, [tab, year, startDate, endDate])
 
   // Summary stats for revenue-month
@@ -188,7 +191,8 @@ const Reports = () => {
     setMonthDetailLoading(true)
     setSelectedMonth({ year: item.year, month: item.month, data: null })
     try {
-      const r = await api.get(`/reports/revenue-by-month-detail?year=${item.year}&month=${item.month}`)
+      const bhParam = propertyId !== 'ALL' ? `&boardingHouseId=${propertyId}` : ''
+      const r = await api.get(`/reports/revenue-by-month-detail?year=${item.year}&month=${item.month}${bhParam}`)
       setSelectedMonth({ year: item.year, month: item.month, data: r.data })
     } catch (e) { console.error(e) }
     finally { setMonthDetailLoading(false) }

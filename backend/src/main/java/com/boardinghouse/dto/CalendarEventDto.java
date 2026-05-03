@@ -11,6 +11,7 @@ public class CalendarEventDto {
     private String tenantName;
     private String roomCode;
     private String boardingHouseName;
+    private Long boardingHouseId;
     // Invoice/Payment specific
     private Long invoiceId;
     private String invoiceCode;
@@ -46,6 +47,9 @@ public class CalendarEventDto {
 
     public String getBoardingHouseName() { return boardingHouseName; }
     public void setBoardingHouseName(String boardingHouseName) { this.boardingHouseName = boardingHouseName; }
+
+    public Long getBoardingHouseId() { return boardingHouseId; }
+    public void setBoardingHouseId(Long boardingHouseId) { this.boardingHouseId = boardingHouseId; }
 
     public Long getInvoiceId() { return invoiceId; }
     public void setInvoiceId(Long invoiceId) { this.invoiceId = invoiceId; }

@@ -104,6 +104,7 @@ public class CalendarService {
         ev.setTenantName(c.getMainTenant().getFullName());
         ev.setRoomCode(c.getRoom().getCode());
         ev.setBoardingHouseName(c.getRoom().getBoardingHouse().getName());
+        ev.setBoardingHouseId(c.getRoom().getBoardingHouse().getId());
         ev.setCheckInDate(c.getStartDate());
         ev.setCheckOutDate(c.getEndDate());
         BigDecimal daily = c.getDailyRate() != null ? c.getDailyRate() : BigDecimal.ZERO;
@@ -138,6 +139,7 @@ public class CalendarService {
         ev.setTenantName(c.getMainTenant().getFullName());
         ev.setRoomCode(c.getRoom().getCode());
         ev.setBoardingHouseName(c.getRoom().getBoardingHouse().getName());
+        ev.setBoardingHouseId(c.getRoom().getBoardingHouse().getId());
         ev.setCheckInDate(c.getStartDate());
         ev.setCheckOutDate(c.getEndDate());
         ev.setInvoiceId(inv.getId());

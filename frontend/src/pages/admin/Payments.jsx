@@ -101,6 +101,16 @@ const Payments = () => {
   if (propertyId !== 'ALL') {
     filtered = filtered.filter(p => p._inv?.boardingHouseId?.toString() === propertyId)
   }
+
+  // Filter outstanding debts by property
+  const filteredTenantsWithDebt = propertyId !== 'ALL'
+    ? tenantsWithDebt.filter(t => t.activeBoardingHouseId?.toString() === propertyId || t.boardingHouseId?.toString() === propertyId)
+    : tenantsWithDebt
+
+  // Filter invoices for modal dropdown by property
+  const filteredInvoices = propertyId !== 'ALL'
+    ? invoices.filter(i => i.boardingHouseId?.toString() === propertyId)
+    : invoices
   if (paySearch) {
     const q = paySearch.toLowerCase()
     filtered = filtered.filter(p => [p.invoiceCode, p._inv?.tenantName, p._inv?.roomCode, p.note].some(v => v?.toLowerCase().includes(q)))
@@ -122,7 +132,7 @@ const Payments = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-extrabold text-slate-900">Payments</h1>
-          <p className="text-slate-500 mt-1 text-[13px]">{payments.length} total payments</p>
+          <p className="text-slate-500 mt-1 text-[13px]">{filtered.length} total payments</p>
         </div>
         <button onClick={() => { setSelectedInvoice(null); setFormData({ invoiceId: '', paidAmount: '', paymentDate: new Date().toISOString().split('T')[0], method: 'CASH', note: '', transactionCode: '' }); setShowModal(true) }}
           className="flex items-center gap-2 px-3.5 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold text-[12.5px] shadow-sm transition-all">
@@ -131,17 +141,17 @@ const Payments = () => {
       </div>
 
       {/* Outstanding debts */}
-      {tenantsWithDebt.length > 0 && (
+      {filteredTenantsWithDebt.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-4 h-4 text-rose-500" />
             <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
-              Outstanding Debts · <span className="text-rose-600">{tenantsWithDebt.length} guests</span>
-              <span className="ml-2 text-rose-600">{fmt(tenantsWithDebt.reduce((s,t) => s+(parseFloat(t.totalDebt)||0), 0))}</span>
+              Outstanding Debts · <span className="text-rose-600">{filteredTenantsWithDebt.length} guests</span>
+              <span className="ml-2 text-rose-600">{fmt(filteredTenantsWithDebt.reduce((s,t) => s+(parseFloat(t.totalDebt)||0), 0))}</span>
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {tenantsWithDebt.map(t => (
+            {filteredTenantsWithDebt.map(t => (
               <div key={t.id} className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 hover:shadow-md transition-all group">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -359,13 +369,13 @@ const Payments = () => {
                   <Field label="Select Invoice">
                     <select required value={formData.invoiceId}
                       onChange={e => {
-                        const inv = invoices.find(i => i.id.toString() === e.target.value)
+                        const inv = filteredInvoices.find(i => i.id.toString() === e.target.value)
                         setSelectedInvoice(inv || null)
                         setFormData(f => ({ ...f, invoiceId: e.target.value, paidAmount: inv?.remainingAmount?.toString() || '' }))
                       }}
                       className={inputCls + ' appearance-none'}>
                       <option value="">Select invoice...</option>
-                      {invoices.map(inv => (
+                      {filteredInvoices.map(inv => (
                         <option key={inv.id} value={inv.id}>{inv.tenantName} · {inv.roomCode} · {inv.code} · {fmt(inv.remainingAmount)}</option>
                       ))}
                     </select>

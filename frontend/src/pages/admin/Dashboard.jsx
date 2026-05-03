@@ -1028,6 +1028,9 @@ const Dashboard = () => {
   useEffect(() => { fetchDashboard() }, [propertyId])
   useEffect(() => { return eventBus.on(EVENTS.PAYMENT_CHANGED, fetchDashboard) }, [propertyId])
 
+  // Clear extra days cache when property changes
+  useEffect(() => { setExtraDays({}) }, [propertyId])
+
   // Fetch a specific day by offset from today
   const fetchDay = (offset) => {
     if (offset >= -1 && offset <= 1) return  // already in dashboard data
@@ -1035,7 +1038,9 @@ const Dashboard = () => {
       if (prev[offset] !== undefined) return prev  // already fetched or fetching
       const d = new Date(); d.setDate(d.getDate() + offset)
       const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-      api.get(`/dashboard/day?date=${dateStr}`)
+      const params = { date: dateStr }
+      if (propertyId !== 'ALL') params.boardingHouseId = propertyId
+      api.get(`/dashboard/day`, { params })
         .then(r => setExtraDays(p => ({ ...p, [offset]: r.data })))
         .catch(console.error)
       return { ...prev, [offset]: null }  // null = loading
