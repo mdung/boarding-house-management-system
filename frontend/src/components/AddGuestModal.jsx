@@ -105,11 +105,11 @@ const AddGuestModal = ({ onClose, onSuccess }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/50 overflow-y-auto"
+      className="fixed inset-0 z-[60] bg-slate-900/50 overflow-y-auto"
       onClick={onClose}
     >
-      {/* py-4 lets the card breathe top/bottom; mx-auto centers it */}
-      <div className="flex min-h-full items-end sm:items-center justify-center p-4">
+      {/* pb-20 on mobile accounts for the bottom nav bar height */}
+      <div className="flex min-h-full items-end sm:items-center justify-center p-4 pb-24 sm:pb-4">
       <div
         className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col"
         onClick={e => e.stopPropagation()}
