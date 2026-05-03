@@ -68,6 +68,7 @@ public class TenantService {
         tenant.setPhone(dto.getPhone());
         tenant.setEmail(dto.getEmail());
         tenant.setIdentityNumber(dto.getIdentityNumber());
+        tenant.setPassportNumber(dto.getPassportNumber());
         tenant.setDateOfBirth(dto.getDateOfBirth());
         tenant.setPermanentAddress(dto.getPermanentAddress());
         tenant.setStatus(dto.getStatus() != null ? dto.getStatus() : TenantStatus.ACTIVE);
@@ -91,6 +92,7 @@ public class TenantService {
         tenant.setPhone(dto.getPhone());
         tenant.setEmail(dto.getEmail());
         tenant.setIdentityNumber(dto.getIdentityNumber());
+        tenant.setPassportNumber(dto.getPassportNumber());
         tenant.setDateOfBirth(dto.getDateOfBirth());
         tenant.setPermanentAddress(dto.getPermanentAddress());
         if (dto.getStatus() != null) tenant.setStatus(dto.getStatus());
@@ -132,6 +134,7 @@ public class TenantService {
         dto.setPhone(tenant.getPhone());
         dto.setEmail(tenant.getEmail());
         dto.setIdentityNumber(tenant.getIdentityNumber());
+        dto.setPassportNumber(tenant.getPassportNumber());
         dto.setDateOfBirth(tenant.getDateOfBirth());
         dto.setPermanentAddress(tenant.getPermanentAddress());
         dto.setStatus(tenant.getStatus());

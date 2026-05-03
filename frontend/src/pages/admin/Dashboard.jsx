@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
+import AddGuestModal from '../../components/AddGuestModal'
 import {
   DoorOpen, Users, DollarSign, AlertCircle, LogIn, LogOut,
   BedDouble, CreditCard, X, ExternalLink, ShoppingCart, Receipt,
@@ -1015,6 +1016,7 @@ const Dashboard = () => {
   const [revenueModal, setRevenueModal] = useState(null)
   const [centerOffset, setCenterOffset] = useState(0)   // 0 = today, -1 = yesterday, etc.
   const [extraDays, setExtraDays] = useState({})         // cache: offset → DayActivityDto
+  const [showAddGuest, setShowAddGuest] = useState(false)
 
   const fetchDashboard = () => {
     api.get('/dashboard').then(r => setDashboard(r.data)).catch(console.error).finally(() => setLoading(false))
@@ -1155,7 +1157,7 @@ const Dashboard = () => {
             Export Report
           </button>
           <button
-            onClick={() => navigate('/admin/tenants')}
+            onClick={() => setShowAddGuest(true)}
             className="px-3.5 py-2 text-[12.5px] font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" /> Add Guest
@@ -1523,6 +1525,14 @@ const Dashboard = () => {
           details={dashboard?.revenueDetails || []}
           onClose={() => setRevenueModal(null)}
           navigate={navigate}
+        />
+      )}
+
+      {/* Add Guest modal */}
+      {showAddGuest && (
+        <AddGuestModal
+          onClose={() => setShowAddGuest(false)}
+          onSuccess={() => { fetchDashboard(); setShowAddGuest(false) }}
         />
       )}
     </div>

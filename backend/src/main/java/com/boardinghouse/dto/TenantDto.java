@@ -14,6 +14,7 @@ public class TenantDto {
     private String phone;
     private String email;
     private String identityNumber;
+    private String passportNumber;
     private LocalDate dateOfBirth;
     private String permanentAddress;
     private TenantStatus status;

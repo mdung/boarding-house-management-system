@@ -26,11 +26,11 @@ public class Tenant {
     @Column(nullable = false)
     private String fullName;
 
-    @Column(nullable = false)
     private String phone;
 
     private String email;
     private String identityNumber;
+    private String passportNumber;
     private LocalDate dateOfBirth;
     private String permanentAddress;
 
