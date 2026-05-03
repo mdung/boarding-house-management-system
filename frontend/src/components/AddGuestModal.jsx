@@ -105,11 +105,13 @@ const AddGuestModal = ({ onClose, onSuccess }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/50 p-4 flex items-center justify-center"
+      className="fixed inset-0 z-50 bg-slate-900/50 overflow-y-auto"
       onClick={onClose}
     >
+      {/* py-4 lets the card breathe top/bottom; mx-auto centers it */}
+      <div className="flex min-h-full items-end sm:items-center justify-center p-4">
       <div
-        className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col"
+        className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -132,8 +134,8 @@ const AddGuestModal = ({ onClose, onSuccess }) => {
         </div>
 
         {/* Scrollable form body */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-          <div className="px-5 py-5 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="flex flex-col">
+          <div className="px-5 py-5 space-y-4">
 
             {/* Full Name */}
             <Field label="Full Name" icon={Users}>
@@ -369,6 +371,7 @@ const AddGuestModal = ({ onClose, onSuccess }) => {
             </button>
           </div>
         </form>
+      </div>
       </div>
     </div>
   )
