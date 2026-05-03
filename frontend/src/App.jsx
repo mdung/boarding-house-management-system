@@ -26,6 +26,7 @@ import ServiceCatalog from './pages/admin/ServiceCatalog'
 import Calendar from './pages/admin/Calendar'
 import StaffManagement from './pages/admin/StaffManagement'
 import ActivityLogs from './pages/admin/ActivityLogs'
+import DataTransfer from './pages/admin/DataTransfer'
 import TenantDashboard from './pages/tenant/Dashboard'
 import TenantInvoices from './pages/tenant/Invoices'
 import TenantPayments from './pages/tenant/Payments'
@@ -59,6 +60,7 @@ function App() {
             <Route path="tenants/:id/detail" element={<TenantDetail />} />
             <Route path="staff" element={<StaffManagement />} />
             <Route path="activity-logs" element={<ActivityLogs />} />
+            <Route path="data-transfer" element={<DataTransfer />} />
             <Route path="profile" element={<Profile />} />
           </Route>
           <Route path="/tenant" element={<PrivateRoute><TenantLayout /></PrivateRoute>}>
