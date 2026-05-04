@@ -76,7 +76,14 @@ public class GuestServiceChargeService {
             if (!recipes.isEmpty()) {
                 // Trừ kho theo định mức × số lượng bán
                 BigDecimal soldQty = dto.getQuantity();
+                Long catalogBhId = catalog.getBoardingHouse() != null ? catalog.getBoardingHouse().getId() : null;
                 for (ServiceCatalogRecipe recipe : recipes) {
+                    // Verify recipe ingredient belongs to same boarding house
+                    Long recipeBhId = recipe.getInventoryItem().getBoardingHouse() != null
+                            ? recipe.getInventoryItem().getBoardingHouse().getId() : null;
+                    if (catalogBhId != null && recipeBhId != null && !catalogBhId.equals(recipeBhId)) {
+                        continue; // Skip - wrong property
+                    }
                     BigDecimal deductQty = recipe.getQuantityPerUnit().multiply(soldQty);
                     InventoryTransactionDto txDto = new InventoryTransactionDto();
                     txDto.setItemId(recipe.getInventoryItem().getId());
@@ -90,14 +97,22 @@ public class GuestServiceChargeService {
             } else if (catalog.getInventoryItem() != null) {
                 // Catalog link thẳng 1:1 với inventory item
                 inventoryItem = catalog.getInventoryItem();
-                InventoryTransactionDto txDto = new InventoryTransactionDto();
-                txDto.setItemId(inventoryItem.getId());
-                txDto.setType(com.boardinghouse.entity.InventoryTransactionType.SALE);
-                txDto.setQuantity(dto.getQuantity());
-                txDto.setUnitPrice(dto.getUnitPrice() != null ? dto.getUnitPrice() : inventoryItem.getSalePrice());
-                txDto.setReference("Catalog: " + catalog.getName() + " (contract " + dto.getContractId() + ")");
-                txDto.setNote("Auto stock deduction");
-                inventoryService.createTransaction(txDto);
+                // Verify inventory item belongs to same boarding house
+                Long catalogBhId = catalog.getBoardingHouse() != null ? catalog.getBoardingHouse().getId() : null;
+                Long invBhId = inventoryItem.getBoardingHouse() != null ? inventoryItem.getBoardingHouse().getId() : null;
+                if (catalogBhId != null && invBhId != null && !catalogBhId.equals(invBhId)) {
+                    // Mismatch! Don't deduct from wrong property's inventory
+                    inventoryItem = null;
+                } else {
+                    InventoryTransactionDto txDto = new InventoryTransactionDto();
+                    txDto.setItemId(inventoryItem.getId());
+                    txDto.setType(com.boardinghouse.entity.InventoryTransactionType.SALE);
+                    txDto.setQuantity(dto.getQuantity());
+                    txDto.setUnitPrice(dto.getUnitPrice() != null ? dto.getUnitPrice() : inventoryItem.getSalePrice());
+                    txDto.setReference("Catalog: " + catalog.getName() + " (contract " + dto.getContractId() + ")");
+                    txDto.setNote("Auto stock deduction");
+                    inventoryService.createTransaction(txDto);
+                }
             } else {
                 // No explicit link - try auto-match by name within same boarding house
                 Long bhId = catalog.getBoardingHouse() != null ? catalog.getBoardingHouse().getId() : null;

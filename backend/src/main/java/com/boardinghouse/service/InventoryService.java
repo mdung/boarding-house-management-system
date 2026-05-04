@@ -96,6 +96,48 @@ public class InventoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + id));
         item.setIsActive(false);
         itemRepository.save(item);
+        auditLogService.log("HIDE", "INVENTORY", "Hidden item: " + item.getName());
+    }
+
+    /** Get impact info: what will be affected if this item is permanently deleted */
+    public java.util.Map<String, Object> getDeleteImpact(Long id) {
+        InventoryItem item = itemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + id));
+
+        long txCount = transactionRepository.findByItemIdOrderByCreatedDateDesc(id).size();
+
+        java.util.Map<String, Object> impact = new java.util.LinkedHashMap<>();
+        impact.put("itemName", item.getName());
+        impact.put("stockQuantity", item.getQuantityOnHand());
+        impact.put("stockUnit", item.getUnit());
+        impact.put("stockValue", item.getQuantityOnHand().multiply(item.getPurchasePrice()));
+        impact.put("transactionCount", txCount);
+        return impact;
+    }
+
+    /** Permanently delete item and all related data */
+    @Transactional
+    public void permanentDelete(Long id) {
+        InventoryItem item = itemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + id));
+
+        String itemName = item.getName();
+
+        // 1. Delete all transactions for this item
+        List<InventoryTransaction> txs = transactionRepository.findByItemIdOrderByCreatedDateDesc(id);
+        transactionRepository.deleteAll(txs);
+
+        // 2. Unlink from Service Catalog items (set inventoryItem = null)
+        // This is handled by DB cascade or manual query
+
+        // 3. Unlink from Guest Service Charges (set inventoryItem = null)
+        // Charges keep their description/amount but lose inventory link
+
+        // 4. Delete the item itself
+        itemRepository.delete(item);
+
+        auditLogService.log("PERMANENT_DELETE", "INVENTORY",
+                "Permanently deleted item: " + itemName + " (" + txs.size() + " transactions removed)");
     }
 
     @Transactional
@@ -155,6 +197,41 @@ public class InventoryService {
     public List<InventoryTransactionDto> getTransactions(Long itemId) {
         return transactionRepository.findByItemIdOrderByCreatedDateDesc(itemId)
                 .stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    /** Reverse a transaction: create opposite transaction to undo it */
+    @Transactional
+    public InventoryTransactionDto reverseTransaction(Long transactionId) {
+        InventoryTransaction original = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found: " + transactionId));
+
+        // Create reverse: PURCHASE↔SALE, RETURN↔SALE, ADJUSTMENT negated
+        InventoryTransactionDto reverseDto = new InventoryTransactionDto();
+        reverseDto.setItemId(original.getItem().getId());
+        reverseDto.setUnitPrice(original.getUnitPrice());
+        reverseDto.setReference("Hoàn tác #" + transactionId);
+        reverseDto.setNote("Undo: " + (original.getNote() != null ? original.getNote() : original.getType().name()));
+
+        switch (original.getType()) {
+            case PURCHASE:
+                reverseDto.setType(InventoryTransactionType.ADJUSTMENT);
+                reverseDto.setQuantity(original.getQuantity().negate());
+                break;
+            case SALE:
+                reverseDto.setType(InventoryTransactionType.RETURN);
+                reverseDto.setQuantity(original.getQuantity());
+                break;
+            case RETURN:
+                reverseDto.setType(InventoryTransactionType.ADJUSTMENT);
+                reverseDto.setQuantity(original.getQuantity().negate());
+                break;
+            case ADJUSTMENT:
+                reverseDto.setType(InventoryTransactionType.ADJUSTMENT);
+                reverseDto.setQuantity(original.getQuantity().negate());
+                break;
+        }
+
+        return createTransaction(reverseDto);
     }
 
     private InventoryItemDto toDto(InventoryItem item) {

@@ -90,6 +90,11 @@ const Inventory = () => {
   const [restockQty, setRestockQty] = useState('')
   const [restockPrice, setRestockPrice] = useState('')
   const [restocking, setRestocking] = useState(false)
+  // Delete confirm modal
+  const [deleteConfirm, setDeleteConfirm] = useState(null) // item object or null
+  const [deleteImpact, setDeleteImpact] = useState(null)
+  const [deleteMode, setDeleteMode] = useState('hide') // 'hide' or 'permanent'
+  const [deleting, setDeleting] = useState(false)
 
   const [itemForm, setItemForm] = useState({
     sku: '', name: '', category: '', unit: 'lon',
@@ -253,9 +258,36 @@ const Inventory = () => {
 
   const handleDelete = async (item, e) => {
     if (e) e.stopPropagation()
-    if (!confirm(`Ẩn "${item.name}"?`)) return
-    await api.delete(`/inventory/items/${item.id}`); fetchItems()
-    if (selectedItem?.id === item.id) setSelectedItem(null)
+    setDeleteConfirm(item)
+    setDeleteMode('hide')
+    setDeleteImpact(null)
+    // Fetch impact info
+    try {
+      const r = await api.get(`/inventory/items/${item.id}/impact`)
+      setDeleteImpact(r.data)
+    } catch { /* ignore */ }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return
+    setDeleting(true)
+    try {
+      if (deleteMode === 'permanent') {
+        await api.delete(`/inventory/items/${deleteConfirm.id}?permanent=true`)
+        setTxSuccess(`Đã xóa hoàn toàn "${deleteConfirm.name}" và dữ liệu liên quan`)
+      } else {
+        await api.delete(`/inventory/items/${deleteConfirm.id}`)
+        setTxSuccess(`Đã ẩn "${deleteConfirm.name}"`)
+      }
+      setTimeout(() => setTxSuccess(null), 3000)
+      fetchItems()
+      if (selectedItem?.id === deleteConfirm.id) setSelectedItem(null)
+      setDeleteConfirm(null)
+    } catch (err) {
+      setTxSuccess(null)
+      alert(err.response?.data?.message || 'Lỗi')
+    }
+    finally { setDeleting(false) }
   }
 
   const toggleCat = (cat) => setCollapsedCats(p => ({ ...p, [cat]: !p[cat] }))
@@ -586,8 +618,9 @@ const Inventory = () => {
                 {transactions.map((tx, i) => {
                   const cfg = TYPE_CFG[tx.type] || TYPE_CFG.ADJUSTMENT
                   const TIcon = cfg.icon
+                  const isUndo = tx.reference?.startsWith('Hoàn tác')
                   return (
-                    <div key={tx.id} className={`flex items-center gap-3 p-3 rounded-2xl ${cfg.color} bg-opacity-40 slide-down`} style={{ animationDelay: `${i*30}ms` }}>
+                    <div key={tx.id} className={`flex items-center gap-3 p-3 rounded-2xl ${cfg.color} bg-opacity-40 slide-down group ${isUndo ? 'opacity-60' : ''}`} style={{ animationDelay: `${i*30}ms` }}>
                       <div className={`w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.color}`}>
                         <TIcon className="w-3.5 h-3.5" />
                       </div>
@@ -595,12 +628,31 @@ const Inventory = () => {
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-black">{cfg.label}</span>
                           <span className="text-[10px] text-slate-400">{tx.createdDate}</span>
+                          {isUndo && <span className="text-[8px] font-black text-slate-400 bg-slate-200 px-1 py-0.5 rounded">↩️ hoàn tác</span>}
                         </div>
                         {(tx.reference || tx.note) && <p className="text-[10px] text-slate-500 truncate">{tx.reference || tx.note}</p>}
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-black">{cfg.sign}{fmtQty(tx.quantity)} {selectedItem.unit}</p>
-                        <p className="text-[10px] text-slate-400">{fmt(tx.amount)}</p>
+                      <div className="text-right flex-shrink-0 flex items-center gap-2">
+                        <div>
+                          <p className="text-sm font-black">{cfg.sign}{fmtQty(tx.quantity)} {selectedItem.unit}</p>
+                          <p className="text-[10px] text-slate-400">{fmt(tx.amount)}</p>
+                        </div>
+                        {!isUndo && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await api.post(`/inventory/transactions/${tx.id}/reverse`)
+                                setTxSuccess(`Đã hoàn tác giao dịch ${cfg.label} ${fmtQty(tx.quantity)} ${selectedItem.unit}`)
+                                setTimeout(() => setTxSuccess(null), 3000)
+                                fetchItems()
+                                fetchTransactions(selectedItem.id)
+                              } catch (err) { alert(err.response?.data?.message || 'Lỗi hoàn tác') }
+                            }}
+                            title="Hoàn tác giao dịch này"
+                            className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/60 hover:bg-white text-slate-400 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100">
+                            <RotateCcw className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   )
@@ -983,6 +1035,87 @@ const Inventory = () => {
               <button onClick={() => setShowCatModal(false)}
                 className="w-full py-2.5 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-slate-800 transition-all mt-2">
                 Xong
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirm Modal ── */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => !deleting && setDeleteConfirm(null)}
+          style={{ animation: 'fadeIn 0.15s ease' }}>
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+            style={{ animation: 'modalPop 0.25s cubic-bezier(0.16,1,0.3,1)' }}>
+            <div className="p-6 text-center">
+              <div className="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-7 h-7 text-rose-500" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900">Xóa "{deleteConfirm.name}"?</h3>
+            </div>
+
+            {/* Item info */}
+            <div className="px-6">
+              <div className="bg-slate-50 rounded-xl p-3 space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400">Tồn kho</span>
+                  <span className="font-black text-slate-700">{fmtQty(deleteConfirm.quantityOnHand)} {deleteConfirm.unit}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400">Giá trị</span>
+                  <span className="font-black text-slate-700">{fmt(parseFloat(deleteConfirm.quantityOnHand||0) * parseFloat(deleteConfirm.purchasePrice||0))}</span>
+                </div>
+                {deleteImpact?.transactionCount > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">Lịch sử giao dịch</span>
+                    <span className="font-black text-slate-700">{deleteImpact.transactionCount} giao dịch</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mode selector */}
+            <div className="px-6 pt-4 space-y-2">
+              <button onClick={() => setDeleteMode('hide')}
+                className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${deleteMode === 'hide' ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-200' : 'border-slate-200 hover:border-amber-300'}`}>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${deleteMode === 'hide' ? 'border-amber-500 bg-amber-500' : 'border-slate-300'}`}>
+                  {deleteMode === 'hide' && <div className="w-2 h-2 bg-white rounded-full" />}
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-800">👁️ Ẩn khỏi danh sách</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Giữ nguyên dữ liệu, có thể khôi phục sau. An toàn.</p>
+                </div>
+              </button>
+
+              <button onClick={() => setDeleteMode('permanent')}
+                className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${deleteMode === 'permanent' ? 'border-rose-400 bg-rose-50 ring-2 ring-rose-200' : 'border-slate-200 hover:border-rose-300'}`}>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${deleteMode === 'permanent' ? 'border-rose-500 bg-rose-500' : 'border-slate-300'}`}>
+                  {deleteMode === 'permanent' && <div className="w-2 h-2 bg-white rounded-full" />}
+                </div>
+                <div>
+                  <p className="text-sm font-black text-rose-700">🗑️ Xóa hoàn toàn</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Xóa vĩnh viễn hàng hóa, {deleteImpact?.transactionCount || 0} giao dịch, và gỡ link khỏi Service Catalog.
+                    <strong className="text-rose-500"> Không thể hoàn tác.</strong>
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex gap-3 px-6 py-5">
+              <button onClick={() => setDeleteConfirm(null)} disabled={deleting}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-40">
+                Hủy
+              </button>
+              <button onClick={confirmDelete} disabled={deleting}
+                className={`flex-1 py-2.5 text-white rounded-xl text-sm font-bold shadow-lg transition-all hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-40 ${
+                  deleteMode === 'permanent'
+                    ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/20'
+                    : 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
+                }`}>
+                {deleting ? '⏳ Đang xử lý...' : deleteMode === 'permanent' ? '🗑️ Xóa hoàn toàn' : '👁️ Ẩn hàng'}
               </button>
             </div>
           </div>

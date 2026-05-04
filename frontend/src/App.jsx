@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
 import { PropertyProvider } from './context/PropertyContext'
+import { ThemeProvider } from './context/ThemeContext'
+import ThemePanel from './components/ThemePanel'
 import PrivateRoute from './components/PrivateRoute'
 import Login from './pages/Login'
 import AdminLayout from './layouts/AdminLayout'
@@ -34,10 +36,12 @@ import TenantPayments from './pages/tenant/Payments'
 
 function App() {
   return (
+    <ThemeProvider>
     <ToastProvider>
       <AuthProvider>
         <PropertyProvider>
         <Router>
+        <ThemePanel />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
@@ -77,6 +81,7 @@ function App() {
       </PropertyProvider>
       </AuthProvider>
     </ToastProvider>
+    </ThemeProvider>
   )
 }
 

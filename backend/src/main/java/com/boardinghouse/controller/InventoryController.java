@@ -61,9 +61,20 @@ public class InventoryController {
     }
 
     @DeleteMapping("/items/{id}")
-    public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
-        inventoryService.delete(id);
+    public ResponseEntity<Void> deleteItem(@PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean permanent) {
+        if (permanent) {
+            inventoryService.permanentDelete(id);
+        } else {
+            inventoryService.delete(id);
+        }
         return ResponseEntity.noContent().build();
+    }
+
+    /** Get impact info before deleting */
+    @GetMapping("/items/{id}/impact")
+    public ResponseEntity<java.util.Map<String, Object>> getDeleteImpact(@PathVariable Long id) {
+        return ResponseEntity.ok(inventoryService.getDeleteImpact(id));
     }
 
     @GetMapping("/transactions")
@@ -74,5 +85,11 @@ public class InventoryController {
     @PostMapping("/transactions")
     public ResponseEntity<InventoryTransactionDto> createTransaction(@RequestBody InventoryTransactionDto dto) {
         return ResponseEntity.ok(inventoryService.createTransaction(dto));
+    }
+
+    /** Reverse a transaction (undo) */
+    @PostMapping("/transactions/{id}/reverse")
+    public ResponseEntity<InventoryTransactionDto> reverseTransaction(@PathVariable Long id) {
+        return ResponseEntity.ok(inventoryService.reverseTransaction(id));
     }
 }

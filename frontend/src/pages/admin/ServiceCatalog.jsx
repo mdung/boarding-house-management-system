@@ -166,84 +166,116 @@ const ServiceCatalog = () => {
       </div>
 
       <div className="space-y-6">
-        {grouped.map(cat => (
-          <div key={cat.value} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-3 bg-slate-50 border-b border-slate-100">
-              <h2 className="font-black text-slate-700">{cat.label} <span className="text-slate-400 font-normal text-sm">({cat.items.length})</span></h2>
+        {grouped.map(cat => {
+          const catColor = cat.value === 'FOOD_DRINK' ? { bg: 'from-amber-500 to-orange-500', light: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' }
+            : { bg: 'from-blue-500 to-indigo-500', light: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' }
+          return (
+          <div key={cat.value} className="space-y-3" style={{ animation: 'fadeIn 0.3s ease' }}>
+            {/* Category header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${catColor.bg} flex items-center justify-center shadow-sm`}>
+                  <span className="text-sm">{cat.value === 'FOOD_DRINK' ? '🍺' : '🛵'}</span>
+                </div>
+                <div>
+                  <h2 className="font-black text-slate-800 text-sm">{cat.label}</h2>
+                  <p className="text-[10px] text-slate-400">{cat.items.length} dịch vụ</p>
+                </div>
+              </div>
             </div>
+
             {cat.items.length === 0 ? (
-              <div className="px-6 py-8 text-center text-slate-300">
-                <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">Chưa có service nào</p>
+              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
+                <BookOpen className="w-10 h-10 mx-auto mb-3 text-slate-200" />
+                <p className="text-sm font-bold text-slate-400">Chưa có service nào</p>
+                <button onClick={openAdd} className="mt-3 px-4 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-all">
+                  + Thêm service đầu tiên
+                </button>
               </div>
             ) : (
-              <div className="divide-y divide-slate-50">
-                {cat.items.map(item => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {cat.items.map((item, idx) => {
                   const hasRecipe = item.recipes?.length > 0
                   const isExpanded = expandedRecipes[item.id]
+                  const hasStock = item.stockQuantity != null
                   return (
-                    <div key={item.id} className={!item.isActive ? 'opacity-40' : ''}>
-                      <div className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50/60">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-bold text-slate-800">{item.name}</span>
-                            {item.unit && <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{item.unit}</span>}
-                            {hasRecipe && (
-                              <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                                <FlaskConical className="w-2.5 h-2.5" /> Recipe ({item.recipes.length})
-                              </span>
-                            )}
-                            {item.inventoryItemName && !hasRecipe && (
-                              <span className="text-[9px] font-black text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                                <Package className="w-2.5 h-2.5" /> {item.inventoryItemName}
-                              </span>
-                            )}
-                            {item.boardingHouseName && propertyId === 'ALL' && (
-                              <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">🏠 {item.boardingHouseName}</span>
-                            )}
+                    <div key={item.id}
+                      className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${!item.isActive ? 'opacity-40' : 'border-slate-100'}`}
+                      style={{ animation: `fadeIn 0.3s ease ${idx * 50}ms both` }}>
+                      {/* Card header */}
+                      <div className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-black text-slate-900 text-base leading-tight">{item.name}</p>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              {item.unit && <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{item.unit}</span>}
+                              {!item.isActive && <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">Ẩn</span>}
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-2">
+                            <p className="text-lg font-black text-slate-900">{fmt(item.defaultPrice)}</p>
+                            <p className="text-[10px] text-slate-400">/{item.unit || 'đơn vị'}</p>
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-black text-slate-800">{fmt(item.defaultPrice)}</p>
-                          <p className="text-[10px] text-slate-400">/{item.unit || 'đơn vị'}</p>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
+
+                        {/* Badges */}
+                        <div className="flex gap-1.5 flex-wrap mb-3">
                           {hasRecipe && (
                             <button onClick={() => setExpandedRecipes(p => ({ ...p, [item.id]: !p[item.id] }))}
-                              className="w-7 h-7 flex items-center justify-center rounded-xl hover:bg-emerald-100 text-emerald-500 transition-all">
-                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 hover:bg-emerald-100 transition-all">
+                              <FlaskConical className="w-2.5 h-2.5" /> Recipe ({item.recipes.length})
+                              {isExpanded ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
                             </button>
                           )}
-                          <button onClick={() => openEdit(item)} className="w-7 h-7 flex items-center justify-center rounded-xl hover:bg-blue-100 text-slate-400 hover:text-blue-600 transition-all">
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleDelete(item.id)} className="w-7 h-7 flex items-center justify-center rounded-xl hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-all">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {item.inventoryItemName && !hasRecipe && (
+                            <span className="text-[9px] font-black text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Package className="w-2.5 h-2.5" /> {item.inventoryItemName}
+                            </span>
+                          )}
+                          {hasStock && (
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${parseFloat(item.stockQuantity) <= 0 ? 'text-rose-600 bg-rose-50 border border-rose-200' : parseFloat(item.stockQuantity) <= 5 ? 'text-amber-600 bg-amber-50 border border-amber-200' : 'text-emerald-600 bg-emerald-50 border border-emerald-200'}`}>
+                              📦 {item.stockQuantity} {item.stockUnit || ''}
+                            </span>
+                          )}
+                          {!item.inventoryItemName && !hasRecipe && (
+                            <span className="text-[9px] text-slate-300 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">Chưa link kho</span>
+                          )}
                         </div>
-                      </div>
-                      {hasRecipe && isExpanded && (
-                        <div className="mx-5 mb-3 bg-emerald-50 border border-emerald-100 rounded-xl p-3">
-                          <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-2">📐 Định mức (cho 1 {item.unit || 'đơn vị'})</p>
-                          <div className="space-y-1.5">
+
+                        {/* Recipe expand */}
+                        {hasRecipe && isExpanded && (
+                          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-2.5 mb-3" style={{ animation: 'fadeIn 0.2s ease' }}>
+                            <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mb-1.5">Định mức / 1 {item.unit || 'đơn vị'}</p>
                             {item.recipes.map((r, i) => (
-                              <div key={i} className="flex items-center gap-2 text-xs">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                                <span className="font-bold text-slate-700">{r.inventoryItemName}</span>
-                                <span className="text-slate-400">×</span>
+                              <div key={i} className="flex items-center gap-1.5 text-[10px]">
+                                <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                                <span className="text-slate-600">{r.inventoryItemName}</span>
+                                <span className="text-slate-300">×</span>
                                 <span className="font-black text-emerald-700">{r.quantityPerUnit} {r.inventoryItemUnit}</span>
                               </div>
                             ))}
                           </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-1.5 pt-2 border-t border-slate-100">
+                          <button onClick={() => openEdit(item)}
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all">
+                            <Edit className="w-3 h-3" /> Sửa
+                          </button>
+                          <button onClick={() => handleDelete(item.id)}
+                            className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold text-rose-500 bg-rose-50 hover:bg-rose-100 transition-all">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
-                      )}
+                      </div>
                     </div>
                   )
                 })}
               </div>
             )}
           </div>
-        ))}
+        )})}
       </div>
 
       {showModal && (

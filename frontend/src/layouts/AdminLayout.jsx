@@ -1,12 +1,24 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useProperty } from '../context/PropertyContext'
+import { useTheme } from '../context/ThemeContext'
 import { useState } from 'react'
 import {
   Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard,
-  LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History, XCircle, HardDriveDownload, ChevronDown
+  LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History, XCircle, HardDriveDownload, ChevronDown, Palette
 } from 'lucide-react'
 import MobileAccess from '../components/MobileAccess'
+
+const ThemeButton = () => {
+  const { setShowPanel } = useTheme()
+  return (
+    <button onClick={() => setShowPanel(true)}
+      className="p-1.5 rounded-xl hover:bg-slate-100 transition-all hover:rotate-12 duration-200"
+      title="Tùy chỉnh giao diện">
+      <Palette className="w-4 h-4 text-slate-400 hover:text-blue-500" />
+    </button>
+  )
+}
 
 const menuGroups = [
   {
@@ -258,6 +270,7 @@ const AdminLayout = () => {
                  <span className="truncate">{properties[0].name}</span>
                </div>
              )}
+             <ThemeButton />
              <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-medium uppercase text-[10px] tracking-widest text-slate-400">

@@ -106,7 +106,11 @@ public class ServiceCatalogService {
         for (ServiceCatalog sc : catalogs) {
             if (sc.getInventoryItem() != null) continue; // already linked
             if (!sc.getRecipes().isEmpty()) continue; // has recipe, skip
+            Long scBhId = sc.getBoardingHouse() != null ? sc.getBoardingHouse().getId() : null;
             for (InventoryItem inv : inventoryItems) {
+                // Only match within same boarding house
+                Long invBhId = inv.getBoardingHouse() != null ? inv.getBoardingHouse().getId() : null;
+                if (scBhId != null && invBhId != null && !scBhId.equals(invBhId)) continue;
                 if (inv.getName().equalsIgnoreCase(sc.getName())) {
                     sc.setInventoryItem(inv);
                     repository.save(sc);
