@@ -1,9 +1,11 @@
 package com.boardinghouse.service;
 
 import com.boardinghouse.dto.ServiceCatalogDto;
+import com.boardinghouse.dto.ServiceCatalogRecipeDto;
 import com.boardinghouse.entity.BoardingHouse;
 import com.boardinghouse.entity.InventoryItem;
 import com.boardinghouse.entity.ServiceCatalog;
+import com.boardinghouse.entity.ServiceCatalogRecipe;
 import com.boardinghouse.exception.ResourceNotFoundException;
 import com.boardinghouse.repository.BoardingHouseRepository;
 import com.boardinghouse.repository.InventoryItemRepository;
@@ -11,6 +13,7 @@ import com.boardinghouse.repository.ServiceCatalogRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -107,6 +110,21 @@ public class ServiceCatalogService {
         } else {
             s.setBoardingHouse(null);
         }
+
+        // Sync recipes (orphanRemoval handles deletions)
+        s.getRecipes().clear();
+        if (dto.getRecipes() != null) {
+            for (ServiceCatalogRecipeDto r : dto.getRecipes()) {
+                if (r.getInventoryItemId() == null || r.getQuantityPerUnit() == null) continue;
+                InventoryItem item = inventoryItemRepository.findById(r.getInventoryItemId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + r.getInventoryItemId()));
+                ServiceCatalogRecipe recipe = new ServiceCatalogRecipe();
+                recipe.setCatalog(s);
+                recipe.setInventoryItem(item);
+                recipe.setQuantityPerUnit(r.getQuantityPerUnit());
+                s.getRecipes().add(recipe);
+            }
+        }
         return s;
     }
 
@@ -128,6 +146,18 @@ public class ServiceCatalogService {
             dto.setBoardingHouseId(s.getBoardingHouse().getId());
             dto.setBoardingHouseName(s.getBoardingHouse().getName());
         }
+        // Map recipes
+        List<ServiceCatalogRecipeDto> recipeDtos = new ArrayList<>();
+        for (ServiceCatalogRecipe r : s.getRecipes()) {
+            ServiceCatalogRecipeDto rd = new ServiceCatalogRecipeDto();
+            rd.setId(r.getId());
+            rd.setInventoryItemId(r.getInventoryItem().getId());
+            rd.setInventoryItemName(r.getInventoryItem().getName());
+            rd.setInventoryItemUnit(r.getInventoryItem().getUnit());
+            rd.setQuantityPerUnit(r.getQuantityPerUnit());
+            recipeDtos.add(rd);
+        }
+        dto.setRecipes(recipeDtos);
         return dto;
     }
 }

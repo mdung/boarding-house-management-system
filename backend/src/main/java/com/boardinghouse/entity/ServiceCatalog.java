@@ -3,6 +3,8 @@ package com.boardinghouse.entity;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "service_catalog")
@@ -36,6 +38,9 @@ public class ServiceCatalog {
 
     private Integer sortOrder = 0;
 
+    @OneToMany(mappedBy = "catalog", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<ServiceCatalogRecipe> recipes = new ArrayList<>();
+
     public ServiceCatalog() {}
 
     public Long getId() { return id; }
@@ -67,4 +72,7 @@ public class ServiceCatalog {
 
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+
+    public List<ServiceCatalogRecipe> getRecipes() { return recipes; }
+    public void setRecipes(List<ServiceCatalogRecipe> recipes) { this.recipes = recipes; }
 }

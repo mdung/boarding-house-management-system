@@ -1,6 +1,7 @@
 package com.boardinghouse.dto;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public class ServiceCatalogDto {
     private Long id;
@@ -15,6 +16,8 @@ public class ServiceCatalogDto {
     private String inventoryItemName;
     private Long boardingHouseId;
     private String boardingHouseName;
+    /** Danh sách nguyên liệu định mức (recipe). Rỗng = bán 1:1 qua inventoryItemId */
+    private List<ServiceCatalogRecipeDto> recipes;
 
     public ServiceCatalogDto() {}
 
@@ -53,4 +56,7 @@ public class ServiceCatalogDto {
 
     public String getBoardingHouseName() { return boardingHouseName; }
     public void setBoardingHouseName(String boardingHouseName) { this.boardingHouseName = boardingHouseName; }
+
+    public List<ServiceCatalogRecipeDto> getRecipes() { return recipes; }
+    public void setRecipes(List<ServiceCatalogRecipeDto> recipes) { this.recipes = recipes; }
 }

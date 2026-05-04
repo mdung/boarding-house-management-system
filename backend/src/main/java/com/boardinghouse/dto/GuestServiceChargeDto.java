@@ -11,6 +11,7 @@ public class GuestServiceChargeDto {
     private String roomCode;
     private Long inventoryItemId;
     private String inventoryItemName;
+    private Long catalogId; // optional: catalog used to generate this charge (for recipe deduction)
     private LocalDate chargeDate;
     private String description;
     private BigDecimal quantity;
@@ -41,6 +42,9 @@ public class GuestServiceChargeDto {
 
     public String getInventoryItemName() { return inventoryItemName; }
     public void setInventoryItemName(String inventoryItemName) { this.inventoryItemName = inventoryItemName; }
+
+    public Long getCatalogId() { return catalogId; }
+    public void setCatalogId(Long catalogId) { this.catalogId = catalogId; }
 
     public LocalDate getChargeDate() { return chargeDate; }
     public void setChargeDate(LocalDate chargeDate) { this.chargeDate = chargeDate; }

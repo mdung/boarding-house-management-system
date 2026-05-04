@@ -82,6 +82,9 @@ const Inventory = () => {
   const [newCatInput, setNewCatInput] = useState('')
   const [animIn, setAnimIn] = useState(false)
   const [txSuccess, setTxSuccess] = useState(null)
+  const [catalogItems, setCatalogItems] = useState([]) // service catalog items for PACKAGED dropdown
+  // Recipe lines for INGREDIENT: [{ catalogItemId, catalogItemName, qtyPerUnit }]
+  const [itemRecipes, setItemRecipes] = useState([])
 
   const [itemForm, setItemForm] = useState({
     sku: '', name: '', category: '', unit: 'lon',
@@ -99,6 +102,14 @@ const Inventory = () => {
   useEffect(() => { fetchItems() }, [propertyId])
   useEffect(() => { if (selectedItem) fetchTransactions(selectedItem.id); else setTransactions([]) }, [selectedItem])
   useEffect(() => { if (showItemModal || showTxModal) requestAnimationFrame(() => setAnimIn(true)); else setAnimIn(false) }, [showItemModal, showTxModal])
+
+  // Fetch service catalog items when modal opens or boardingHouseId changes (for PACKAGED dropdown)
+  useEffect(() => {
+    if (!showItemModal) return
+    const bhId = itemForm.boardingHouseId
+    if (!bhId) { setCatalogItems([]); return }
+    api.get(`/service-catalog?boardingHouseId=${bhId}`).then(r => setCatalogItems(r.data || [])).catch(() => {})
+  }, [showItemModal, itemForm.boardingHouseId])
 
   const saveCategories = (cats) => { setCategories(cats); localStorage.setItem('inv_categories', JSON.stringify(cats)) }
 
@@ -156,6 +167,7 @@ const Inventory = () => {
 
   const openAdd = () => {
     setEditingItem(null)
+    setItemRecipes([])
     setItemForm({
       sku: '', name: '', category: allCats[0] || '', unit: 'lon',
       purchasePrice: '', salePrice: '', quantityOnHand: '0', reorderLevel: '5',
@@ -168,6 +180,12 @@ const Inventory = () => {
 
   const openEdit = (item) => {
     setEditingItem(item)
+    // Load existing recipes if any (from item.recipes field if backend returns it)
+    setItemRecipes(item.recipes?.map(r => ({
+      catalogItemId: r.catalogItemId || '',
+      catalogItemName: r.catalogItemName || '',
+      qtyPerUnit: r.qtyPerUnit?.toString() || '1',
+    })) || [])
     setItemForm({
       sku: item.sku||'', name: item.name||'', category: item.category||'',
       unit: item.unit||'', purchasePrice: item.purchasePrice||'', salePrice: item.salePrice||'',
@@ -193,10 +211,17 @@ const Inventory = () => {
         ...itemForm,
         sku: itemForm.sku || generateSKU(itemForm.name, itemForm.category),
         purchasePrice: parseFloat(itemForm.purchasePrice||0),
-        salePrice: parseFloat(itemForm.salePrice||0),
+        salePrice: itemForm.itemGroup === 'PACKAGED' ? 0 : parseFloat(itemForm.salePrice||0),
         quantityOnHand: parseFloat(itemForm.quantityOnHand||0),
         reorderLevel: parseFloat(itemForm.reorderLevel||0),
         boardingHouseId: itemForm.boardingHouseId ? parseInt(itemForm.boardingHouseId) : null,
+        // Include recipes for INGREDIENT type
+        recipes: itemForm.itemGroup === 'INGREDIENT'
+          ? itemRecipes.filter(r => r.catalogItemId && parseFloat(r.qtyPerUnit) > 0).map(r => ({
+              catalogItemId: parseInt(r.catalogItemId),
+              qtyPerUnit: parseFloat(r.qtyPerUnit),
+            }))
+          : [],
       }
       if (editingItem) await api.put(`/inventory/items/${editingItem.id}`, payload)
       else await api.post('/inventory/items', payload)
@@ -556,8 +581,45 @@ const Inventory = () => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Tên hàng *</label>
-                  <input type="text" required value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})}
-                    placeholder="VD: Bia Saigon, Hạt cà phê..." className={inputCls} />
+                  {itemForm.itemGroup === 'PACKAGED' ? (
+                    // PACKAGED: chọn từ Service Catalog
+                    <div>
+                      <select
+                        required
+                        value={itemForm.name}
+                        onChange={e => {
+                          const selected = catalogItems.find(c => c.name === e.target.value)
+                          setItemForm({
+                            ...itemForm,
+                            name: e.target.value,
+                            unit: selected?.unit || itemForm.unit,
+                            // auto-fill SKU hint
+                            sku: itemForm.sku || '',
+                          })
+                        }}
+                        className={inputCls}
+                      >
+                        <option value="">— Chọn từ Service Catalog —</option>
+                        {catalogItems.map(c => (
+                          <option key={c.id} value={c.name}>{c.name} ({fmt(c.defaultPrice)})</option>
+                        ))}
+                      </select>
+                      {catalogItems.length === 0 && (
+                        <p className="text-[10px] text-amber-500 mt-1 ml-1">
+                          ⚠ Chưa có service catalog cho nhà trọ này
+                        </p>
+                      )}
+                      <p className="text-[10px] text-slate-400 mt-1 ml-1">
+                        Hoặc nhập tay:
+                        <input type="text" value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})}
+                          placeholder="Tên tùy chỉnh..." className="ml-1 border-b border-slate-300 text-[10px] outline-none px-1 bg-transparent" />
+                      </p>
+                    </div>
+                  ) : (
+                    // INGREDIENT / OTHER: nhập tay
+                    <input type="text" required value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})}
+                      placeholder="VD: Hạt cà phê, Hành vòng..." className={inputCls} />
+                  )}
                 </div>
               </div>
 
@@ -606,17 +668,117 @@ const Inventory = () => {
                   <input type="number" min="0" step="1" required value={itemForm.purchasePrice}
                     onChange={e => setItemForm({...itemForm, purchasePrice: e.target.value})} className={inputCls} placeholder="0" />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Giá bán</label>
-                  <input type="number" min="0" step="1" required value={itemForm.salePrice}
-                    onChange={e => setItemForm({...itemForm, salePrice: e.target.value})} className={inputCls} placeholder="0" />
-                  {itemForm.purchasePrice && itemForm.salePrice && parseFloat(itemForm.salePrice) > parseFloat(itemForm.purchasePrice) && (
-                    <p className="text-[10px] text-emerald-600 font-bold mt-1 ml-1">
-                      Lãi: {fmt(parseFloat(itemForm.salePrice) - parseFloat(itemForm.purchasePrice))} / {itemForm.unit || 'đơn vị'}
+                {itemForm.itemGroup !== 'PACKAGED' && (
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Giá bán</label>
+                    <input type="number" min="0" step="1" value={itemForm.salePrice}
+                      onChange={e => setItemForm({...itemForm, salePrice: e.target.value})} className={inputCls} placeholder="0" />
+                    {itemForm.purchasePrice && itemForm.salePrice && parseFloat(itemForm.salePrice) > parseFloat(itemForm.purchasePrice) && (
+                      <p className="text-[10px] text-emerald-600 font-bold mt-1 ml-1">
+                        Lãi: {fmt(parseFloat(itemForm.salePrice) - parseFloat(itemForm.purchasePrice))} / {itemForm.unit || 'đơn vị'}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {itemForm.itemGroup === 'PACKAGED' && (
+                  <div className="flex items-end pb-2.5">
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      💡 Giá bán đã khai báo trong <strong>Service Catalog</strong>, không cần nhập lại
                     </p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Recipe section: chỉ hiện khi INGREDIENT ── */}
+              {itemForm.itemGroup === 'INGREDIENT' && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-black text-emerald-800">📐 Định mức bán ra</p>
+                      <p className="text-[10px] text-emerald-600 mt-0.5">
+                        1 {itemForm.unit || 'đơn vị'} kho này = bao nhiêu đơn vị bán ra?
+                      </p>
+                    </div>
+                    <button type="button"
+                      onClick={() => setItemRecipes(p => [...p, { catalogItemId: '', catalogItemName: '', qtyPerUnit: '1' }])}
+                      className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black hover:bg-emerald-700 transition-all">
+                      <Plus className="w-3 h-3" /> Thêm
+                    </button>
+                  </div>
+
+                  {itemRecipes.length === 0 && (
+                    <div className="text-center py-3 text-emerald-400 text-[10px]">
+                      <p>Chưa có định mức. Nhấn <strong>Thêm</strong> để khai báo.</p>
+                      <p className="mt-0.5 text-emerald-300">VD: 1kg Hạt cà phê = 30 ly Coffee</p>
+                    </div>
+                  )}
+
+                  {itemRecipes.map((recipe, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-white rounded-xl p-2.5 border border-emerald-100">
+                      {/* SC item selector */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Món bán ra (SC)</p>
+                        <select
+                          value={recipe.catalogItemId}
+                          onChange={e => {
+                            const sc = catalogItems.find(c => c.id === parseInt(e.target.value))
+                            setItemRecipes(p => p.map((r, i) => i === idx ? {
+                              ...r,
+                              catalogItemId: e.target.value,
+                              catalogItemName: sc?.name || '',
+                            } : r))
+                          }}
+                          className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-400 bg-white"
+                        >
+                          <option value="">— Chọn SC item —</option>
+                          {catalogItems.map(c => (
+                            <option key={c.id} value={c.id}>{c.name} ({fmt(c.defaultPrice)})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Qty per unit */}
+                      <div className="w-20 flex-shrink-0">
+                        <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Số lượng</p>
+                        <input
+                          type="number" min="0.01" step="0.01"
+                          value={recipe.qtyPerUnit}
+                          onChange={e => setItemRecipes(p => p.map((r, i) => i === idx ? { ...r, qtyPerUnit: e.target.value } : r))}
+                          className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-center font-black focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                        />
+                      </div>
+
+                      {/* Unit label */}
+                      <div className="w-12 flex-shrink-0 text-center">
+                        <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Đơn vị</p>
+                        <p className="text-[10px] font-bold text-slate-600 truncate">
+                          {catalogItems.find(c => c.id === parseInt(recipe.catalogItemId))?.unit || '—'}
+                        </p>
+                      </div>
+
+                      <button type="button" onClick={() => setItemRecipes(p => p.filter((_, i) => i !== idx))}
+                        className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-rose-100 text-slate-300 hover:text-rose-500 transition-all flex-shrink-0 mt-3">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Preview */}
+                  {itemRecipes.length > 0 && itemRecipes.some(r => r.catalogItemId && parseFloat(r.qtyPerUnit) > 0) && (
+                    <div className="bg-emerald-100 rounded-xl px-3 py-2">
+                      <p className="text-[10px] font-black text-emerald-700 mb-1">📊 Tóm tắt định mức:</p>
+                      {itemRecipes.filter(r => r.catalogItemId).map((r, i) => {
+                        const sc = catalogItems.find(c => c.id === parseInt(r.catalogItemId))
+                        return (
+                          <p key={i} className="text-[10px] text-emerald-600">
+                            1 {itemForm.unit || 'đơn vị'} <strong>{itemForm.name || '?'}</strong> → bán được <strong>{r.qtyPerUnit} {sc?.unit || ''} {sc?.name || '?'}</strong>
+                          </p>
+                        )
+                      })}
+                    </div>
                   )}
                 </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

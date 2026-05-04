@@ -7,12 +7,15 @@ import com.boardinghouse.entity.Contract;
 import com.boardinghouse.entity.GuestServiceCharge;
 import com.boardinghouse.entity.InventoryItem;
 import com.boardinghouse.entity.Payment;
+import com.boardinghouse.entity.ServiceCatalog;
+import com.boardinghouse.entity.ServiceCatalogRecipe;
 import com.boardinghouse.exception.ResourceNotFoundException;
 import com.boardinghouse.repository.ContractRepository;
 import com.boardinghouse.repository.GuestServiceChargeRepository;
 import com.boardinghouse.repository.InventoryItemRepository;
 import com.boardinghouse.repository.InvoiceRepository;
 import com.boardinghouse.repository.PaymentRepository;
+import com.boardinghouse.repository.ServiceCatalogRepository;
 import com.boardinghouse.service.InventoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,19 +35,22 @@ public class GuestServiceChargeService {
     private final PaymentRepository paymentRepository;
     private final InventoryService inventoryService;
     private final InventoryItemRepository inventoryItemRepository;
+    private final ServiceCatalogRepository serviceCatalogRepository;
 
     public GuestServiceChargeService(GuestServiceChargeRepository repository,
                                      ContractRepository contractRepository,
                                      InvoiceRepository invoiceRepository,
                                      PaymentRepository paymentRepository,
                                      InventoryService inventoryService,
-                                     InventoryItemRepository inventoryItemRepository) {
+                                     InventoryItemRepository inventoryItemRepository,
+                                     ServiceCatalogRepository serviceCatalogRepository) {
         this.repository = repository;
         this.contractRepository = contractRepository;
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.inventoryService = inventoryService;
         this.inventoryItemRepository = inventoryItemRepository;
+        this.serviceCatalogRepository = serviceCatalogRepository;
     }
 
     public List<GuestServiceChargeDto> getByContract(Long contractId) {
@@ -58,7 +64,42 @@ public class GuestServiceChargeService {
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
         InventoryItem inventoryItem = null;
-        if (dto.getInventoryItemId() != null) {
+
+        // Case 1: Catalog với recipe (Onion Ring, Coffee, Combo...)
+        if (dto.getCatalogId() != null) {
+            ServiceCatalog catalog = serviceCatalogRepository.findById(dto.getCatalogId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Catalog not found: " + dto.getCatalogId()));
+
+            List<ServiceCatalogRecipe> recipes = catalog.getRecipes();
+            if (!recipes.isEmpty()) {
+                // Trừ kho theo định mức × số lượng bán
+                BigDecimal soldQty = dto.getQuantity();
+                for (ServiceCatalogRecipe recipe : recipes) {
+                    BigDecimal deductQty = recipe.getQuantityPerUnit().multiply(soldQty);
+                    InventoryTransactionDto txDto = new InventoryTransactionDto();
+                    txDto.setItemId(recipe.getInventoryItem().getId());
+                    txDto.setType(com.boardinghouse.entity.InventoryTransactionType.SALE);
+                    txDto.setQuantity(deductQty);
+                    txDto.setUnitPrice(recipe.getInventoryItem().getSalePrice());
+                    txDto.setReference("Recipe: " + catalog.getName() + " x" + soldQty + " (contract " + dto.getContractId() + ")");
+                    txDto.setNote("Auto deduct from recipe");
+                    inventoryService.createTransaction(txDto);
+                }
+            } else if (catalog.getInventoryItem() != null) {
+                // Catalog link thẳng 1:1 với inventory item
+                inventoryItem = catalog.getInventoryItem();
+                InventoryTransactionDto txDto = new InventoryTransactionDto();
+                txDto.setItemId(inventoryItem.getId());
+                txDto.setType(com.boardinghouse.entity.InventoryTransactionType.SALE);
+                txDto.setQuantity(dto.getQuantity());
+                txDto.setUnitPrice(dto.getUnitPrice() != null ? dto.getUnitPrice() : inventoryItem.getSalePrice());
+                txDto.setReference("Catalog: " + catalog.getName() + " (contract " + dto.getContractId() + ")");
+                txDto.setNote("Auto stock deduction");
+                inventoryService.createTransaction(txDto);
+            }
+        }
+        // Case 2: Direct inventory item (legacy / manual)
+        else if (dto.getInventoryItemId() != null) {
             inventoryItem = inventoryItemRepository.findById(dto.getInventoryItemId())
                     .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + dto.getInventoryItemId()));
 
