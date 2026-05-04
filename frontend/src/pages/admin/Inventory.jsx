@@ -535,19 +535,29 @@ const Inventory = () => {
 
       {/* ── Item Modal ── */}
       {showItemModal && (
-        <div className="fixed inset-0 z-50 modal-fix p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowItemModal(false)}>
-          <div className={`bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden transition-all duration-300 ${animIn ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
-            onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-5 flex items-center justify-between">
-              <div>
-                <h2 className="font-black text-white text-lg">{editingItem ? 'Sửa hàng hóa' : 'Thêm hàng mới'}</h2>
-                <p className="text-white/70 text-xs mt-0.5">Quản lý tồn kho, giá và mức cảnh báo</p>
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowItemModal(false)}
+          style={{ animation: 'fadeIn 0.2s ease' }}>
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+            style={{ animation: 'modalPop 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+
+            <style>{`
+              @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+              @keyframes modalPop{from{opacity:0;transform:scale(0.92) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+            `}</style>
+
+            <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 px-6 py-5 flex items-center justify-between flex-shrink-0 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+              <div className="relative">
+                <h2 className="font-black text-white text-lg">{editingItem ? '✏️ Sửa hàng hóa' : '✨ Thêm hàng mới'}</h2>
+                <p className="text-white/60 text-xs mt-0.5">Quản lý tồn kho, giá và mức cảnh báo</p>
               </div>
-              <button onClick={() => setShowItemModal(false)} className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors">
+              <button onClick={() => setShowItemModal(false)} className="relative w-8 h-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-all hover:rotate-90 duration-200">
                 <X className="w-4 h-4 text-white" />
               </button>
             </div>
-            <form onSubmit={handleItemSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            <form onSubmit={handleItemSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
 
               {/* Item Group selector */}
               <div>
@@ -555,18 +565,16 @@ const Inventory = () => {
                 <div className="grid grid-cols-3 gap-2">
                   {ITEM_GROUPS.map(g => (
                     <button key={g.key} type="button" onClick={() => setItemForm({...itemForm, itemGroup: g.key})}
-                      className={`flex flex-col items-center gap-1 py-3 rounded-2xl border text-center transition-all ${itemForm.itemGroup===g.key ? `bg-gradient-to-br ${g.color} text-white border-transparent shadow-md` : `${g.bg} ${g.border} ${g.text} hover:shadow-sm`}`}>
+                      className={`flex flex-col items-center gap-1 py-3 rounded-2xl border text-center transition-all duration-200 hover:-translate-y-0.5 ${itemForm.itemGroup===g.key ? `bg-gradient-to-br ${g.color} text-white border-transparent shadow-lg` : `${g.bg} ${g.border} ${g.text} hover:shadow-md`}`}>
                       <span className="text-xl">{g.emoji}</span>
                       <span className="text-[10px] font-black">{g.label}</span>
                       <span className={`text-[8px] font-medium ${itemForm.itemGroup===g.key?'text-white/80':'text-slate-400'}`}>{g.desc}</span>
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1.5 ml-1">
-                  Ví dụ: {ITEM_GROUPS.find(g=>g.key===itemForm.itemGroup)?.examples}
-                </p>
               </div>
 
+              {/* SKU + Name */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">SKU</label>
@@ -574,53 +582,49 @@ const Inventory = () => {
                     <input type="text" value={itemForm.sku} onChange={e => setItemForm({...itemForm, sku: e.target.value})}
                       placeholder="Tự tạo" className={inputCls} />
                     <button type="button" onClick={() => setItemForm({...itemForm, sku: generateSKU(itemForm.name, itemForm.category)})}
-                      className="w-10 flex-shrink-0 bg-slate-100 hover:bg-slate-200 rounded-2xl flex items-center justify-center transition-colors">
+                      className="w-10 flex-shrink-0 bg-slate-100 hover:bg-slate-200 rounded-2xl flex items-center justify-center transition-all hover:scale-105">
                       <Wand2 className="w-4 h-4 text-slate-500" />
                     </button>
                   </div>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Tên hàng *</label>
-                  {itemForm.itemGroup === 'PACKAGED' ? (
-                    // PACKAGED: chọn từ Service Catalog
-                    <div>
-                      <select
-                        required
-                        value={itemForm.name}
-                        onChange={e => {
-                          const selected = catalogItems.find(c => c.name === e.target.value)
-                          setItemForm({
-                            ...itemForm,
-                            name: e.target.value,
-                            unit: selected?.unit || itemForm.unit,
-                            // auto-fill SKU hint
-                            sku: itemForm.sku || '',
-                          })
-                        }}
-                        className={inputCls}
-                      >
-                        <option value="">— Chọn từ Service Catalog —</option>
-                        {catalogItems.map(c => (
-                          <option key={c.id} value={c.name}>{c.name} ({fmt(c.defaultPrice)})</option>
-                        ))}
-                      </select>
-                      {catalogItems.length === 0 && (
-                        <p className="text-[10px] text-amber-500 mt-1 ml-1">
-                          ⚠ Chưa có service catalog cho nhà trọ này
-                        </p>
-                      )}
-                      <p className="text-[10px] text-slate-400 mt-1 ml-1">
-                        Hoặc nhập tay:
-                        <input type="text" value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})}
-                          placeholder="Tên tùy chỉnh..." className="ml-1 border-b border-slate-300 text-[10px] outline-none px-1 bg-transparent" />
-                      </p>
-                    </div>
+                  {itemForm.itemGroup === 'PACKAGED' && catalogItems.length > 0 ? (
+                    <select required value={itemForm.name}
+                      onChange={e => {
+                        const selected = catalogItems.find(c => c.name === e.target.value)
+                        setItemForm({ ...itemForm, name: e.target.value, unit: selected?.unit || itemForm.unit })
+                      }}
+                      className={inputCls}>
+                      <option value="">— Chọn từ Service Catalog —</option>
+                      {catalogItems.map(c => (
+                        <option key={c.id} value={c.name}>{c.name} ({fmt(c.defaultPrice)})</option>
+                      ))}
+                    </select>
                   ) : (
-                    // INGREDIENT / OTHER: nhập tay
                     <input type="text" required value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})}
-                      placeholder="VD: Hạt cà phê, Hành vòng..." className={inputCls} />
+                      placeholder={itemForm.itemGroup === 'INGREDIENT' ? 'VD: Hạt cà phê, Hành vòng...' : 'VD: Khăn tắm, Bóng đèn...'}
+                      className={inputCls} />
                   )}
                 </div>
+              </div>
+
+              {/* Name suggestion chips */}
+              <div className="flex gap-1.5 flex-wrap -mt-2">
+                {(itemForm.itemGroup === 'PACKAGED'
+                  ? ['🍺 Beer', '🥤 Coke', '💧 Water', '☕ Coffee', '🚬 Cigarette', '🧃 Juice', '🍫 Snack']
+                  : itemForm.itemGroup === 'INGREDIENT'
+                  ? ['☕ Hạt cà phê', '🥔 Khoai tây', '🧅 Hành vòng', '🦐 Tôm', '🥩 Thịt bò', '🥛 Sữa tươi', '🧈 Bơ']
+                  : ['🧹 Chổi', '💡 Bóng đèn', '🧴 Nước lau sàn', '🧻 Giấy vệ sinh', '🛏️ Ga trải giường']
+                ).map(s => (
+                  <button key={s} type="button"
+                    onClick={() => setItemForm({...itemForm, name: s})}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all duration-150 ${itemForm.name === s
+                      ? 'bg-orange-500 text-white shadow-sm scale-105'
+                      : 'bg-slate-100 text-slate-500 hover:bg-orange-50 hover:text-orange-600 hover:scale-105'}`}>
+                    {s}
+                  </button>
+                ))}
               </div>
 
               {/* Boarding House */}
@@ -634,18 +638,18 @@ const Inventory = () => {
                 </select>
               </div>
 
+              {/* Unit + Category */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Đơn vị tính</label>
-                  <div className="flex gap-1.5">
-                    <input type="text" value={itemForm.unit} onChange={e => setItemForm({...itemForm, unit: e.target.value})}
-                      placeholder="lon, chai, kg..." className={inputCls} list="unit-suggestions" />
-                    <datalist id="unit-suggestions">
-                      {QUICK_UNITS.map(u => <option key={u} value={u} />)}
-                    </datalist>
-                  </div>
+                  <input type="text" value={itemForm.unit} onChange={e => setItemForm({...itemForm, unit: e.target.value})}
+                    placeholder={itemForm.itemGroup === 'INGREDIENT' ? 'kg, g, lít, ml...' : 'lon, chai, cái...'}
+                    className={inputCls} />
                   <div className="flex gap-1 mt-1.5 flex-wrap">
-                    {QUICK_UNITS.slice(0,6).map(u => (
+                    {(itemForm.itemGroup === 'INGREDIENT'
+                      ? ['kg', 'g', 'lít', 'ml', 'túi', 'hộp']
+                      : ['lon', 'chai', 'bao', 'cái', 'hộp', 'cuộn']
+                    ).map(u => (
                       <button key={u} type="button" onClick={() => setItemForm({...itemForm, unit: u})}
                         className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${itemForm.unit===u?'bg-orange-500 text-white':'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                         {u}
@@ -662,71 +666,74 @@ const Inventory = () => {
                 </div>
               </div>
 
-              {/* Nhập kho: Số lượng × Đơn giá = Thành tiền */}
-              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-3">
-                <p className="text-xs font-black text-blue-800">📥 Thông tin nhập kho</p>
+              {/* Nhập kho section */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 space-y-3">
+                <p className="text-xs font-black text-blue-800 flex items-center gap-1.5">📥 Thông tin nhập kho</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Số lượng nhập</label>
                     <input type="number" min="0" step="0.1" required value={itemForm.quantityOnHand}
-                      onChange={e => setItemForm({...itemForm, quantityOnHand: e.target.value})} className={inputCls} />
+                      onChange={e => setItemForm({...itemForm, quantityOnHand: e.target.value})} className={inputCls + ' text-lg font-black'} />
                     <p className="text-[10px] text-slate-400 mt-0.5 ml-1">{itemForm.unit || 'đơn vị'}</p>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Đơn giá nhập</label>
                     <input type="number" min="0" step="1" required value={itemForm.purchasePrice}
-                      onChange={e => setItemForm({...itemForm, purchasePrice: e.target.value})} className={inputCls} placeholder="0" />
+                      onChange={e => setItemForm({...itemForm, purchasePrice: e.target.value})} className={inputCls + ' text-lg font-black'} placeholder="0" />
                     <p className="text-[10px] text-slate-400 mt-0.5 ml-1">VND / {itemForm.unit || 'đơn vị'}</p>
                   </div>
                 </div>
-                {/* Thành tiền preview */}
                 {parseFloat(itemForm.quantityOnHand) > 0 && parseFloat(itemForm.purchasePrice) > 0 && (
-                  <div className="flex justify-between items-center bg-blue-100 rounded-xl px-4 py-2.5">
-                    <span className="text-xs font-bold text-blue-700">Thành tiền</span>
-                    <span className="text-lg font-black text-blue-800">
+                  <div className="flex justify-between items-center bg-blue-100/80 rounded-xl px-4 py-2.5 border border-blue-200"
+                    style={{ animation: 'fadeIn 0.2s ease' }}>
+                    <span className="text-xs font-bold text-blue-700">💰 Thành tiền</span>
+                    <span className="text-xl font-black text-blue-800">
                       {fmt(parseFloat(itemForm.quantityOnHand) * parseFloat(itemForm.purchasePrice))}
                     </span>
                   </div>
                 )}
               </div>
 
-              {itemForm.itemGroup !== 'PACKAGED' && (
+              {/* Giá bán */}
+              {itemForm.itemGroup !== 'PACKAGED' ? (
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Giá bán</label>
                   <input type="number" min="0" step="1" value={itemForm.salePrice}
                     onChange={e => setItemForm({...itemForm, salePrice: e.target.value})} className={inputCls} placeholder="0" />
                   {itemForm.purchasePrice && itemForm.salePrice && parseFloat(itemForm.salePrice) > parseFloat(itemForm.purchasePrice) && (
                     <p className="text-[10px] text-emerald-600 font-bold mt-1 ml-1">
-                      Lãi: {fmt(parseFloat(itemForm.salePrice) - parseFloat(itemForm.purchasePrice))} / {itemForm.unit || 'đơn vị'}
+                      📈 Lãi: {fmt(parseFloat(itemForm.salePrice) - parseFloat(itemForm.purchasePrice))} / {itemForm.unit || 'đơn vị'}
                     </p>
                   )}
                 </div>
-              )}
-              {itemForm.itemGroup === 'PACKAGED' && (
-                <p className="text-[10px] text-slate-400 ml-1">
-                  💡 Giá bán đã khai báo trong <strong>Service Catalog</strong>
+              ) : (
+                <p className="text-[10px] text-slate-400 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                  💡 Giá bán đã khai báo trong <strong>Service Catalog</strong>, không cần nhập lại
                 </p>
               )}
 
+              {/* Mức cảnh báo */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Mức cảnh báo</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">⚠️ Mức cảnh báo</label>
                 <input type="number" min="0" step="0.1" required value={itemForm.reorderLevel}
                   onChange={e => setItemForm({...itemForm, reorderLevel: e.target.value})} className={inputCls} />
                 <p className="text-[10px] text-slate-400 mt-1 ml-1">Cảnh báo khi tồn ≤ mức này</p>
               </div>
 
+              {/* Ghi chú */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Ghi chú</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">📝 Ghi chú</label>
                 <textarea value={itemForm.note} onChange={e => setItemForm({...itemForm, note: e.target.value})}
                   rows={2} placeholder="Nhà cung cấp, lưu ý bảo quản..." className={inputCls + ' resize-none'} />
               </div>
 
-              <div className="flex gap-2 pt-2">
+              {/* Buttons */}
+              <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowItemModal(false)}
                   className="flex-1 py-2.5 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">Hủy</button>
                 <button type="submit"
-                  className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl text-sm font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                  {editingItem ? 'Lưu thay đổi' : 'Thêm hàng'}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl text-sm font-bold shadow-lg shadow-orange-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-[0.98]">
+                  {editingItem ? '💾 Lưu thay đổi' : '✨ Thêm hàng'}
                 </button>
               </div>
             </form>
@@ -736,9 +743,12 @@ const Inventory = () => {
 
       {/* ── Transaction Modal ── */}
       {showTxModal && (
-        <div className="fixed inset-0 z-50 modal-fix p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowTxModal(false)}>
-          <div className={`bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden transition-all duration-300 ${animIn ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
-            onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 modal-fix bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowTxModal(false)}
+          style={{ animation: 'fadeIn 0.2s ease' }}>
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+            style={{ animation: 'modalPop 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
             <div className={`px-6 py-5 flex items-center justify-between bg-gradient-to-r ${
               txForm.type === 'PURCHASE' ? 'from-emerald-500 to-teal-600' :
               txForm.type === 'SALE' ? 'from-blue-500 to-indigo-600' :
