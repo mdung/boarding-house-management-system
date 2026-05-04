@@ -164,6 +164,7 @@ public class InventoryService {
         dto.setName(item.getName());
         dto.setCategory(item.getCategory());
         dto.setUnit(item.getUnit());
+        dto.setItemGroup(item.getItemGroup());
         dto.setPurchasePrice(item.getPurchasePrice());
         dto.setSalePrice(item.getSalePrice());
         dto.setQuantityOnHand(item.getQuantityOnHand());
@@ -182,6 +183,7 @@ public class InventoryService {
         item.setName(dto.getName());
         item.setCategory(dto.getCategory());
         item.setUnit(dto.getUnit());
+        item.setItemGroup(dto.getItemGroup());
         item.setPurchasePrice(dto.getPurchasePrice());
         item.setSalePrice(dto.getSalePrice());
         item.setQuantityOnHand(dto.getQuantityOnHand() != null ? dto.getQuantityOnHand() : BigDecimal.ZERO);

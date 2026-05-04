@@ -21,6 +21,9 @@ public class InventoryItem {
     private String category;
     private String unit;
 
+    /** Loại hàng: PACKAGED (đóng gói 1:1), INGREDIENT (nguyên liệu), OTHER */
+    private String itemGroup;
+
     @Column(nullable = false)
     private BigDecimal purchasePrice;
 
@@ -58,6 +61,9 @@ public class InventoryItem {
 
     public String getUnit() { return unit; }
     public void setUnit(String unit) { this.unit = unit; }
+
+    public String getItemGroup() { return itemGroup; }
+    public void setItemGroup(String itemGroup) { this.itemGroup = itemGroup; }
 
     public BigDecimal getPurchasePrice() { return purchasePrice; }
     public void setPurchasePrice(BigDecimal purchasePrice) { this.purchasePrice = purchasePrice; }

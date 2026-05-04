@@ -8,6 +8,7 @@ public class InventoryItemDto {
     private String name;
     private String category;
     private String unit;
+    private String itemGroup; // PACKAGED, INGREDIENT, OTHER
     private BigDecimal purchasePrice;
     private BigDecimal salePrice;
     private BigDecimal quantityOnHand;
@@ -33,6 +34,9 @@ public class InventoryItemDto {
 
     public String getUnit() { return unit; }
     public void setUnit(String unit) { this.unit = unit; }
+
+    public String getItemGroup() { return itemGroup; }
+    public void setItemGroup(String itemGroup) { this.itemGroup = itemGroup; }
 
     public BigDecimal getPurchasePrice() { return purchasePrice; }
     public void setPurchasePrice(BigDecimal purchasePrice) { this.purchasePrice = purchasePrice; }
