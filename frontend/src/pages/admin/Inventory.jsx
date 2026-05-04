@@ -85,6 +85,11 @@ const Inventory = () => {
   const [catalogItems, setCatalogItems] = useState([]) // service catalog items for PACKAGED dropdown
   // Recipe lines for INGREDIENT: [{ catalogItemId, catalogItemName, qtyPerUnit }]
   const [itemRecipes, setItemRecipes] = useState([])
+  // Quick restock inline
+  const [restockItemId, setRestockItemId] = useState(null)
+  const [restockQty, setRestockQty] = useState('')
+  const [restockPrice, setRestockPrice] = useState('')
+  const [restocking, setRestocking] = useState(false)
 
   const [itemForm, setItemForm] = useState({
     sku: '', name: '', category: '', unit: 'lon',
@@ -254,6 +259,36 @@ const Inventory = () => {
   }
 
   const toggleCat = (cat) => setCollapsedCats(p => ({ ...p, [cat]: !p[cat] }))
+
+  const openRestock = (item, e) => {
+    if (e) e.stopPropagation()
+    setRestockItemId(item.id)
+    setRestockQty('')
+    setRestockPrice(item.purchasePrice?.toString() || '0')
+  }
+
+  const handleRestock = async (item) => {
+    if (!restockQty || parseFloat(restockQty) <= 0) return
+    setRestocking(true)
+    try {
+      await api.post('/inventory/transactions', {
+        itemId: item.id,
+        type: 'PURCHASE',
+        quantity: parseFloat(restockQty),
+        unitPrice: parseFloat(restockPrice || 0),
+        reference: 'Quick restock',
+        note: `Nhập thêm ${restockQty} ${item.unit || ''}`
+      })
+      setRestockItemId(null)
+      setTxSuccess(`Đã nhập thêm ${restockQty} ${item.unit || ''} ${item.name}`)
+      setTimeout(() => setTxSuccess(null), 3000)
+      fetchItems()
+    } catch (err) {
+      setTxSuccess(null)
+      alert(err.response?.data?.message || 'Lỗi nhập kho')
+    }
+    finally { setRestocking(false) }
+  }
 
   return (
     <div className="space-y-5">
@@ -435,14 +470,18 @@ const Inventory = () => {
                           {/* Stock bar */}
                           <StockBar qty={item.quantityOnHand} reorder={item.reorderLevel} unit={item.unit} />
 
-                          {/* Prices */}
+                          {/* Prices + Actions */}
                           <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
                             <div>
                               <p className="text-[9px] text-slate-400 font-bold uppercase">Nhập / Bán</p>
                               <p className="text-xs font-black text-slate-700">{fmt(item.purchasePrice)} <span className="text-slate-300">/</span> <span className="text-emerald-600">{fmt(item.salePrice)}</span></p>
                             </div>
                             <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                              <button onClick={(e) => openTx(item, e)} title="Nhập/Xuất kho"
+                              <button onClick={(e) => openRestock(item, e)} title="Nhập thêm hàng"
+                                className="w-7 h-7 flex items-center justify-center rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-all hover:scale-110">
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={(e) => openTx(item, e)} title="Giao dịch kho"
                                 className="w-7 h-7 flex items-center justify-center rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 transition-all">
                                 <Activity className="w-3.5 h-3.5" />
                               </button>
@@ -456,6 +495,45 @@ const Inventory = () => {
                               </button>
                             </div>
                           </div>
+
+                          {/* Quick Restock inline form */}
+                          {restockItemId === item.id && (
+                            <div className="mt-3 pt-3 border-t border-emerald-200 bg-emerald-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-2xl"
+                              onClick={e => e.stopPropagation()}
+                              style={{ animation: 'fadeIn 0.2s ease' }}>
+                              <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2">📥 Nhập thêm {item.name}</p>
+                              <div className="flex gap-2 items-end">
+                                <div className="flex-1">
+                                  <label className="text-[9px] text-slate-400 font-bold">Số lượng</label>
+                                  <input type="number" min="0.1" step="0.1" value={restockQty}
+                                    onChange={e => setRestockQty(e.target.value)}
+                                    placeholder="0" autoFocus
+                                    className="w-full px-2.5 py-1.5 border border-emerald-300 rounded-xl text-sm font-black text-center focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white" />
+                                  <p className="text-[9px] text-slate-400 text-center mt-0.5">{item.unit}</p>
+                                </div>
+                                <div className="flex-1">
+                                  <label className="text-[9px] text-slate-400 font-bold">Đơn giá</label>
+                                  <input type="number" min="0" step="1" value={restockPrice}
+                                    onChange={e => setRestockPrice(e.target.value)}
+                                    className="w-full px-2.5 py-1.5 border border-emerald-300 rounded-xl text-sm font-black text-center focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white" />
+                                </div>
+                                <button onClick={() => handleRestock(item)} disabled={restocking || !restockQty || parseFloat(restockQty) <= 0}
+                                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 disabled:opacity-40 transition-all shadow-sm flex-shrink-0">
+                                  {restocking ? '...' : '✓'}
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); setRestockItemId(null) }}
+                                  className="px-2 py-1.5 text-slate-400 hover:text-slate-600 transition-all flex-shrink-0">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              {restockQty && parseFloat(restockQty) > 0 && restockPrice && (
+                                <div className="flex justify-between items-center mt-2 bg-emerald-100 rounded-lg px-3 py-1.5 text-[10px]">
+                                  <span className="text-emerald-600">Thành tiền: <strong>{fmt(parseFloat(restockQty) * parseFloat(restockPrice))}</strong></span>
+                                  <span className="text-emerald-700 font-black">Tồn sau: {fmtQty(parseFloat(item.quantityOnHand) + parseFloat(restockQty))} {item.unit}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           {/* Inactive overlay */}
                           {!item.isActive && (
