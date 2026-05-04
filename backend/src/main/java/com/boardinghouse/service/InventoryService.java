@@ -40,6 +40,12 @@ public class InventoryService {
                 .stream().map(this::toDto).collect(Collectors.toList());
     }
 
+    /** Items with no boarding house (global/shared) */
+    public List<InventoryItemDto> getGlobalItems() {
+        return itemRepository.findByBoardingHouseIsNullAndIsActiveTrueOrderByCategoryAscNameAsc()
+                .stream().map(this::toDto).collect(Collectors.toList());
+    }
+
     public List<InventoryItemDto> getAllIncludingInactive() {
         return itemRepository.findAll().stream()
                 .sorted((a, b) -> {
@@ -98,8 +104,11 @@ public class InventoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found: " + dto.getItemId()));
 
         BigDecimal quantity = dto.getQuantity();
-        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0)
-            throw new BadRequestException("Quantity must be greater than zero");
+        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) == 0)
+            throw new BadRequestException("Quantity must not be zero");
+        // ADJUSTMENT allows negative quantity (write-off / correction)
+        if (dto.getType() != InventoryTransactionType.ADJUSTMENT && quantity.compareTo(BigDecimal.ZERO) < 0)
+            throw new BadRequestException("Quantity must be greater than zero for " + dto.getType());
         if (dto.getUnitPrice() == null || dto.getUnitPrice().compareTo(BigDecimal.ZERO) < 0)
             throw new BadRequestException("Unit price must be set");
         if (dto.getType() == null)
@@ -117,7 +126,10 @@ public class InventoryService {
                 newQuantity = newQuantity.subtract(quantity);
                 break;
             case ADJUSTMENT:
+                // quantity can be negative for write-offs/corrections
                 newQuantity = newQuantity.add(quantity);
+                if (newQuantity.compareTo(BigDecimal.ZERO) < 0)
+                    throw new BadRequestException("Adjustment would result in negative stock. Current: " + item.getQuantityOnHand());
                 break;
             default:
                 throw new BadRequestException("Unknown transaction type");

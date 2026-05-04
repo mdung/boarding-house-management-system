@@ -79,7 +79,6 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
     api.get(`/service-catalog${bhParam}`).then(r => setCatalog(r.data || [])).catch(() => {})
     api.get(`/service-types${bhParam}`).then(r => setServiceTypes(r.data || [])).catch(() => {})
   }, [guest.boardingHouseId, guest.contractId])
-
   const handleAddService = async (e) => {
     e.preventDefault()
     if (!svcForm.description.trim() || !svcForm.unitPrice) return

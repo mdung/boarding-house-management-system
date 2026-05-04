@@ -51,9 +51,23 @@ const GuestCharges = () => {
     api.get('/contracts').then(r => setContracts(r.data)).catch(console.error)
     const bhParam = propertyId !== 'ALL' ? `?boardingHouseId=${propertyId}` : ''
     api.get(`/service-catalog${bhParam}`).then(r => setCatalog(r.data)).catch(console.error)
-    const invParams = propertyId !== 'ALL' ? { boardingHouseId: propertyId } : {}
-    api.get('/inventory/items', { params: invParams }).then(r => setInventoryItems(r.data)).catch(console.error)
+    // Only load inventory if a specific property is selected
+    if (propertyId !== 'ALL') {
+      api.get('/inventory/items', { params: { boardingHouseId: propertyId } }).then(r => setInventoryItems(r.data)).catch(console.error)
+    } else {
+      setInventoryItems([])
+    }
   }, [propertyId])
+
+  // When a contract is selected and propertyId is ALL, reload catalog+inventory for that contract's boarding house
+  useEffect(() => {
+    if (!selectedContractId || propertyId !== 'ALL') return
+    const contract = contracts.find(c => c.id.toString() === selectedContractId)
+    if (!contract?.boardingHouseId) return
+    const bhId = contract.boardingHouseId
+    api.get(`/service-catalog?boardingHouseId=${bhId}`).then(r => setCatalog(r.data)).catch(console.error)
+    api.get('/inventory/items', { params: { boardingHouseId: bhId } }).then(r => setInventoryItems(r.data)).catch(console.error)
+  }, [selectedContractId, contracts, propertyId])
 
   useEffect(() => { const cid = searchParams.get('contractId'); if (cid) setSelectedContractId(cid) }, [searchParams])
   useEffect(() => { if (selectedContractId) fetchSummary() }, [selectedContractId])

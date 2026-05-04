@@ -20,7 +20,7 @@ public class InventoryController {
 
     /**
      * GET /inventory/items?boardingHouseId=1  → items của nhà trọ 1 (active only)
-     * GET /inventory/items                    → tất cả items active (legacy / admin)
+     * GET /inventory/items                    → chỉ items không thuộc nhà trọ nào (global/legacy)
      */
     @GetMapping("/items")
     public ResponseEntity<List<InventoryItemDto>> getItems(
@@ -28,11 +28,13 @@ public class InventoryController {
         if (boardingHouseId != null) {
             return ResponseEntity.ok(inventoryService.getByBoardingHouse(boardingHouseId));
         }
-        return ResponseEntity.ok(inventoryService.getAll());
+        // No boardingHouseId → return only global items (boardingHouse IS NULL)
+        return ResponseEntity.ok(inventoryService.getGlobalItems());
     }
 
     /**
      * GET /inventory/items/all?boardingHouseId=1  → bao gồm inactive
+     * GET /inventory/items/all                    → tất cả items (admin view)
      */
     @GetMapping("/items/all")
     public ResponseEntity<List<InventoryItemDto>> getItemsIncludingInactive(

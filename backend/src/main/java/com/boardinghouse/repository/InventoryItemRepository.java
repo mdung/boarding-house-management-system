@@ -15,4 +15,6 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     List<InventoryItem> findByBoardingHouseIdOrderByCategoryAscNameAsc(Long boardingHouseId);
 
     List<InventoryItem> findByBoardingHouseIsNullOrderByCategoryAscNameAsc();
+
+    List<InventoryItem> findByBoardingHouseIsNullAndIsActiveTrueOrderByCategoryAscNameAsc();
 }
