@@ -31,6 +31,7 @@ import StaffManagement from './pages/admin/StaffManagement'
 import ActivityLogs from './pages/admin/ActivityLogs'
 import DataTransfer from './pages/admin/DataTransfer'
 import RoomMatrix from './pages/admin/RoomMatrix'
+import MonthlyExpenses from './pages/admin/MonthlyExpenses'
 import Housekeeping from './pages/admin/Housekeeping'
 import TenantDashboard from './pages/tenant/Dashboard'
 import TenantInvoices from './pages/tenant/Invoices'
@@ -63,6 +64,7 @@ function App() {
             <Route path="calendar" element={<Calendar />} />
             <Route path="room-matrix" element={<RoomMatrix />} />
             <Route path="reports" element={<Reports />} />
+            <Route path="monthly-expenses" element={<MonthlyExpenses />} />
             <Route path="invoices/:id/detail" element={<InvoiceDetail />} />
             <Route path="contracts/:id/detail" element={<ContractDetail />} />
             <Route path="rooms/:id/detail" element={<RoomDetail />} />

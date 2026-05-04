@@ -1052,10 +1052,16 @@ const Dashboard = () => {
   const [centerOffset, setCenterOffset] = useState(0)
   const [extraDays, setExtraDays] = useState({})
   const [showAddGuest, setShowAddGuest] = useState(false)
+  const [monthlyExpenseTotal, setMonthlyExpenseTotal] = useState(0)
 
   const fetchDashboard = () => {
     const params = propertyId !== 'ALL' ? { boardingHouseId: propertyId } : {}
     api.get('/dashboard', { params }).then(r => setDashboard(r.data)).catch(console.error).finally(() => setLoading(false))
+    // Fetch monthly expense total
+    const now = new Date()
+    const expParams = { month: now.getMonth() + 1, year: now.getFullYear() }
+    if (propertyId !== 'ALL') expParams.boardingHouseId = propertyId
+    api.get('/monthly-expenses/summary', { params: expParams }).then(r => setMonthlyExpenseTotal(parseFloat(r.data?.total || 0))).catch(() => {})
   }
 
   useEffect(() => { fetchDashboard() }, [propertyId])
@@ -1297,6 +1303,21 @@ const Dashboard = () => {
               </span>
             )}
           </div>
+        </div>
+
+        {/* Monthly Expenses */}
+        <div
+          onClick={() => navigate('/admin/monthly-expenses')}
+          className="bg-white border border-slate-200 rounded-2xl p-5 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-pink-400"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-pink-50 rounded-lg flex items-center justify-center">
+              <Receipt className="w-4 h-4 text-pink-500" />
+            </div>
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Chi phí tháng</p>
+          <p className="text-[28px] font-extrabold tracking-tight text-pink-500 leading-tight">{fmt(monthlyExpenseTotal)}</p>
+          <p className="text-[10px] text-slate-400 mt-1">Tháng này</p>
         </div>
       </div>
 

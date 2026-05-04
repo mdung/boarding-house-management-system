@@ -45,6 +45,7 @@ const menuGroups = [
       { path: '/admin/invoices', icon: Receipt, label: 'Invoices', permission: 'MANAGE_FINANCE' },
       { path: '/admin/payments', icon: CreditCard, label: 'Payments', permission: 'MANAGE_FINANCE' },
       { path: '/admin/guest-charges', icon: ShoppingCart, label: 'Guest Charges', permission: 'MANAGE_FINANCE' },
+      { path: '/admin/monthly-expenses', icon: Receipt, label: 'Monthly Expenses', permission: 'MANAGE_FINANCE' },
       { path: '/admin/inventory', icon: Package, label: 'Inventory', permission: 'MANAGE_INVENTORY' },
     ],
   },
