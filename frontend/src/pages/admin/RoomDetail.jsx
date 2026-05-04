@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
+import RoomPhotoGallery from '../../components/RoomPhotoGallery'
 import { ArrowLeft, DollarSign } from 'lucide-react'
 
 const RoomDetail = () => {
@@ -77,6 +78,15 @@ const RoomDetail = () => {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Photos Gallery card */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+            <h2 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+              📸 Photos
+              <span className="text-[10px] font-normal text-slate-400">Ảnh phòng · hiển thị cho khách</span>
+            </h2>
+            <RoomPhotoGallery roomId={parseInt(id)} />
           </div>
 
           {/* Services card */}

@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useState } from 'react'
 import {
   Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard,
-  LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History, XCircle, HardDriveDownload, ChevronDown, Palette, LayoutGrid
+  LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History, XCircle, HardDriveDownload, ChevronDown, Palette, LayoutGrid, ClipboardList
 } from 'lucide-react'
 import MobileAccess from '../components/MobileAccess'
 
@@ -34,6 +34,7 @@ const menuGroups = [
       { path: '/admin/boarding-houses', icon: Building2, label: 'Boarding Houses' },
       { path: '/admin/rooms', icon: DoorOpen, label: 'Rooms', permission: 'MANAGE_ROOMS' },
       { path: '/admin/room-matrix', icon: LayoutGrid, label: 'Room Matrix', permission: 'MANAGE_ROOMS' },
+      { path: '/admin/housekeeping', icon: ClipboardList, label: 'Housekeeping', permission: 'MANAGE_ROOMS' },
       { path: '/admin/tenants', icon: Users, label: 'Tenants', permission: 'MANAGE_TENANTS' },
       { path: '/admin/contracts', icon: FileText, label: 'Contracts', permission: 'MANAGE_CONTRACTS' },
     ],

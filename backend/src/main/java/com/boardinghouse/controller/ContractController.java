@@ -2,6 +2,7 @@ package com.boardinghouse.controller;
 
 import com.boardinghouse.dto.ContractDto;
 import com.boardinghouse.service.ContractService;
+import com.boardinghouse.service.HousekeepingService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -18,10 +19,14 @@ import java.util.Map;
 public class ContractController {
     private final ContractService service;
     private final com.boardinghouse.service.DetailService detailService;
+    private final HousekeepingService housekeepingService;
 
-    public ContractController(ContractService service, com.boardinghouse.service.DetailService detailService) {
+    public ContractController(ContractService service,
+                              com.boardinghouse.service.DetailService detailService,
+                              HousekeepingService housekeepingService) {
         this.service = service;
         this.detailService = detailService;
+        this.housekeepingService = housekeepingService;
     }
 
     @GetMapping
@@ -51,7 +56,10 @@ public class ContractController {
         String reason = (String) request.get("reason");
         LocalDate terminationDate = request.get("terminationDate") != null ?
                 LocalDate.parse(request.get("terminationDate").toString()) : LocalDate.now();
-        return ResponseEntity.ok(service.terminate(id, reason, terminationDate));
+        ContractDto result = service.terminate(id, reason, terminationDate);
+        // Auto-create housekeeping task on termination
+        try { housekeepingService.createCheckoutTask(id); } catch (Exception ignored) {}
+        return ResponseEntity.ok(result);
     }
 
     @PatchMapping("/{id}/checkout-date")
@@ -64,7 +72,10 @@ public class ContractController {
 
     @PostMapping("/{id}/checkout")
     public ResponseEntity<ContractDto> manualCheckout(@PathVariable Long id) {
-        return ResponseEntity.ok(service.manualCheckout(id));
+        ContractDto result = service.manualCheckout(id);
+        // Auto-create housekeeping task on checkout
+        try { housekeepingService.createCheckoutTask(id); } catch (Exception ignored) {}
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{id}")

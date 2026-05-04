@@ -40,6 +40,9 @@ public class Room {
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL)
     private List<Invoice> invoices = new ArrayList();
 
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RoomPhoto> photos = new ArrayList<>();
+
     public Room() {}
 
     public Long getId() { return id; }
@@ -74,4 +77,7 @@ public class Room {
 
     public List<Invoice> getInvoices() { return invoices; }
     public void setInvoices(List<Invoice> invoices) { this.invoices = invoices; }
+
+    public List<RoomPhoto> getPhotos() { return photos; }
+    public void setPhotos(List<RoomPhoto> photos) { this.photos = photos; }
 }
