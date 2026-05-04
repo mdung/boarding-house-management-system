@@ -33,6 +33,9 @@ public class InventoryTransaction {
     private String note;
     private LocalDate createdDate = LocalDate.now();
 
+    /** ID of the reverse transaction that undid this one. Null = not reversed. */
+    private Long reversedByTransactionId;
+
     public InventoryTransaction() {}
 
     public Long getId() { return id; }
@@ -61,4 +64,7 @@ public class InventoryTransaction {
 
     public LocalDate getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDate createdDate) { this.createdDate = createdDate; }
+
+    public Long getReversedByTransactionId() { return reversedByTransactionId; }
+    public void setReversedByTransactionId(Long reversedByTransactionId) { this.reversedByTransactionId = reversedByTransactionId; }
 }

@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import eventBus, { EVENTS } from '../../services/eventBus'
 import AddGuestModal from '../../components/AddGuestModal'
+import BillPrintModal from '../../components/BillPrintModal'
 import { useProperty } from '../../context/PropertyContext'
 import {
   DoorOpen, Users, DollarSign, AlertCircle, LogIn, LogOut,
   BedDouble, CreditCard, X, ExternalLink, ShoppingCart, Receipt,
-  ChevronRight, ChevronLeft, ChevronDown, Edit2, Save, Plus, CalendarDays, Package
+  ChevronRight, ChevronLeft, ChevronDown, Edit2, Save, Plus, CalendarDays, Package, Printer
 } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(n || 0)
@@ -52,6 +53,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
   const [svcForm, setSvcForm] = useState({ chargeDate: new Date().toISOString().split('T')[0], catalogId: null, description: '', quantity: '1', unitPrice: '', note: '' })
   const [savingService, setSavingService] = useState(false)
   const [svcSuccess, setSvcSuccess] = useState(null)
+  const [showBill, setShowBill] = useState(false)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -520,6 +522,15 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
               <ShoppingCart className="w-4 h-4" /> Add Service
             </button>
           )}
+          {summary && (
+            <button
+              onClick={() => setShowBill(true)}
+              className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-600 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
+              title="In phiếu thanh toán"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+          )}
           {guest.roomReleased && (
             <div className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-500 text-sm font-medium rounded-lg border border-gray-200">
               <LogOut className="w-4 h-4" /> Checked Out
@@ -778,6 +789,14 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
               </form>
             </div>
           </div>
+        )}
+
+        {/* Bill Print Modal */}
+        {showBill && summary && (
+          <BillPrintModal
+            summary={{ ...summary, tenantPhone: guest.tenantPhone, boardingHouseName: guest.boardingHouseName, contractCode: summary.contractCode || guest.contractId }}
+            onClose={() => setShowBill(false)}
+          />
         )}
       </div>
     </div>

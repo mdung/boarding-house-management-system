@@ -5,7 +5,8 @@ import { useToast } from '../../context/ToastContext'
 import { useProperty } from '../../context/PropertyContext'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import BulkActionBar from '../../components/BulkActionBar'
-import { Plus, Edit, X, Eye, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, DoorOpen, Users, Calendar } from 'lucide-react'
+import BillPrintModal from '../../components/BillPrintModal'
+import { Plus, Edit, X, Eye, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, DoorOpen, Users, Calendar, Printer } from 'lucide-react'
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0)
 const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—'
@@ -54,6 +55,7 @@ const Contracts = () => {
   const [sortDir, setSortDir] = useState('asc')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
+  const [billSummary, setBillSummary] = useState(null) // for BillPrintModal
 
   const empty = { code: '', roomId: '', mainTenantId: '', startDate: '', endDate: '', deposit: '', monthlyRent: '', dailyRate: '', status: 'DRAFT', billingCycle: 'MONTHLY' }
   const [formData, setFormData] = useState(empty)
@@ -238,6 +240,7 @@ const Contracts = () => {
                     <td className="px-4 py-3.5 text-right pr-6">
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                         <button onClick={() => navigate(`/admin/contracts/${c.id}/detail`)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Eye className="w-3.5 h-3.5" /></button>
+                        <button onClick={async () => { try { const r = await api.get(`/guest-charges/contract/${c.id}/summary`); setBillSummary(r.data) } catch {} }} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-500 rounded-xl transition-colors" title="In phiếu"><Printer className="w-3.5 h-3.5" /></button>
                         <button onClick={() => openEdit(c)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-500 rounded-xl transition-colors"><Edit className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleDelete(c.id)} className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-xl transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
@@ -284,6 +287,7 @@ const Contracts = () => {
 
                 <div className="flex items-center justify-end gap-2 pt-1">
                    <button onClick={() => navigate(`/admin/contracts/${c.id}/detail`)} className="p-2 text-slate-400 hover:text-blue-600 bg-white rounded-xl border border-slate-200 shadow-sm transition-colors"><Eye className="w-3.5 h-3.5" /></button>
+                   <button onClick={async () => { try { const r = await api.get(`/guest-charges/contract/${c.id}/summary`); setBillSummary(r.data) } catch {} }} className="p-2 text-slate-400 hover:text-emerald-600 bg-white rounded-xl border border-slate-200 shadow-sm transition-colors" title="In phiếu"><Printer className="w-3.5 h-3.5" /></button>
                    <button onClick={() => openEdit(c)} className="p-2 text-slate-400 hover:text-blue-600 bg-white rounded-xl border border-slate-200 shadow-sm transition-colors"><Edit className="w-3.5 h-3.5" /></button>
                    <button onClick={() => handleDelete(c.id)} className="p-2 text-rose-500 bg-rose-50 rounded-xl border border-rose-100 shadow-sm transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
@@ -402,6 +406,7 @@ const Contracts = () => {
         onConfirm={() => { handleBulkDelete(); setConfirmBulkDelete(false) }}
         onCancel={() => setConfirmBulkDelete(false)} />
       <BulkActionBar selectedCount={selected.size} onDelete={() => setConfirmBulkDelete(true)} onClear={() => setSelected(new Set())} />
+      {billSummary && <BillPrintModal summary={billSummary} onClose={() => setBillSummary(null)} />}
     </div>
   )
 }

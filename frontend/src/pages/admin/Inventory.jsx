@@ -95,6 +95,7 @@ const Inventory = () => {
   const [deleteImpact, setDeleteImpact] = useState(null)
   const [deleteMode, setDeleteMode] = useState('hide') // 'hide' or 'permanent'
   const [deleting, setDeleting] = useState(false)
+  const [showHidden, setShowHidden] = useState(false)
 
   const [itemForm, setItemForm] = useState({
     sku: '', name: '', category: '', unit: 'lon',
@@ -151,6 +152,7 @@ const Inventory = () => {
   }, [items, categories])
 
   const filtered = useMemo(() => items.filter(item => {
+    if (!showHidden && !item.isActive) return false
     const term = search.toLowerCase()
     const matchSearch = !term || item.name?.toLowerCase().includes(term) || item.sku?.toLowerCase().includes(term) || item.category?.toLowerCase().includes(term)
     const matchCat = filterCat === 'ALL' || item.category === filterCat
@@ -354,6 +356,12 @@ const Inventory = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {items.filter(i => !i.isActive).length > 0 && (
+            <button onClick={() => setShowHidden(h => !h)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${showHidden ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'} shadow-sm`}>
+              👁️ Ẩn ({items.filter(i => !i.isActive).length})
+            </button>
+          )}
           <button onClick={() => setShowCatModal(true)}
             className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 shadow-sm transition-all">
             <Tag className="w-3.5 h-3.5" /> Danh mục
@@ -615,7 +623,7 @@ const Inventory = () => {
               </div>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {transactions.map((tx, i) => {
+                {transactions.filter(tx => !tx.reversed && !tx.reference?.startsWith('Hoàn tác')).map((tx, i) => {
                   const cfg = TYPE_CFG[tx.type] || TYPE_CFG.ADJUSTMENT
                   const TIcon = cfg.icon
                   const isUndo = tx.reference?.startsWith('Hoàn tác')

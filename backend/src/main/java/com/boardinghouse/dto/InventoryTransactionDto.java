@@ -16,6 +16,8 @@ public class InventoryTransactionDto {
     private String reference;
     private String note;
     private LocalDate createdDate;
+    private Long reversedByTransactionId;
+    private boolean reversed; // true if this tx has been undone
 
     public InventoryTransactionDto() {}
 
@@ -48,4 +50,10 @@ public class InventoryTransactionDto {
 
     public LocalDate getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDate createdDate) { this.createdDate = createdDate; }
+
+    public Long getReversedByTransactionId() { return reversedByTransactionId; }
+    public void setReversedByTransactionId(Long reversedByTransactionId) { this.reversedByTransactionId = reversedByTransactionId; }
+
+    public boolean isReversed() { return reversed; }
+    public void setReversed(boolean reversed) { this.reversed = reversed; }
 }

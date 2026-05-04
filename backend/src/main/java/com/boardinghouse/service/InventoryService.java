@@ -11,6 +11,7 @@ import com.boardinghouse.exception.ResourceNotFoundException;
 import com.boardinghouse.repository.BoardingHouseRepository;
 import com.boardinghouse.repository.InventoryItemRepository;
 import com.boardinghouse.repository.InventoryTransactionRepository;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,15 +25,18 @@ public class InventoryService {
     private final InventoryTransactionRepository transactionRepository;
     private final BoardingHouseRepository boardingHouseRepository;
     private final AuditLogService auditLogService;
+    private final EntityManager entityManager;
 
     public InventoryService(InventoryItemRepository itemRepository,
                             InventoryTransactionRepository transactionRepository,
                             BoardingHouseRepository boardingHouseRepository,
-                            AuditLogService auditLogService) {
+                            AuditLogService auditLogService,
+                            EntityManager entityManager) {
         this.itemRepository = itemRepository;
         this.transactionRepository = transactionRepository;
         this.boardingHouseRepository = boardingHouseRepository;
         this.auditLogService = auditLogService;
+        this.entityManager = entityManager;
     }
 
     public List<InventoryItemDto> getAll() {
@@ -128,12 +132,23 @@ public class InventoryService {
         transactionRepository.deleteAll(txs);
 
         // 2. Unlink from Service Catalog items (set inventoryItem = null)
-        // This is handled by DB cascade or manual query
+        entityManager.createNativeQuery(
+                "UPDATE service_catalog SET inventory_item_id = NULL WHERE inventory_item_id = ?1")
+                .setParameter(1, id).executeUpdate();
 
-        // 3. Unlink from Guest Service Charges (set inventoryItem = null)
-        // Charges keep their description/amount but lose inventory link
+        // 3. Unlink from Service Catalog Recipes
+        entityManager.createNativeQuery(
+                "DELETE FROM service_catalog_recipes WHERE inventory_item_id = ?1")
+                .setParameter(1, id).executeUpdate();
 
-        // 4. Delete the item itself
+        // 4. Unlink from Guest Service Charges (keep charge, remove inventory link)
+        entityManager.createNativeQuery(
+                "UPDATE guest_service_charges SET inventory_item_id = NULL WHERE inventory_item_id = ?1")
+                .setParameter(1, id).executeUpdate();
+
+        entityManager.flush();
+
+        // 5. Delete the item itself
         itemRepository.delete(item);
 
         auditLogService.log("PERMANENT_DELETE", "INVENTORY",
@@ -205,6 +220,10 @@ public class InventoryService {
         InventoryTransaction original = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found: " + transactionId));
 
+        if (original.getReversedByTransactionId() != null) {
+            throw new BadRequestException("Giao dịch này đã được hoàn tác trước đó");
+        }
+
         // Create reverse: PURCHASE↔SALE, RETURN↔SALE, ADJUSTMENT negated
         InventoryTransactionDto reverseDto = new InventoryTransactionDto();
         reverseDto.setItemId(original.getItem().getId());
@@ -231,7 +250,13 @@ public class InventoryService {
                 break;
         }
 
-        return createTransaction(reverseDto);
+        InventoryTransactionDto result = createTransaction(reverseDto);
+
+        // Mark original as reversed
+        original.setReversedByTransactionId(result.getId());
+        transactionRepository.save(original);
+
+        return result;
     }
 
     private InventoryItemDto toDto(InventoryItem item) {
@@ -289,6 +314,8 @@ public class InventoryService {
         dto.setReference(transaction.getReference());
         dto.setNote(transaction.getNote());
         dto.setCreatedDate(transaction.getCreatedDate());
+        dto.setReversedByTransactionId(transaction.getReversedByTransactionId());
+        dto.setReversed(transaction.getReversedByTransactionId() != null);
         return dto;
     }
 
