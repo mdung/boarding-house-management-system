@@ -43,4 +43,11 @@ public class ServiceCatalogController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    /** Auto-link SC items with inventory items by matching name within same boarding house */
+    @PostMapping("/auto-link")
+    public ResponseEntity<Integer> autoLink(@RequestParam(required = false) Long boardingHouseId) {
+        int linked = service.autoLinkInventory(boardingHouseId);
+        return ResponseEntity.ok(linked);
+    }
 }

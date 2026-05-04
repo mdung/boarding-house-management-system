@@ -49,7 +49,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
   const [catalog, setCatalog] = useState([])
   const [serviceTypes, setServiceTypes] = useState([])
   const [svcTab, setSvcTab] = useState('catalog')
-  const [svcForm, setSvcForm] = useState({ chargeDate: new Date().toISOString().split('T')[0], description: '', quantity: '1', unitPrice: '', note: '' })
+  const [svcForm, setSvcForm] = useState({ chargeDate: new Date().toISOString().split('T')[0], catalogId: null, description: '', quantity: '1', unitPrice: '', note: '' })
   const [savingService, setSavingService] = useState(false)
   const [svcSuccess, setSvcSuccess] = useState(null)
 
@@ -86,6 +86,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
     try {
       await api.post('/guest-charges', {
         contractId: guest.contractId,
+        catalogId: svcForm.catalogId || undefined,
         chargeDate: svcForm.chargeDate,
         description: svcForm.description,
         quantity: parseFloat(svcForm.quantity),
@@ -93,8 +94,11 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
         note: svcForm.note
       })
       setSvcSuccess(svcForm.description)
-      setSvcForm({ chargeDate: new Date().toISOString().split('T')[0], description: '', quantity: '1', unitPrice: '', note: '' })
+      setSvcForm({ chargeDate: new Date().toISOString().split('T')[0], catalogId: null, description: '', quantity: '1', unitPrice: '', note: '' })
       fetchAll()
+      // Reload catalog to update stock quantities
+      const bhParam = guest.boardingHouseId ? `?boardingHouseId=${guest.boardingHouseId}` : ''
+      api.get(`/service-catalog${bhParam}`).then(r => setCatalog(r.data || [])).catch(() => {})
       eventBus.emit(EVENTS.PAYMENT_CHANGED)
       setTimeout(() => setSvcSuccess(null), 2500)
     } catch (e) { alert(e.response?.data?.message || 'Failed to add charge') }
@@ -653,11 +657,16 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
                           <div className="grid grid-cols-3 gap-2">
                             {items.map(item => (
                               <button key={item.id} type="button"
-                                onClick={() => setSvcForm(f => ({ ...f, description: item.name, unitPrice: item.defaultPrice?.toString() || '' }))}
+                                onClick={() => setSvcForm(f => ({ ...f, catalogId: item.id, description: item.name, unitPrice: item.defaultPrice?.toString() || '' }))}
                                 className={`p-3 rounded-lg border text-center transition-all duration-150 hover:scale-[1.02] ${svcForm.description === item.name ? 'bg-purple-50 border-purple-400 ring-2 ring-purple-200' : 'border-slate-200 hover:border-purple-300 hover:bg-purple-50/30'}`}>
                                 <p className="text-xs font-bold text-slate-800 truncate">{item.name}</p>
                                 <p className="text-[10px] text-slate-400 mt-0.5">{fmt(item.defaultPrice)}</p>
                                 {item.unit && <p className="text-[9px] text-slate-300 mt-0.5">per {item.unit}</p>}
+                                {item.stockQuantity != null && (
+                                  <p className={`text-[9px] font-black mt-1 ${parseFloat(item.stockQuantity) <= 0 ? 'text-rose-500' : parseFloat(item.stockQuantity) <= 5 ? 'text-amber-500' : 'text-emerald-600'}`}>
+                                    📦 {item.stockQuantity} {item.stockUnit || ''}
+                                  </p>
+                                )}
                               </button>
                             ))}
                           </div>
@@ -684,7 +693,7 @@ const GuestDetailModal = ({ guest, onClose, navigate }) => {
                     ) : (
                       serviceTypes.filter(s => s.isActive !== false).map(st => (
                         <button key={st.id} type="button"
-                          onClick={() => setSvcForm(f => ({ ...f, description: st.name, unitPrice: st.pricePerUnit?.toString() || '' }))}
+                          onClick={() => setSvcForm(f => ({ ...f, catalogId: null, description: st.name, unitPrice: st.pricePerUnit?.toString() || '' }))}
                           className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all duration-150 text-left ${svcForm.description === st.name ? 'bg-purple-50 border-purple-400 ring-2 ring-purple-200' : 'border-slate-200 hover:border-purple-300 hover:bg-purple-50/30'}`}>
                           <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${

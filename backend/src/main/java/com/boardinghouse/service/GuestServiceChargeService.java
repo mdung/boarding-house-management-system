@@ -25,6 +25,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class GuestServiceChargeService {
@@ -96,6 +98,31 @@ public class GuestServiceChargeService {
                 txDto.setReference("Catalog: " + catalog.getName() + " (contract " + dto.getContractId() + ")");
                 txDto.setNote("Auto stock deduction");
                 inventoryService.createTransaction(txDto);
+            } else {
+                // No explicit link - try auto-match by name within same boarding house
+                Long bhId = catalog.getBoardingHouse() != null ? catalog.getBoardingHouse().getId() : null;
+                if (bhId != null) {
+                    List<InventoryItem> matches = inventoryItemRepository
+                            .findByBoardingHouseIdAndIsActiveTrueOrderByCategoryAscNameAsc(bhId)
+                            .stream()
+                            .filter(i -> i.getName().equalsIgnoreCase(catalog.getName()))
+                            .collect(Collectors.toList());
+                    if (!matches.isEmpty()) {
+                        inventoryItem = matches.get(0);
+                        // Auto-link for future use
+                        catalog.setInventoryItem(inventoryItem);
+                        serviceCatalogRepository.save(catalog);
+                        // Deduct stock
+                        InventoryTransactionDto txDto = new InventoryTransactionDto();
+                        txDto.setItemId(inventoryItem.getId());
+                        txDto.setType(com.boardinghouse.entity.InventoryTransactionType.SALE);
+                        txDto.setQuantity(dto.getQuantity());
+                        txDto.setUnitPrice(dto.getUnitPrice() != null ? dto.getUnitPrice() : inventoryItem.getSalePrice());
+                        txDto.setReference("Auto-linked: " + catalog.getName() + " (contract " + dto.getContractId() + ")");
+                        txDto.setNote("Auto-matched by name and linked");
+                        inventoryService.createTransaction(txDto);
+                    }
+                }
             }
         }
         // Case 2: Direct inventory item (legacy / manual)

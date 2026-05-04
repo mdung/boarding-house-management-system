@@ -103,8 +103,15 @@ const GuestCharges = () => {
       if (item && item.quantityOnHand < parseFloat(formData.quantity)) { showToast(`Insufficient stock! Available: ${item.quantityOnHand}`, 'error'); return }
     }
     try {
-      await api.post('/guest-charges', { contractId: parseInt(selectedContractId), inventoryItemId: formData.inventoryItemId ? parseInt(formData.inventoryItemId) : undefined, chargeDate: formData.chargeDate, description: formData.description, quantity: parseFloat(formData.quantity), unitPrice: parseFloat(formData.unitPrice), note: formData.note })
+      await api.post('/guest-charges', { contractId: parseInt(selectedContractId), catalogId: formData.catalogId ? parseInt(formData.catalogId) : undefined, inventoryItemId: formData.inventoryItemId ? parseInt(formData.inventoryItemId) : undefined, chargeDate: formData.chargeDate, description: formData.description, quantity: parseFloat(formData.quantity), unitPrice: parseFloat(formData.unitPrice), note: formData.note })
       showToast('Charge added!', 'success'); setShowModal(false); resetForm(); fetchSummary()
+      // Reload catalog to update stock quantities
+      const bhParam = propertyId !== 'ALL' ? `?boardingHouseId=${propertyId}` : ''
+      api.get(`/service-catalog${bhParam}`).then(r => setCatalog(r.data)).catch(console.error)
+      // Reload inventory items too
+      if (propertyId !== 'ALL') {
+        api.get('/inventory/items', { params: { boardingHouseId: propertyId } }).then(r => setInventoryItems(r.data)).catch(console.error)
+      }
     } catch (e) { showToast(e.response?.data?.message || 'Failed to save charge', 'error') }
   }
 
@@ -357,6 +364,11 @@ const GuestCharges = () => {
                                       className={`p-3 text-left rounded-2xl border transition-all ${formData.catalogId === item.id.toString() ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-200' : 'bg-slate-50 border-slate-200 hover:border-blue-200 hover:bg-blue-50/50'}`}>
                                       <p className="font-bold text-sm text-slate-800">{item.name}</p>
                                       <p className="text-xs text-slate-500 mt-0.5">{fmt(item.defaultPrice)}</p>
+                                      {item.stockQuantity != null && (
+                                        <p className={`text-[10px] font-black mt-1 ${parseFloat(item.stockQuantity) <= 0 ? 'text-rose-500' : parseFloat(item.stockQuantity) <= 5 ? 'text-amber-500' : 'text-emerald-600'}`}>
+                                          📦 Kho: {item.stockQuantity} {item.stockUnit || ''}
+                                        </p>
+                                      )}
                                     </button>
                                   ))}
                                 </div>

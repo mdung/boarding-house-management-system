@@ -16,6 +16,9 @@ public class ServiceCatalogDto {
     private String inventoryItemName;
     private Long boardingHouseId;
     private String boardingHouseName;
+    /** Tồn kho hiện tại (từ linked inventory item hoặc null nếu không link) */
+    private java.math.BigDecimal stockQuantity;
+    private String stockUnit;
     /** Danh sách nguyên liệu định mức (recipe). Rỗng = bán 1:1 qua inventoryItemId */
     private List<ServiceCatalogRecipeDto> recipes;
 
@@ -56,6 +59,12 @@ public class ServiceCatalogDto {
 
     public String getBoardingHouseName() { return boardingHouseName; }
     public void setBoardingHouseName(String boardingHouseName) { this.boardingHouseName = boardingHouseName; }
+
+    public java.math.BigDecimal getStockQuantity() { return stockQuantity; }
+    public void setStockQuantity(java.math.BigDecimal stockQuantity) { this.stockQuantity = stockQuantity; }
+
+    public String getStockUnit() { return stockUnit; }
+    public void setStockUnit(String stockUnit) { this.stockUnit = stockUnit; }
 
     public List<ServiceCatalogRecipeDto> getRecipes() { return recipes; }
     public void setRecipes(List<ServiceCatalogRecipeDto> recipes) { this.recipes = recipes; }

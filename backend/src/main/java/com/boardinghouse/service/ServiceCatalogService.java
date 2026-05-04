@@ -88,6 +88,36 @@ public class ServiceCatalogService {
         repository.save(s);
     }
 
+    /**
+     * Auto-link SC items with inventory items by matching name (case-insensitive)
+     * within the same boarding house. Only links items that don't already have an inventoryItem.
+     */
+    @Transactional
+    public int autoLinkInventory(Long boardingHouseId) {
+        List<ServiceCatalog> catalogs = boardingHouseId != null
+                ? repository.findAllByBoardingHouseOnly(boardingHouseId)
+                : repository.findAll();
+
+        List<InventoryItem> inventoryItems = boardingHouseId != null
+                ? inventoryItemRepository.findByBoardingHouseIdAndIsActiveTrueOrderByCategoryAscNameAsc(boardingHouseId)
+                : inventoryItemRepository.findByIsActiveTrueOrderByCategoryAscNameAsc();
+
+        int linked = 0;
+        for (ServiceCatalog sc : catalogs) {
+            if (sc.getInventoryItem() != null) continue; // already linked
+            if (!sc.getRecipes().isEmpty()) continue; // has recipe, skip
+            for (InventoryItem inv : inventoryItems) {
+                if (inv.getName().equalsIgnoreCase(sc.getName())) {
+                    sc.setInventoryItem(inv);
+                    repository.save(sc);
+                    linked++;
+                    break;
+                }
+            }
+        }
+        return linked;
+    }
+
     private ServiceCatalog fromDto(ServiceCatalog s, ServiceCatalogDto dto) {
         s.setName(dto.getName());
         s.setCategory(dto.getCategory());
@@ -141,6 +171,9 @@ public class ServiceCatalogService {
         if (s.getInventoryItem() != null) {
             dto.setInventoryItemId(s.getInventoryItem().getId());
             dto.setInventoryItemName(s.getInventoryItem().getName());
+            // Stock info from linked inventory item
+            dto.setStockQuantity(s.getInventoryItem().getQuantityOnHand());
+            dto.setStockUnit(s.getInventoryItem().getUnit());
         }
         if (s.getBoardingHouse() != null) {
             dto.setBoardingHouseId(s.getBoardingHouse().getId());

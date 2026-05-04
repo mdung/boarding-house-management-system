@@ -132,10 +132,24 @@ const ServiceCatalog = () => {
           <h1 className="text-2xl font-black text-slate-900">Service Catalog</h1>
           <p className="text-sm text-slate-400 mt-0.5">Danh mục dịch vụ · Giá bán · Định mức nguyên liệu</p>
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5">
-          <Plus className="w-4 h-4" /> Thêm Service
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={async () => {
+            try {
+              const bhParam = propertyId !== 'ALL' ? `?boardingHouseId=${propertyId}` : ''
+              const r = await api.post(`/service-catalog/auto-link${bhParam}`)
+              alert(`Đã tự động link ${r.data} items với kho!`)
+              fetchData()
+            } catch (e) { alert(e.response?.data?.message || 'Error') }
+          }}
+            className="flex items-center gap-1.5 px-3 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs hover:bg-emerald-100 transition-all"
+            title="Tự động link SC items với Inventory items cùng tên">
+            🔗 Auto-link kho
+          </button>
+          <button onClick={openAdd}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5">
+            <Plus className="w-4 h-4" /> Thêm Service
+          </button>
+        </div>
       </div>
 
       <div className="space-y-6">
