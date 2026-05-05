@@ -1278,33 +1278,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Total Rooms */}
-        <div
-          onClick={() => navigate('/admin/rooms')}
-          className="bg-white border border-slate-200 rounded-2xl p-5 cursor-pointer hover:shadow-md transition-all"
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-              <DoorOpen className="w-4 h-4 text-slate-600" />
-            </div>
-          </div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Total Rooms</p>
-          <p className="text-[28px] font-extrabold tracking-tight text-slate-900 leading-tight">{dashboard?.totalRooms || 0}</p>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10.5px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-              {dashboard?.occupiedRooms || 0} occupied
-            </span>
-            <span className="text-[10.5px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-              {dashboard?.availableRooms || 0} available
-            </span>
-            {(dashboard?.maintenanceRooms || 0) > 0 && (
-              <span className="text-[10.5px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                {dashboard.maintenanceRooms} maint.
-              </span>
-            )}
-          </div>
-        </div>
-
         {/* Monthly Expenses */}
         <div
           onClick={() => navigate('/admin/monthly-expenses')}

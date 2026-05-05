@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useState } from 'react'
 import {
   Home, Building2, DoorOpen, Users, FileText, Receipt, CreditCard,
-  LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History, XCircle, HardDriveDownload, ChevronDown, Palette, LayoutGrid, ClipboardList
+  LogOut, Settings, BarChart3, ShoppingCart, Package, Menu, CalendarDays, BookOpen, ShieldCheck, History, XCircle, HardDriveDownload, ChevronDown, Palette, LayoutGrid, ClipboardList, Database
 } from 'lucide-react'
 import MobileAccess from '../components/MobileAccess'
 
@@ -55,6 +55,7 @@ const menuGroups = [
       { path: '/admin/staff', icon: ShieldCheck, label: 'Staff & Access', permission: 'MANAGE_STAFF' },
       { path: '/admin/activity-logs', icon: History, label: 'Activity Logs', adminOnly: true },
       { path: '/admin/data-transfer', icon: HardDriveDownload, label: 'Data Transfer', adminOnly: true },
+      { path: '/admin/backup-history', icon: Database, label: 'Backup History', adminOnly: true },
       { path: '/admin/service-types', icon: Settings, label: 'Service Types', permission: 'MANAGE_SETTINGS' },
       { path: '/admin/room-services', icon: Settings, label: 'Room Services', permission: 'MANAGE_SETTINGS' },
       { path: '/admin/service-catalog', icon: BookOpen, label: 'Service Catalog', permission: 'MANAGE_SETTINGS' },

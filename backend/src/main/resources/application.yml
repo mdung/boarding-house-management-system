@@ -21,6 +21,21 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  mail:
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:your-brevo-login-email}
+    password: ${MAIL_PASSWORD:your-brevo-smtp-key}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
 server:
   port: 8080
   servlet:
@@ -29,6 +44,10 @@ server:
 jwt:
   secret: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
   expiration: 86400000 # 24 hours in milliseconds
+
+backup:
+  email:
+    from: ${BACKUP_EMAIL_FROM:noreply@yourdomain.com}  # Sender address (configured in Brevo)
 
 logging:
   level:
