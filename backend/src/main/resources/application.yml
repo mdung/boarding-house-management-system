@@ -3,7 +3,7 @@ spring:
     name: boarding-house-management
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/boarding_house_db
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/boarding_house_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
