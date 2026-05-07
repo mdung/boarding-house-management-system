@@ -11,17 +11,18 @@ export const useProperty = () => {
 }
 
 export const PropertyProvider = ({ children }) => {
-  const { isAdmin, getAllowedPropertyIds } = useAuth()
+  const { isAdmin, getAllowedPropertyIds, user, loading } = useAuth()
   const [allProperties, setAllProperties] = useState([])
   const [selectedId, setSelectedId] = useState(() => {
     return localStorage.getItem('selectedPropertyId') || 'ALL'
   })
 
   useEffect(() => {
+    if (loading || !user) return
     api.get('/boarding-houses')
       .then(r => setAllProperties(r.data || []))
       .catch(() => {})
-  }, [])
+  }, [loading, user])
 
   // Properties this user is allowed to see — based on any permission that has property scope
   // If admin or any unscoped permission exists → all properties
