@@ -43,6 +43,10 @@ const BackupHistory = () => {
   const [editScheduleDesc, setEditScheduleDesc] = useState('Every day at 00:00')
   const [toast, setToast] = useState(null)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [customHour, setCustomHour] = useState('0')
+  const [customMinute, setCustomMinute] = useState('0')
+  const [useCustomTime, setUseCustomTime] = useState(false)
+  const [schedulerStatus, setSchedulerStatus] = useState(null)
 
 
   const showToast = (message, type = 'success') => {
@@ -86,6 +90,21 @@ const BackupHistory = () => {
       setEditEnabled(res.data.enabled)
       setEditCron(res.data.cronExpression || '0 0 0 * * ?')
       setEditScheduleDesc(res.data.scheduleDescription || 'Every day at 00:00')
+
+      // Check if current cron matches a preset, if not set custom time
+      const currentCron = res.data.cronExpression || '0 0 0 * * ?'
+      const matchesPreset = SCHEDULE_PRESETS.some(p => p.cron === currentCron)
+      if (!matchesPreset) {
+        // Try to parse custom cron: "0 M H * * ?"
+        const parts = currentCron.split(' ')
+        if (parts.length >= 3 && !parts[1].includes('*') && !parts[2].includes('*') && !parts[2].includes('/')) {
+          setCustomMinute(parts[1] || '0')
+          setCustomHour(parts[2] || '0')
+          setUseCustomTime(true)
+        }
+      } else {
+        setUseCustomTime(false)
+      }
     } catch (err) {
       console.error('Failed to fetch config:', err)
     } finally {
@@ -94,7 +113,16 @@ const BackupHistory = () => {
   }
 
   useEffect(() => { fetchHistory() }, [fetchHistory])
-  useEffect(() => { fetchConfig() }, [])
+  useEffect(() => { fetchConfig(); fetchSchedulerStatus() }, [])
+
+  const fetchSchedulerStatus = async () => {
+    try {
+      const res = await api.get('/backup/scheduler-status')
+      setSchedulerStatus(res.data)
+    } catch (err) {
+      console.error('Failed to fetch scheduler status:', err)
+    }
+  }
 
   // ─── Actions ───────────────────────────────────────────────────────────────
 
@@ -113,23 +141,8 @@ const BackupHistory = () => {
   }
 
   const handleSaveConfig = async () => {
-    setSaving(true)
-    try {
-      const payload = {
-        enabled: editEnabled,
-        emailRecipients: editEmails,
-        cronExpression: editCron,
-        scheduleDescription: editScheduleDesc
-      }
-      const res = await api.put('/backup/config', payload)
-      setConfig(res.data)
-      showToast('Cấu hình đã được lưu thành công!')
-      setShowSettings(false)
-    } catch (err) {
-      showToast('Lưu cấu hình thất bại: ' + (err.response?.data?.message || err.message), 'error')
-    } finally {
-      setSaving(false)
-    }
+    await saveConfig()
+    setShowSettings(false)
   }
 
   const handleAddEmail = () => {
@@ -152,9 +165,44 @@ const BackupHistory = () => {
     setEditEmails(editEmails.filter(e => e !== email))
   }
 
-  const handlePresetSelect = (preset) => {
+  const handlePresetSelect = async (preset) => {
     setEditCron(preset.cron)
     setEditScheduleDesc(preset.desc)
+    setUseCustomTime(false)
+    // Auto-save immediately
+    await saveConfig(preset.cron, preset.desc)
+  }
+
+  const handleCustomTimeApply = async () => {
+    const h = parseInt(customHour) || 0
+    const m = parseInt(customMinute) || 0
+    const cron = `0 ${m} ${h} * * ?`
+    const desc = `Mỗi ngày lúc ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+    setEditCron(cron)
+    setEditScheduleDesc(desc)
+    setUseCustomTime(true)
+    // Auto-save immediately
+    await saveConfig(cron, desc)
+  }
+
+  const saveConfig = async (cronOverride, descOverride) => {
+    setSaving(true)
+    try {
+      const payload = {
+        enabled: editEnabled,
+        emailRecipients: editEmails,
+        cronExpression: cronOverride || editCron,
+        scheduleDescription: descOverride || editScheduleDesc
+      }
+      const res = await api.put('/backup/config', payload)
+      setConfig(res.data)
+      showToast(`Đã lưu! Lịch backup: ${descOverride || editScheduleDesc}`)
+      await fetchSchedulerStatus()
+    } catch (err) {
+      showToast('Lưu cấu hình thất bại: ' + (err.response?.data?.message || err.message), 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
 
@@ -307,7 +355,13 @@ const BackupHistory = () => {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowSettings(!showSettings)}
+            onClick={() => {
+              if (!showSettings) {
+                // Reload config when opening settings to ensure latest data
+                fetchConfig()
+              }
+              setShowSettings(!showSettings)
+            }}
             className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm ${
               showSettings
                 ? 'bg-gray-900 text-white hover:bg-gray-800'
@@ -349,7 +403,29 @@ const BackupHistory = () => {
                 </div>
               </div>
               <button
-                onClick={() => setEditEnabled(!editEnabled)}
+                onClick={async () => {
+                  const newEnabled = !editEnabled
+                  setEditEnabled(newEnabled)
+                  // Auto-save toggle immediately
+                  setSaving(true)
+                  try {
+                    const payload = {
+                      enabled: newEnabled,
+                      emailRecipients: editEmails,
+                      cronExpression: editCron,
+                      scheduleDescription: editScheduleDesc
+                    }
+                    const res = await api.put('/backup/config', payload)
+                    setConfig(res.data)
+                    showToast(newEnabled ? 'Đã bật backup tự động!' : 'Đã tắt backup tự động!')
+                    await fetchSchedulerStatus()
+                  } catch (err) {
+                    showToast('Lưu thất bại: ' + (err.response?.data?.message || err.message), 'error')
+                    setEditEnabled(!newEnabled) // revert
+                  } finally {
+                    setSaving(false)
+                  }
+                }}
                 className={`relative w-12 h-6 rounded-full transition-colors ${editEnabled ? 'bg-emerald-500' : 'bg-gray-300'}`}
               >
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${editEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
@@ -367,7 +443,7 @@ const BackupHistory = () => {
                     key={preset.cron}
                     onClick={() => handlePresetSelect(preset)}
                     className={`text-left px-3 py-2.5 rounded-xl border text-sm transition-all ${
-                      editCron === preset.cron
+                      editCron === preset.cron && !useCustomTime
                         ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500 font-medium'
                         : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 text-gray-700'
                     }`}
@@ -376,6 +452,56 @@ const BackupHistory = () => {
                     <span className="block text-xs text-gray-500 mt-0.5">{preset.desc}</span>
                   </button>
                 ))}
+              </div>
+
+              {/* Custom Time Picker */}
+              <div className="mt-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl border border-indigo-100">
+                <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-indigo-600" /> Tùy chọn giờ & phút
+                </label>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Giờ:</label>
+                    <select
+                      value={customHour}
+                      onChange={(e) => setCustomHour(e.target.value)}
+                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white w-20"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Phút:</label>
+                    <select
+                      value={customMinute}
+                      onChange={(e) => setCustomMinute(e.target.value)}
+                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white w-20"
+                    >
+                      {Array.from({ length: 60 }, (_, i) => (
+                        <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleCustomTimeApply}
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      useCustomTime
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    Áp dụng
+                  </button>
+                </div>
+                {useCustomTime && (
+                  <p className="mt-2 text-xs text-indigo-600 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Đã chọn: Mỗi ngày lúc {String(customHour).padStart(2, '0')}:{String(customMinute).padStart(2, '0')}
+                  </p>
+                )}
               </div>
               <div className="mt-3 flex items-center gap-2">
                 <span className="text-xs text-gray-500">Cron hiện tại:</span>
@@ -530,14 +656,37 @@ const BackupHistory = () => {
               </span>
             )}
           </div>
+          {schedulerStatus && (
+            <div className="flex items-center gap-1.5 text-sm">
+              {schedulerStatus.schedulerActive ? (
+                <span className="inline-flex items-center gap-1 text-emerald-600 font-medium text-xs">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Scheduler đang chạy
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-amber-600 font-medium text-xs">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Scheduler không hoạt động
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
             <Timer className="w-4 h-4 text-blue-500" />
-            <span>{config.scheduleDescription || config.cronExpression}</span>
+            <span className="font-medium">{config.scheduleDescription || config.cronExpression}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-600">
+            <Clock className="w-4 h-4 text-blue-500" />
+            <span>Cron: <code className="bg-white px-1.5 py-0.5 rounded text-xs font-mono border border-blue-100">{config.cronExpression}</code></span>
           </div>
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
             <Mail className="w-4 h-4 text-blue-500" />
             <span>{config.emailRecipients?.length || 0} email</span>
           </div>
+          {config.updatedAt && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Cập nhật: {formatDate(config.updatedAt)} bởi {config.updatedBy || 'N/A'}</span>
+            </div>
+          )}
         </div>
       )}
 

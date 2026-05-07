@@ -253,14 +253,14 @@ const AdminLayout = () => {
           <div className="flex items-center gap-2 sm:gap-4">
              <MobileAccess />
              {/* Property filter dropdown */}
-             {properties.length > 1 && (
+             {(properties.length > 1 || (checkIsAdmin() && properties.length === 1)) && (
                <div className="relative">
                  <select
                    value={selectedId}
                    onChange={e => select(e.target.value)}
                    className="appearance-none pl-3 pr-8 py-1.5 text-[12px] font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer max-w-[160px] truncate"
                  >
-                   {checkIsAdmin() && <option value="ALL">🏠 All Properties</option>}
+                   {checkIsAdmin() && properties.length > 1 && <option value="ALL">🏠 All Properties</option>}
                    {properties.map(p => (
                      <option key={p.id} value={p.id}>{p.name}</option>
                    ))}

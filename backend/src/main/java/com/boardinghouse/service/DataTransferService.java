@@ -6,6 +6,7 @@ import com.boardinghouse.repository.*;
 import jakarta.transaction.Transactional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -65,6 +66,7 @@ public class DataTransferService {
 
     // ─── EXPORT ──────────────────────────────────────────────────────────────
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public DataExportDto exportAll(String exportedBy) {
         DataExportDto dto = new DataExportDto();
         dto.setExportVersion("1.0");

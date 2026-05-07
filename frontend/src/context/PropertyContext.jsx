@@ -65,8 +65,9 @@ export const PropertyProvider = ({ children }) => {
   }, [allowedProperties, selectedId])
 
   // If staff only has access to 1 property, auto-select it
+  // Also auto-select for admin if only 1 property exists
   useEffect(() => {
-    if (!isAdmin() && allowedProperties.length === 1 && selectedId === 'ALL') {
+    if (allowedProperties.length === 1 && selectedId === 'ALL') {
       const id = String(allowedProperties[0].id)
       setSelectedId(id)
       localStorage.setItem('selectedPropertyId', id)

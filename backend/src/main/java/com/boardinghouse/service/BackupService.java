@@ -25,10 +25,12 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.ScheduledFuture;
 import java.util.stream.Collectors;
 
@@ -68,6 +70,10 @@ public class BackupService {
         BackupConfig config = getOrCreateConfig();
         if (config.getEnabled()) {
             reschedule(config.getCronExpression());
+            log.info("Backup scheduler initialized. Cron: {}, Description: {}, Recipients: {}",
+                    config.getCronExpression(), config.getScheduleDescription(), config.getEmailRecipients());
+        } else {
+            log.info("Backup scheduler is DISABLED. Enable it from the admin panel.");
         }
     }
 
@@ -75,6 +81,13 @@ public class BackupService {
 
     public BackupConfigDto getConfig() {
         return toConfigDto(getOrCreateConfig());
+    }
+
+    /**
+     * Check if the scheduler is currently active.
+     */
+    public boolean isSchedulerActive() {
+        return scheduledTask != null && !scheduledTask.isCancelled() && !scheduledTask.isDone();
     }
 
     public BackupConfigDto updateConfig(BackupConfigDto dto, String updatedBy) {
@@ -115,11 +128,16 @@ public class BackupService {
     private void reschedule(String cronExpression) {
         cancelSchedule();
         try {
+            // Use Asia/Ho_Chi_Minh timezone to ensure correct scheduling
+            CronTrigger trigger = new CronTrigger(cronExpression, TimeZone.getTimeZone(ZoneId.of("Asia/Ho_Chi_Minh")));
             scheduledTask = taskScheduler.schedule(
-                    () -> performBackup("SCHEDULED", "SYSTEM"),
-                    new CronTrigger(cronExpression)
+                    () -> {
+                        log.info("Scheduled backup triggered at {}", LocalDateTime.now());
+                        performBackup("SCHEDULED", "SYSTEM");
+                    },
+                    trigger
             );
-            log.info("Backup rescheduled with cron: {}", cronExpression);
+            log.info("Backup rescheduled with cron: {} (timezone: Asia/Ho_Chi_Minh)", cronExpression);
         } catch (Exception e) {
             log.error("Failed to schedule backup with cron '{}': {}", cronExpression, e.getMessage());
         }
@@ -161,12 +179,24 @@ public class BackupService {
             history.setFileSizeBytes((long) jsonBytes.length);
 
             // 3. Send email with attachment (use config from DB)
+            // Always send email for both manual and scheduled backups if recipients are configured
             BackupConfig config = getOrCreateConfig();
             String recipients = config.getEmailRecipients();
-            if (config.getEnabled() && recipients != null && !recipients.isBlank()) {
-                sendBackupEmail(jsonBytes, fileName, recipients);
-                history.setEmailSent(true);
-                history.setEmailSentTo(recipients);
+            if (recipients != null && !recipients.isBlank()) {
+                try {
+                    sendBackupEmail(jsonBytes, fileName, recipients);
+                    history.setEmailSent(true);
+                    history.setEmailSentTo(recipients);
+                    log.info("Backup email sent successfully to: {}", recipients);
+                } catch (Exception emailEx) {
+                    log.error("Failed to send backup email to {}: {}", recipients, emailEx.getMessage(), emailEx);
+                    // Don't fail the entire backup just because email failed
+                    history.setEmailSent(false);
+                    history.setErrorMessage("Backup OK nhưng gửi email thất bại: " + emailEx.getMessage());
+                }
+            } else {
+                log.warn("No email recipients configured, skipping email send");
+                history.setEmailSent(false);
             }
 
             history.setStatus("SUCCESS");

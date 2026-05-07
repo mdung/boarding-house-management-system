@@ -105,4 +105,20 @@ public class BackupController {
     public ResponseEntity<BackupService.BackupStatsDto> getStats() {
         return ResponseEntity.ok(backupService.getStats());
     }
+
+    /**
+     * Kiểm tra trạng thái scheduler.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/scheduler-status")
+    public ResponseEntity<Map<String, Object>> getSchedulerStatus() {
+        BackupConfigDto config = backupService.getConfig();
+        Map<String, Object> status = Map.of(
+                "enabled", config.getEnabled(),
+                "schedulerActive", backupService.isSchedulerActive(),
+                "cronExpression", config.getCronExpression() != null ? config.getCronExpression() : "",
+                "scheduleDescription", config.getScheduleDescription() != null ? config.getScheduleDescription() : ""
+        );
+        return ResponseEntity.ok(status);
+    }
 }
