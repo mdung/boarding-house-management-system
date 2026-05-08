@@ -141,7 +141,8 @@ public class DataTransferService {
                         t.getId(),
                         t.getUser() != null ? t.getUser().getId() : null,
                         t.getFullName(), t.getPhone(), t.getEmail(),
-                        t.getIdentityNumber(), t.getDateOfBirth(),
+                        t.getIdentityNumber(), t.getPassportNumber(),
+                        t.getDateOfBirth(),
                         t.getPermanentAddress(), t.getStatus().name()
                 )
         ).collect(Collectors.toList());
@@ -151,7 +152,8 @@ public class DataTransferService {
         return serviceTypeRepo.findAll().stream().map(s ->
                 new DataExportDto.ServiceTypeExport(
                         s.getId(), s.getName(), s.getCategory().name(),
-                        s.getUnit(), s.getPricePerUnit(), s.getIsActive()
+                        s.getUnit(), s.getPricePerUnit(), s.getIsActive(),
+                        s.getBoardingHouse() != null ? s.getBoardingHouse().getId() : null
                 )
         ).collect(Collectors.toList());
     }
@@ -198,7 +200,8 @@ public class DataTransferService {
                 new DataExportDto.InventoryTransactionExport(
                         t.getId(), t.getItem().getId(), t.getType().name(),
                         t.getQuantity(), t.getUnitPrice(), t.getAmount(),
-                        t.getReference(), t.getNote(), t.getCreatedDate()
+                        t.getReference(), t.getNote(), t.getCreatedDate(),
+                        t.getReversedByTransactionId()
                 )
         ).collect(Collectors.toList());
     }
@@ -462,9 +465,9 @@ public class DataTransferService {
         if (list == null) return 0;
         for (DataExportDto.TenantExport e : list) {
             jdbcTemplate.update(
-                "INSERT INTO tenants (id, user_id, full_name, phone, email, identity_number, date_of_birth, permanent_address, status) VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO tenants (id, user_id, full_name, phone, email, identity_number, passport_number, date_of_birth, permanent_address, status) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 e.getId(), e.getUserId(), e.getFullName(), e.getPhone(), e.getEmail(),
-                e.getIdentityNumber(), e.getDateOfBirth(),
+                e.getIdentityNumber(), e.getPassportNumber(), e.getDateOfBirth(),
                 e.getPermanentAddress(), e.getStatus()
             );
         }
@@ -476,9 +479,10 @@ public class DataTransferService {
         if (list == null) return 0;
         for (DataExportDto.ServiceTypeExport e : list) {
             jdbcTemplate.update(
-                "INSERT INTO service_types (id, name, category, unit, price_per_unit, is_active) VALUES (?,?,?,?,?,?)",
+                "INSERT INTO service_types (id, name, category, unit, price_per_unit, is_active, boarding_house_id) VALUES (?,?,?,?,?,?,?)",
                 e.getId(), e.getName(), e.getCategory(),
-                e.getUnit(), e.getPricePerUnit(), e.getIsActive()
+                e.getUnit(), e.getPricePerUnit(), e.getIsActive(),
+                e.getBoardingHouseId()
             );
         }
         resetSequence("service_types", list.stream().mapToLong(DataExportDto.ServiceTypeExport::getId).max().orElse(0));
@@ -517,10 +521,11 @@ public class DataTransferService {
         if (list == null) return 0;
         for (DataExportDto.InventoryTransactionExport e : list) {
             jdbcTemplate.update(
-                "INSERT INTO inventory_transactions (id, item_id, type, quantity, unit_price, amount, reference, note, created_date) VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO inventory_transactions (id, item_id, type, quantity, unit_price, amount, reference, note, created_date, reversed_by_transaction_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 e.getId(), e.getItemId(), e.getType(),
                 e.getQuantity(), e.getUnitPrice(), e.getAmount(),
-                e.getReference(), e.getNote(), e.getCreatedDate()
+                e.getReference(), e.getNote(), e.getCreatedDate(),
+                e.getReversedByTransactionId()
             );
         }
         resetSequence("inventory_transactions", list.stream().mapToLong(DataExportDto.InventoryTransactionExport::getId).max().orElse(0));

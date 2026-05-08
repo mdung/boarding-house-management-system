@@ -289,6 +289,13 @@ const AdminLayout = () => {
           </div>
         </header>
 
+        {/* Backup status marquee banner */}
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white text-xs font-medium overflow-hidden whitespace-nowrap flex-shrink-0">
+          <div className="animate-marquee inline-block py-1 px-4">
+            📦 BACKUP STATUS: ✅ Đã backup — Users, Boarding Houses, Rooms, Tenants, Contracts, Invoices, Invoice Items, Payments, Service Types, Room Services, Service Catalog, Service Catalog Recipes, Inventory Items, Inventory Transactions, Guest Charges, Monthly Expenses, Housekeeping Tasks &nbsp;|&nbsp; ⚠️ CHƯA backup — Room Photos (file ảnh không thể backup qua JSON), Audit Logs (log hệ thống tự sinh lại) &nbsp;|&nbsp; 📧 Email backup: Không khả dụng trên Render Free (SMTP bị block) — Dùng Data Transfer để export thủ công
+          </div>
+        </div>
+
         {/* Content */}
         <main className="flex-1 overflow-auto pb-20 lg:pb-0">
           <div className="p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">

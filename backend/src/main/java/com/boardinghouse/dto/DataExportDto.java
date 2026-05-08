@@ -89,6 +89,7 @@ public class DataExportDto {
         private String phone;
         private String email;
         private String identityNumber;
+        private String passportNumber;
         private LocalDate dateOfBirth;
         private String permanentAddress;
         private String status;
@@ -102,6 +103,7 @@ public class DataExportDto {
         private String unit;
         private BigDecimal pricePerUnit;
         private Boolean isActive;
+        private Long boardingHouseId;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor
@@ -156,6 +158,7 @@ public class DataExportDto {
         private String reference;
         private String note;
         private LocalDate createdDate;
+        private Long reversedByTransactionId;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor
