@@ -22,6 +22,9 @@ public class BackupController {
 
     private final BackupService backupService;
 
+    @org.springframework.beans.factory.annotation.Value("${backup.cron.secret:change-this-secret-key-in-production}")
+    private String cronSecret;
+
     public BackupController(BackupService backupService) {
         this.backupService = backupService;
     }
@@ -120,5 +123,25 @@ public class BackupController {
                 "scheduleDescription", config.getScheduleDescription() != null ? config.getScheduleDescription() : ""
         );
         return ResponseEntity.ok(status);
+    }
+
+    // ─── External Cron Trigger (for Render free tier) ────────────────────────
+
+    /**
+     * External cron trigger - dùng cho cron-job.org hoặc tương tự.
+     * Không cần JWT, chỉ cần secret key trong query param.
+     * URL: GET /api/backup/cron-trigger?key=YOUR_SECRET
+     */
+    @GetMapping("/cron-trigger")
+    public ResponseEntity<Map<String, Object>> cronTrigger(@RequestParam String key) {
+        if (!cronSecret.equals(key)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Invalid key"));
+        }
+        BackupHistoryDto result = backupService.triggerManualBackup("EXTERNAL_CRON");
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "status", result.getStatus(),
+                "fileName", result.getFileName() != null ? result.getFileName() : ""
+        ));
     }
 }

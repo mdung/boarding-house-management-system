@@ -48,6 +48,8 @@ jwt:
 backup:
   email:
     from: ${BACKUP_EMAIL_FROM:noreply@yourdomain.com}  # Sender address (configured in Brevo)
+  cron:
+    secret: ${BACKUP_CRON_SECRET:change-this-secret-key-in-production}
 
 logging:
   level:
