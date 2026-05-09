@@ -46,68 +46,53 @@ public class DeduplicationService {
     // ─── Service Catalog ─────────────────────────────────────────────────────
 
     private List<Map<String, Object>> scanServiceCatalogDuplicates() {
-        // Find items that appear duplicated when viewed per boarding house
-        // This includes: same name+category within same bh_id, OR same name+category 
-        // where one is global (NULL) and another belongs to a specific boarding house
+        // Duplicates = same name + category within same boarding_house_id
+        // Use COALESCE to handle NULL (global items grouped as bh_id=0)
         String sql = """
-            WITH visible_items AS (
-                SELECT sc.id, sc.name, sc.category, sc.boarding_house_id,
-                       COALESCE(sc.boarding_house_id, bh.id) as effective_bh_id,
-                       COALESCE(bh2.name, bh.name, 'Global') as bh_name
-                FROM service_catalog sc
-                LEFT JOIN boarding_houses bh2 ON sc.boarding_house_id = bh2.id
-                CROSS JOIN boarding_houses bh
-                WHERE sc.boarding_house_id = bh.id OR sc.boarding_house_id IS NULL
-            )
-            SELECT name, category, effective_bh_id as bh_id, bh_name as "boardingHouseName", COUNT(*) as cnt
-            FROM visible_items
-            GROUP BY name, category, effective_bh_id, bh_name
+            SELECT sc.name, sc.category, COALESCE(sc.boarding_house_id, 0) as bh_id, 
+                   COUNT(*) as cnt, MIN(sc.id) as keep_id,
+                   COALESCE(bh.name, 'Global (chung)') as "boardingHouseName"
+            FROM service_catalog sc
+            LEFT JOIN boarding_houses bh ON sc.boarding_house_id = bh.id
+            GROUP BY sc.name, sc.category, COALESCE(sc.boarding_house_id, 0), bh.name
             HAVING COUNT(*) > 1
             """;
         return jdbc.queryForList(sql);
     }
 
     private int deduplicateServiceCatalog() {
-        // For each boarding house, find catalog items that appear duplicated
-        // (same name+category, either both in same bh or one global + one in bh)
-        // Strategy: if a bh-specific item exists, delete the global duplicate for that bh context
-        // If both are in same bh (or both global), keep lowest ID
-        
         String sql = """
-            SELECT bh.id as bh_id, sc.name, sc.category
-            FROM boarding_houses bh
-            CROSS JOIN service_catalog sc
-            WHERE sc.boarding_house_id = bh.id OR sc.boarding_house_id IS NULL
-            GROUP BY bh.id, sc.name, sc.category
+            SELECT name, category, COALESCE(boarding_house_id, 0) as bh_id
+            FROM service_catalog
+            GROUP BY name, category, COALESCE(boarding_house_id, 0)
             HAVING COUNT(*) > 1
             """;
         List<Map<String, Object>> groups = jdbc.queryForList(sql);
 
-        Set<Long> alreadyDeleted = new HashSet<>();
         int totalRemoved = 0;
-
         for (Map<String, Object> group : groups) {
-            Long bhId = ((Number) group.get("bh_id")).longValue();
             String name = (String) group.get("name");
             String category = (String) group.get("category");
+            Long bhId = ((Number) group.get("bh_id")).longValue();
 
-            // Get all matching items (both global and bh-specific)
-            List<Map<String, Object>> items = jdbc.queryForList(
-                "SELECT id, boarding_house_id FROM service_catalog WHERE name = ? AND category = ? AND (boarding_house_id = ? OR boarding_house_id IS NULL) ORDER BY boarding_house_id DESC NULLS LAST, id ASC",
-                name, category, bhId);
+            List<Long> ids;
+            if (bhId > 0) {
+                ids = jdbc.queryForList(
+                    "SELECT id FROM service_catalog WHERE name = ? AND category = ? AND boarding_house_id = ? ORDER BY id",
+                    Long.class, name, category, bhId);
+            } else {
+                ids = jdbc.queryForList(
+                    "SELECT id FROM service_catalog WHERE name = ? AND category = ? AND boarding_house_id IS NULL ORDER BY id",
+                    Long.class, name, category);
+            }
 
-            if (items.size() <= 1) continue;
+            if (ids.size() <= 1) continue;
 
-            // Keep the bh-specific one (first in list due to ORDER BY), or lowest ID if all same scope
-            Long keepId = ((Number) items.get(0).get("id")).longValue();
-            
-            for (int i = 1; i < items.size(); i++) {
-                Long dupId = ((Number) items.get(i).get("id")).longValue();
-                if (alreadyDeleted.contains(dupId)) continue;
-
+            Long keepId = ids.get(0);
+            for (int i = 1; i < ids.size(); i++) {
+                Long dupId = ids.get(i);
                 jdbc.update("UPDATE service_catalog_recipes SET catalog_id = ? WHERE catalog_id = ?", keepId, dupId);
                 jdbc.update("DELETE FROM service_catalog WHERE id = ?", dupId);
-                alreadyDeleted.add(dupId);
                 totalRemoved++;
             }
         }
@@ -125,25 +110,15 @@ public class DeduplicationService {
     private List<Map<String, Object>> scanInventoryItemDuplicates() {
         // Duplicates = same name within same boarding house
         String sql = """
-            SELECT name, COALESCE(boarding_house_id, 0) as bh_id, COUNT(*) as cnt,
-                   MIN(id) as keep_id
-            FROM inventory_items
-            GROUP BY name, COALESCE(boarding_house_id, 0)
+            SELECT i.name, COALESCE(i.boarding_house_id, 0) as bh_id, COUNT(*) as cnt,
+                   MIN(i.id) as keep_id,
+                   COALESCE(bh.name, 'Global (chung)') as "boardingHouseName"
+            FROM inventory_items i
+            LEFT JOIN boarding_houses bh ON i.boarding_house_id = bh.id
+            GROUP BY i.name, COALESCE(i.boarding_house_id, 0), bh.name
             HAVING COUNT(*) > 1
             """;
-        List<Map<String, Object>> raw = jdbc.queryForList(sql);
-
-        for (Map<String, Object> row : raw) {
-            Long bhId = ((Number) row.get("bh_id")).longValue();
-            if (bhId > 0) {
-                String bhName = jdbc.queryForObject(
-                    "SELECT name FROM boarding_houses WHERE id = ?", String.class, bhId);
-                row.put("boardingHouseName", bhName);
-            } else {
-                row.put("boardingHouseName", "Global (chung)");
-            }
-        }
-        return raw;
+        return jdbc.queryForList(sql);
     }
 
     private int deduplicateInventoryItems() {
@@ -174,9 +149,8 @@ public class DeduplicationService {
             if (ids.size() <= 1) continue;
 
             Long keepId = ids.get(0);
-            List<Long> removeIds = ids.subList(1, ids.size());
-
-            for (Long dupId : removeIds) {
+            for (int i = 1; i < ids.size(); i++) {
+                Long dupId = ids.get(i);
                 jdbc.update("UPDATE inventory_transactions SET item_id = ? WHERE item_id = ?", keepId, dupId);
                 jdbc.update("UPDATE guest_service_charges SET inventory_item_id = ? WHERE inventory_item_id = ?", keepId, dupId);
                 jdbc.update("UPDATE service_catalog SET inventory_item_id = ? WHERE inventory_item_id = ?", keepId, dupId);
