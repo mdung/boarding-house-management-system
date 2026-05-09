@@ -20,6 +20,7 @@ const ServiceCatalog = () => {
   const [editing, setEditing] = useState(null)
   const [expandedRecipes, setExpandedRecipes] = useState({})
   const [toast, setToast] = useState(null) // { message, type: 'success'|'error' }
+  const [deleteTarget, setDeleteTarget] = useState(null) // id of item to delete
   const showToast = (message, type = 'success') => { setToast({ message, type }); setTimeout(() => setToast(null), 3000) }
   const [formData, setFormData] = useState({
     name: '', category: 'FOOD_DRINK', unit: '', defaultPrice: '',
@@ -95,9 +96,19 @@ const ServiceCatalog = () => {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Ẩn service này?')) return
-    await api.delete(`/service-catalog/${id}`)
-    fetchData()
+    setDeleteTarget(id)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      await api.delete(`/service-catalog/${deleteTarget}`)
+      showToast('Đã ẩn service!', 'success')
+      fetchData()
+    } catch (e) {
+      showToast(e.response?.data?.message || 'Không thể xóa service này', 'error')
+    }
+    setDeleteTarget(null)
   }
 
   const addRecipeLine = () => setFormData(p => ({
@@ -477,6 +488,27 @@ const ServiceCatalog = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-rose-100 rounded-xl">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900">Ẩn service này?</h3>
+                <p className="text-xs text-slate-500">Service sẽ bị ẩn khỏi danh sách</p>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Hủy</button>
+              <button onClick={confirmDelete} className="px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors">Xác nhận</button>
+            </div>
           </div>
         </div>
       )}

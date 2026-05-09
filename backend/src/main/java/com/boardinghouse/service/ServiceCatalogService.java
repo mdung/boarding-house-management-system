@@ -84,8 +84,14 @@ public class ServiceCatalogService {
     public void delete(Long id) {
         ServiceCatalog s = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Service not found: " + id));
-        s.setIsActive(false);
-        repository.save(s);
+        try {
+            repository.delete(s);
+            repository.flush();
+        } catch (Exception e) {
+            // FK constraint → fallback to soft delete
+            s.setIsActive(false);
+            repository.save(s);
+        }
     }
 
     /**
