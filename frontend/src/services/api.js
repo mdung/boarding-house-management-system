@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getCached, setCache } from './apiCache'
+import { getCached, setCache, clearAllCache } from './apiCache'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -32,6 +32,10 @@ api.interceptors.response.use(
     if (response.config.method === 'get' && response.status === 200 && !response.config.skipCache) {
       const url = response.config.baseURL + response.config.url + (response.config.params ? JSON.stringify(response.config.params) : '')
       setCache(url, response.data)
+    }
+    // Invalidate all cache on any mutation (POST/PUT/DELETE/PATCH)
+    if (['post', 'put', 'delete', 'patch'].includes(response.config.method)) {
+      clearAllCache()
     }
     return response
   },

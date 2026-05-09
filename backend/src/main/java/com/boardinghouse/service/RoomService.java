@@ -21,20 +21,25 @@ public class RoomService {
     private final BoardingHouseRepository boardingHouseRepository;
     private final ContractRepository contractRepository;
     private final AuditLogService auditLogService;
+    private final ContractService contractService;
 
     public RoomService(RoomRepository repository, BoardingHouseRepository boardingHouseRepository,
-                       ContractRepository contractRepository, AuditLogService auditLogService) {
+                       ContractRepository contractRepository, AuditLogService auditLogService,
+                       ContractService contractService) {
         this.repository = repository;
         this.boardingHouseRepository = boardingHouseRepository;
         this.contractRepository = contractRepository;
         this.auditLogService = auditLogService;
+        this.contractService = contractService;
     }
 
     public List<RoomDto> getAll() {
+        contractService.autoExpireContracts();
         return repository.findAll().stream().map(this::toDto).collect(Collectors.toList());
     }
 
     public List<RoomDto> getByBoardingHouse(Long boardingHouseId) {
+        contractService.autoExpireContracts();
         return repository.findByBoardingHouseId(boardingHouseId).stream().map(this::toDto).collect(Collectors.toList());
     }
 
