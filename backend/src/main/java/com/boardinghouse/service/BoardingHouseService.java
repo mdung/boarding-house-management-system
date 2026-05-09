@@ -6,6 +6,8 @@ import com.boardinghouse.entity.RoomStatus;
 import com.boardinghouse.exception.ResourceNotFoundException;
 import com.boardinghouse.repository.BoardingHouseRepository;
 import com.boardinghouse.repository.RoomRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ public class BoardingHouseService {
         this.roomRepository = roomRepository;
     }
 
+    @Cacheable("boardingHouses")
     public List<BoardingHouseDto> getAll() {
         return repository.findAll().stream()
                 .map(this::toDto)
@@ -35,6 +38,7 @@ public class BoardingHouseService {
     }
 
     @Transactional
+    @CacheEvict(value = "boardingHouses", allEntries = true)
     public BoardingHouseDto create(BoardingHouseDto dto) {
         BoardingHouse house = new BoardingHouse();
         house.setName(dto.getName());
@@ -46,6 +50,7 @@ public class BoardingHouseService {
     }
 
     @Transactional
+    @CacheEvict(value = "boardingHouses", allEntries = true)
     public BoardingHouseDto update(Long id, BoardingHouseDto dto) {
         BoardingHouse house = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Boarding house not found with id: " + id));
@@ -58,6 +63,7 @@ public class BoardingHouseService {
     }
 
     @Transactional
+    @CacheEvict(value = "boardingHouses", allEntries = true)
     public void delete(Long id) {
         if (!repository.existsById(id)) {
             throw new ResourceNotFoundException("Boarding house not found with id: " + id);

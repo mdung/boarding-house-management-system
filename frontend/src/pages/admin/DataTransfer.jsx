@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react'
 import api from '../../services/api'
+import { useToast } from '../../context/ToastContext'
 import {
   Download, Upload, Database, AlertTriangle, CheckCircle2,
-  FileJson, Info, Loader2, ShieldAlert
+  FileJson, Info, Loader2, ShieldAlert, Trash2
 } from 'lucide-react'
 
 const DataTransfer = () => {
+  const { showToast } = useToast()
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
@@ -13,7 +15,48 @@ const DataTransfer = () => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [confirmText, setConfirmText] = useState('')
+  const [scanning, setScanning] = useState(false)
+  const [scanResult, setScanResult] = useState(null)
+  const [removing, setRemoving] = useState(false)
+  const [removeResult, setRemoveResult] = useState(null)
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
   const fileInputRef = useRef(null)
+
+  // ─── Deduplication ────────────────────────────────────────────────────────
+
+  const handleScan = async () => {
+    setScanning(true)
+    setScanResult(null)
+    setRemoveResult(null)
+    try {
+      const r = await api.get('/deduplication/scan', { skipCache: true })
+      setScanResult(r.data)
+      const totalDups = (r.data.serviceCatalog?.length || 0) + (r.data.inventoryItems?.length || 0)
+      if (totalDups === 0) showToast('Không tìm thấy bản trùng lặp nào ✓', 'success')
+      else showToast(`Tìm thấy ${totalDups} nhóm trùng lặp`, 'warning')
+    } catch (err) {
+      showToast('Scan thất bại: ' + (err.response?.data?.message || err.message), 'error')
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  const handleRemoveDuplicates = async () => {
+    setShowRemoveConfirm(false)
+    setRemoving(true)
+    setRemoveResult(null)
+    try {
+      const r = await api.post('/deduplication/remove')
+      setRemoveResult(r.data)
+      setScanResult(null)
+      const total = (r.data.serviceCatalogRemoved || 0) + (r.data.inventoryItemsRemoved || 0)
+      showToast(`Đã xóa ${total} bản trùng lặp thành công!`, 'success')
+    } catch (err) {
+      showToast('Xóa thất bại: ' + (err.response?.data?.message || err.message), 'error')
+    } finally {
+      setRemoving(false)
+    }
+  }
 
   // ─── Export ───────────────────────────────────────────────────────────────
 
@@ -42,7 +85,7 @@ const DataTransfer = () => {
       link.remove()
       window.URL.revokeObjectURL(url)
     } catch (err) {
-      alert('Export thất bại: ' + (err.response?.data?.message || err.message))
+      showToast('Export thất bại: ' + (err.response?.data?.message || err.message), 'error')
     } finally {
       setExporting(false)
     }
@@ -54,7 +97,7 @@ const DataTransfer = () => {
     const file = e.target.files[0]
     if (!file) return
     if (!file.name.endsWith('.json')) {
-      alert('Chỉ chấp nhận file .json')
+      showToast('Chỉ chấp nhận file .json', 'error')
       return
     }
     setSelectedFile(file)
@@ -64,7 +107,7 @@ const DataTransfer = () => {
 
   const handleImportClick = () => {
     if (!selectedFile) {
-      alert('Vui lòng chọn file backup trước')
+      showToast('Vui lòng chọn file backup trước', 'warning')
       return
     }
     setShowConfirm(true)
@@ -205,16 +248,40 @@ const DataTransfer = () => {
 
         {/* Import result */}
         {importResult && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
-            <div className="flex items-center gap-2 text-emerald-700 font-medium">
-              <CheckCircle2 className="w-4 h-4" />
-              Import thành công!
+          <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-4">
+            <div className="flex items-center gap-2 text-emerald-700 font-semibold text-base">
+              <CheckCircle2 className="w-5 h-5" />
+              Import hoàn tất!
             </div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-emerald-800">
-              {importResult.imported && Object.entries(importResult.imported).map(([key, val]) => (
-                <div key={key} className="flex justify-between">
-                  <span className="text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                  <span className="font-medium">{val}</span>
+
+            {/* Warnings */}
+            {importResult.imported?.warnings?.length > 0 && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-1">
+                <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">⚠️ Lưu ý</p>
+                {importResult.imported.warnings.map((w, i) => (
+                  <p key={i} className="text-sm text-amber-800">• {w}</p>
+                ))}
+              </div>
+            )}
+
+            {/* Errors */}
+            {importResult.imported?.errors?.length > 0 && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg space-y-1">
+                <p className="text-xs font-bold text-red-700 uppercase tracking-wide">❌ Lỗi</p>
+                {importResult.imported.errors.map((e, i) => (
+                  <p key={i} className="text-sm text-red-800">• {e}</p>
+                ))}
+              </div>
+            )}
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {importResult.imported && Object.entries(importResult.imported)
+                .filter(([key]) => !['warnings', 'errors'].includes(key))
+                .map(([key, val]) => (
+                <div key={key} className={`flex items-center justify-between p-2.5 rounded-lg border ${val > 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100'}`}>
+                  <span className="text-xs text-slate-600 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                  <span className={`text-sm font-bold ${val > 0 ? 'text-emerald-700' : 'text-slate-400'}`}>{val}</span>
                 </div>
               ))}
             </div>
@@ -222,11 +289,76 @@ const DataTransfer = () => {
         )}
 
         {importError && (
-          <div className="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-medium">Import thất bại</p>
-              <p className="mt-0.5">{importError}</p>
+          <div className="p-4 bg-red-50 border border-red-200 rounded-xl space-y-2">
+            <div className="flex items-center gap-2 text-red-700 font-semibold">
+              <AlertTriangle className="w-5 h-5" />
+              Import thất bại
+            </div>
+            <p className="text-sm text-red-800 leading-relaxed">{importError}</p>
+            <p className="text-xs text-red-500">Kiểm tra lại file backup hoặc thử export mới từ hệ thống gốc.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Deduplication card */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Trash2 className="w-5 h-5 text-red-500" />
+          <h2 className="font-semibold text-gray-800">Remove Duplicates</h2>
+        </div>
+        <p className="text-sm text-gray-500">
+          Quét và xóa các bản ghi trùng lặp trong Service Catalog và Inventory. Bản gốc (ID nhỏ nhất) được giữ lại, các FK tham chiếu sẽ được chuyển sang bản gốc.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={handleScan}
+            disabled={scanning}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+          >
+            {scanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+            {scanning ? 'Đang quét...' : 'Quét duplicates'}
+          </button>
+          {scanResult && (
+            <button
+              onClick={() => setShowRemoveConfirm(true)}
+              disabled={removing}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              {removing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              {removing ? 'Đang xóa...' : 'Xóa duplicates'}
+            </button>
+          )}
+        </div>
+
+        {scanResult && (
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3 text-sm">
+            <p className="font-medium text-slate-700">Kết quả quét:</p>
+            <div className="space-y-2">
+              <div>
+                <span className="font-medium">Service Catalog:</span>{' '}
+                {scanResult.serviceCatalog?.length > 0
+                  ? <span className="text-red-600">{scanResult.serviceCatalog.length} nhóm trùng lặp</span>
+                  : <span className="text-green-600">Không có trùng lặp ✓</span>}
+              </div>
+              <div>
+                <span className="font-medium">Inventory Items:</span>{' '}
+                {scanResult.inventoryItems?.length > 0
+                  ? <span className="text-red-600">{scanResult.inventoryItems.length} nhóm trùng lặp</span>
+                  : <span className="text-green-600">Không có trùng lặp ✓</span>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {removeResult && (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-sm">
+            <div className="flex items-center gap-2 text-emerald-700 font-medium">
+              <CheckCircle2 className="w-4 h-4" />
+              Xóa duplicates thành công!
+            </div>
+            <div className="mt-2 text-emerald-800">
+              <p>Service Catalog: xóa {removeResult.serviceCatalogRemoved} bản trùng</p>
+              <p>Inventory Items: xóa {removeResult.inventoryItemsRemoved} bản trùng</p>
             </div>
           </div>
         )}
@@ -280,6 +412,27 @@ const DataTransfer = () => {
               >
                 Xác nhận Import
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dedup confirm modal */}
+      {showRemoveConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa Duplicates</h3>
+            </div>
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+              <p>Bản gốc (ID nhỏ nhất) sẽ được giữ lại. Các FK tham chiếu sẽ được chuyển sang bản gốc trước khi xóa bản trùng.</p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setShowRemoveConfirm(false)} className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Hủy</button>
+              <button onClick={handleRemoveDuplicates} className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">Xác nhận xóa</button>
             </div>
           </div>
         </div>

@@ -78,7 +78,7 @@ public class DataTransferService {
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public DataExportDto exportAll(String exportedBy) {
         DataExportDto dto = new DataExportDto();
-        dto.setExportVersion("1.0");
+        dto.setExportVersion("2.0");
         dto.setExportedAt(LocalDateTime.now());
         dto.setExportedBy(exportedBy);
 
@@ -324,65 +324,51 @@ public class DataTransferService {
     @Transactional
     public Map<String, Object> importAll(DataExportDto data) {
         Map<String, Object> stats = new LinkedHashMap<>();
+        List<String> warnings = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
 
         // Xóa toàn bộ data cũ theo thứ tự phụ thuộc (FK)
         clearAllData();
 
-        // Import theo thứ tự phụ thuộc
-        int users = importUsers(data.getUsers());
-        stats.put("users", users);
+        // Import theo thứ tự phụ thuộc — mỗi bước có try-catch riêng
+        stats.put("users", safeImport("Users", () -> importUsers(data.getUsers()), errors));
+        stats.put("boardingHouses", safeImport("Boarding Houses", () -> importBoardingHouses(data.getBoardingHouses()), errors));
+        stats.put("rooms", safeImport("Rooms", () -> importRooms(data.getRooms()), errors));
+        stats.put("tenants", safeImport("Tenants", () -> importTenants(data.getTenants()), errors));
+        stats.put("serviceTypes", safeImport("Service Types", () -> importServiceTypes(data.getServiceTypes()), errors));
+        stats.put("roomServices", safeImport("Room Services", () -> importRoomServices(data.getRoomServices()), errors));
+        stats.put("inventoryItems", safeImport("Inventory Items", () -> importInventoryItems(data.getInventoryItems()), errors));
+        stats.put("inventoryTransactions", safeImport("Inventory Transactions", () -> importInventoryTransactions(data.getInventoryTransactions()), errors));
+        stats.put("serviceCatalog", safeImport("Service Catalog", () -> importServiceCatalog(data.getServiceCatalog()), errors));
+        stats.put("contracts", safeImport("Contracts", () -> importContracts(data.getContracts()), errors));
+        safeImport("Contract Tenants", () -> { importContractTenants(data.getContractTenants()); return 0; }, errors);
+        stats.put("invoices", safeImport("Invoices", () -> importInvoices(data.getInvoices()), errors));
+        stats.put("invoiceItems", safeImport("Invoice Items", () -> importInvoiceItems(data.getInvoiceItems()), errors));
+        stats.put("payments", safeImport("Payments", () -> importPayments(data.getPayments()), errors));
+        stats.put("guestServiceCharges", safeImport("Guest Charges", () -> importGuestServiceCharges(data.getGuestServiceCharges()), errors));
+        stats.put("monthlyExpenses", safeImport("Monthly Expenses", () -> importMonthlyExpenses(data.getMonthlyExpenses()), errors));
+        stats.put("housekeepingTasks", safeImport("Housekeeping Tasks", () -> importHousekeepingTasks(data.getHousekeepingTasks()), errors));
+        stats.put("serviceCatalogRecipes", safeImport("Catalog Recipes", () -> importServiceCatalogRecipes(data.getServiceCatalogRecipes()), errors));
 
-        int boardingHouses = importBoardingHouses(data.getBoardingHouses());
-        stats.put("boardingHouses", boardingHouses);
+        // Check for missing sections in old export files
+        if (data.getMonthlyExpenses() == null) warnings.add("File không chứa Monthly Expenses (phiên bản cũ)");
+        if (data.getHousekeepingTasks() == null) warnings.add("File không chứa Housekeeping Tasks (phiên bản cũ)");
+        if (data.getServiceCatalogRecipes() == null) warnings.add("File không chứa Service Catalog Recipes (phiên bản cũ)");
 
-        int rooms = importRooms(data.getRooms());
-        stats.put("rooms", rooms);
-
-        int tenants = importTenants(data.getTenants());
-        stats.put("tenants", tenants);
-
-        int serviceTypes = importServiceTypes(data.getServiceTypes());
-        stats.put("serviceTypes", serviceTypes);
-
-        int roomServices = importRoomServices(data.getRoomServices());
-        stats.put("roomServices", roomServices);
-
-        int inventoryItems = importInventoryItems(data.getInventoryItems());
-        stats.put("inventoryItems", inventoryItems);
-
-        int inventoryTransactions = importInventoryTransactions(data.getInventoryTransactions());
-        stats.put("inventoryTransactions", inventoryTransactions);
-
-        int serviceCatalog = importServiceCatalog(data.getServiceCatalog());
-        stats.put("serviceCatalog", serviceCatalog);
-
-        int contracts = importContracts(data.getContracts());
-        stats.put("contracts", contracts);
-
-        importContractTenants(data.getContractTenants());
-
-        int invoices = importInvoices(data.getInvoices());
-        stats.put("invoices", invoices);
-
-        int invoiceItems = importInvoiceItems(data.getInvoiceItems());
-        stats.put("invoiceItems", invoiceItems);
-
-        int payments = importPayments(data.getPayments());
-        stats.put("payments", payments);
-
-        int guestCharges = importGuestServiceCharges(data.getGuestServiceCharges());
-        stats.put("guestServiceCharges", guestCharges);
-
-        int monthlyExpenses = importMonthlyExpenses(data.getMonthlyExpenses());
-        stats.put("monthlyExpenses", monthlyExpenses);
-
-        int housekeepingTasks = importHousekeepingTasks(data.getHousekeepingTasks());
-        stats.put("housekeepingTasks", housekeepingTasks);
-
-        int catalogRecipes = importServiceCatalogRecipes(data.getServiceCatalogRecipes());
-        stats.put("serviceCatalogRecipes", catalogRecipes);
+        if (!warnings.isEmpty()) stats.put("warnings", warnings);
+        if (!errors.isEmpty()) stats.put("errors", errors);
 
         return stats;
+    }
+
+    private int safeImport(String name, java.util.function.Supplier<Integer> importFn, List<String> errors) {
+        try {
+            return importFn.get();
+        } catch (Exception e) {
+            String msg = name + ": " + (e.getMessage() != null ? e.getMessage().substring(0, Math.min(e.getMessage().length(), 150)) : "Unknown error");
+            errors.add(msg);
+            return 0;
+        }
     }
 
     private void clearAllData() {

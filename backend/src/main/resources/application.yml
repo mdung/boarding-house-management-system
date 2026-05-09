@@ -7,6 +7,11 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
   
   jpa:
     hibernate:
@@ -15,7 +20,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false
   
   jackson:
     serialization:
@@ -40,6 +45,10 @@ server:
   port: 8080
   servlet:
     context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain
+    min-response-size: 1024
 
 jwt:
   secret: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
@@ -53,6 +62,6 @@ backup:
 
 logging:
   level:
-    com.boardinghouse: DEBUG
-    org.springframework.security: DEBUG
+    com.boardinghouse: ${LOG_LEVEL:INFO}
+    org.springframework.security: WARN
 
