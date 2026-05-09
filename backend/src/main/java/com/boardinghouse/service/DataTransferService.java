@@ -389,6 +389,7 @@ public class DataTransferService {
         jdbcTemplate.execute("DELETE FROM inventory_items");
         jdbcTemplate.execute("DELETE FROM service_types");
         jdbcTemplate.execute("DELETE FROM tenants");
+        jdbcTemplate.execute("DELETE FROM room_photos");
         jdbcTemplate.execute("DELETE FROM rooms");
         jdbcTemplate.execute("DELETE FROM boarding_houses");
         jdbcTemplate.execute("DELETE FROM user_permissions");
