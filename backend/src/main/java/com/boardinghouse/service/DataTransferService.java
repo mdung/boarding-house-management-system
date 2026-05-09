@@ -321,7 +321,6 @@ public class DataTransferService {
 
     // ─── IMPORT ──────────────────────────────────────────────────────────────
 
-    @Transactional
     public Map<String, Object> importAll(DataExportDto data) {
         Map<String, Object> stats = new LinkedHashMap<>();
         List<String> warnings = new ArrayList<>();
@@ -371,7 +370,8 @@ public class DataTransferService {
         }
     }
 
-    private void clearAllData() {
+    @Transactional
+    public void clearAllData() {
         // Xóa theo thứ tự FK ngược lại
         jdbcTemplate.execute("DELETE FROM audit_logs");
         jdbcTemplate.execute("DELETE FROM housekeeping_tasks");
@@ -535,18 +535,25 @@ public class DataTransferService {
 
     private int importContracts(List<DataExportDto.ContractExport> list) {
         if (list == null) return 0;
+        int count = 0;
         for (DataExportDto.ContractExport e : list) {
-            jdbcTemplate.update(
-                "INSERT INTO contracts (id, code, room_id, main_tenant_id, start_date, end_date, deposit, monthly_rent, daily_rate, status, billing_cycle, termination_reason, termination_date, room_released) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                e.getId(), e.getCode(), e.getRoomId(), e.getMainTenantId(),
-                e.getStartDate(), e.getEndDate(), e.getDeposit(),
-                e.getMonthlyRent(), e.getDailyRate(), e.getStatus(),
-                e.getBillingCycle(), e.getTerminationReason(),
-                e.getTerminationDate(), e.getRoomReleased()
-            );
+            try {
+                jdbcTemplate.update(
+                    "INSERT INTO contracts (id, code, room_id, main_tenant_id, start_date, end_date, deposit, monthly_rent, daily_rate, status, billing_cycle, termination_reason, termination_date, room_released) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    e.getId(), e.getCode(), e.getRoomId(), e.getMainTenantId(),
+                    e.getStartDate(), e.getEndDate(), e.getDeposit(),
+                    e.getMonthlyRent(), e.getDailyRate(),
+                    e.getStatus() != null ? e.getStatus() : "ACTIVE",
+                    e.getBillingCycle() != null ? e.getBillingCycle() : "MONTHLY",
+                    e.getTerminationReason(),
+                    e.getTerminationDate(),
+                    e.getRoomReleased() != null ? e.getRoomReleased() : false
+                );
+                count++;
+            } catch (Exception ex) { /* skip row with FK or data error */ }
         }
         resetSequence("contracts", list.stream().mapToLong(DataExportDto.ContractExport::getId).max().orElse(0));
-        return list.size();
+        return count;
     }
 
     private void importContractTenants(List<DataExportDto.ContractTenantExport> list) {
@@ -561,16 +568,21 @@ public class DataTransferService {
 
     private int importInvoices(List<DataExportDto.InvoiceExport> list) {
         if (list == null) return 0;
+        int count = 0;
         for (DataExportDto.InvoiceExport e : list) {
-            jdbcTemplate.update(
-                "INSERT INTO invoices (id, code, contract_id, room_id, period_month, period_year, total_amount, status, due_date, created_date) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                e.getId(), e.getCode(), e.getContractId(), e.getRoomId(),
-                e.getPeriodMonth(), e.getPeriodYear(), e.getTotalAmount(),
-                e.getStatus(), e.getDueDate(), e.getCreatedDate()
-            );
+            try {
+                jdbcTemplate.update(
+                    "INSERT INTO invoices (id, code, contract_id, room_id, period_month, period_year, total_amount, status, due_date, created_date) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    e.getId(), e.getCode(), e.getContractId(), e.getRoomId(),
+                    e.getPeriodMonth(), e.getPeriodYear(), e.getTotalAmount(),
+                    e.getStatus() != null ? e.getStatus() : "UNPAID",
+                    e.getDueDate(), e.getCreatedDate()
+                );
+                count++;
+            } catch (Exception ex) { /* skip row with FK error */ }
         }
         resetSequence("invoices", list.stream().mapToLong(DataExportDto.InvoiceExport::getId).max().orElse(0));
-        return list.size();
+        return count;
     }
 
     private int importInvoiceItems(List<DataExportDto.InvoiceItemExport> list) {
@@ -589,44 +601,56 @@ public class DataTransferService {
 
     private int importPayments(List<DataExportDto.PaymentExport> list) {
         if (list == null) return 0;
+        int count = 0;
         for (DataExportDto.PaymentExport e : list) {
-            jdbcTemplate.update(
-                "INSERT INTO payments (id, invoice_id, paid_amount, payment_date, method, note, transaction_code) VALUES (?,?,?,?,?,?,?)",
-                e.getId(), e.getInvoiceId(), e.getPaidAmount(),
-                e.getPaymentDate(), e.getMethod(), e.getNote(), e.getTransactionCode()
-            );
+            try {
+                jdbcTemplate.update(
+                    "INSERT INTO payments (id, invoice_id, paid_amount, payment_date, method, note, transaction_code) VALUES (?,?,?,?,?,?,?)",
+                    e.getId(), e.getInvoiceId(), e.getPaidAmount(),
+                    e.getPaymentDate(), e.getMethod(), e.getNote(), e.getTransactionCode()
+                );
+                count++;
+            } catch (Exception ex) { /* skip row with FK error */ }
         }
         resetSequence("payments", list.stream().mapToLong(DataExportDto.PaymentExport::getId).max().orElse(0));
-        return list.size();
+        return count;
     }
 
     private int importGuestServiceCharges(List<DataExportDto.GuestServiceChargeExport> list) {
         if (list == null) return 0;
+        int count = 0;
         for (DataExportDto.GuestServiceChargeExport e : list) {
-            jdbcTemplate.update(
-                "INSERT INTO guest_service_charges (id, contract_id, room_id, charge_date, inventory_item_id, description, quantity, unit_price, amount, note, created_date) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                e.getId(), e.getContractId(), e.getRoomId(), e.getChargeDate(),
-                e.getInventoryItemId(), e.getDescription(),
-                e.getQuantity(), e.getUnitPrice(), e.getAmount(),
-                e.getNote(), e.getCreatedDate()
-            );
+            try {
+                jdbcTemplate.update(
+                    "INSERT INTO guest_service_charges (id, contract_id, room_id, charge_date, inventory_item_id, description, quantity, unit_price, amount, note, created_date) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    e.getId(), e.getContractId(), e.getRoomId(), e.getChargeDate(),
+                    e.getInventoryItemId(), e.getDescription(),
+                    e.getQuantity(), e.getUnitPrice(), e.getAmount(),
+                    e.getNote(), e.getCreatedDate()
+                );
+                count++;
+            } catch (Exception ex) { /* skip row with FK error */ }
         }
         resetSequence("guest_service_charges", list.stream().mapToLong(DataExportDto.GuestServiceChargeExport::getId).max().orElse(0));
-        return list.size();
+        return count;
     }
 
     private int importMonthlyExpenses(List<DataExportDto.MonthlyExpenseExport> list) {
         if (list == null) return 0;
+        int count = 0;
         for (DataExportDto.MonthlyExpenseExport e : list) {
-            jdbcTemplate.update(
-                "INSERT INTO monthly_expenses (id, boarding_house_id, month, year, category, description, amount, note, created_date) VALUES (?,?,?,?,?,?,?,?,?)",
-                e.getId(), e.getBoardingHouseId(), e.getMonth(), e.getYear(),
-                e.getCategory(), e.getDescription(), e.getAmount(),
-                e.getNote(), e.getCreatedDate()
-            );
+            try {
+                jdbcTemplate.update(
+                    "INSERT INTO monthly_expenses (id, boarding_house_id, month, year, category, description, amount, note, created_date) VALUES (?,?,?,?,?,?,?,?,?)",
+                    e.getId(), e.getBoardingHouseId(), e.getMonth(), e.getYear(),
+                    e.getCategory(), e.getDescription(), e.getAmount(),
+                    e.getNote(), e.getCreatedDate()
+                );
+                count++;
+            } catch (Exception ex) { /* skip row */ }
         }
         resetSequence("monthly_expenses", list.stream().mapToLong(DataExportDto.MonthlyExpenseExport::getId).max().orElse(0));
-        return list.size();
+        return count;
     }
 
     private int importHousekeepingTasks(List<DataExportDto.HousekeepingTaskExport> list) {
@@ -646,14 +670,18 @@ public class DataTransferService {
 
     private int importServiceCatalogRecipes(List<DataExportDto.ServiceCatalogRecipeExport> list) {
         if (list == null) return 0;
+        int count = 0;
         for (DataExportDto.ServiceCatalogRecipeExport e : list) {
-            jdbcTemplate.update(
-                "INSERT INTO service_catalog_recipes (id, catalog_id, inventory_item_id, quantity_per_unit) VALUES (?,?,?,?)",
-                e.getId(), e.getCatalogId(), e.getInventoryItemId(), e.getQuantityPerUnit()
-            );
+            try {
+                jdbcTemplate.update(
+                    "INSERT INTO service_catalog_recipes (id, catalog_id, inventory_item_id, quantity_per_unit) VALUES (?,?,?,?)",
+                    e.getId(), e.getCatalogId(), e.getInventoryItemId(), e.getQuantityPerUnit()
+                );
+                count++;
+            } catch (Exception ex) { /* skip row */ }
         }
         resetSequence("service_catalog_recipes", list.stream().mapToLong(DataExportDto.ServiceCatalogRecipeExport::getId).max().orElse(0));
-        return list.size();
+        return count;
     }
 
     /**
