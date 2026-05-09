@@ -223,7 +223,7 @@ const SyncFromLocal = () => {
           <ul className="list-disc list-inside space-y-0.5">
             <li>Máy local phải đang chạy backend (Spring Boot) trên port {port}</li>
             <li>Toàn bộ dữ liệu trên server sẽ bị <strong>thay thế hoàn toàn</strong> bằng dữ liệu local</li>
-            <li>Đảm bảo máy local và server cùng mạng hoặc IP public accessible</li>
+            <li>Trình duyệt của bạn phải truy cập được IP local (cùng mạng WiFi hoặc dùng ngrok/IP public)</li>
           </ul>
         </div>
       </div>
