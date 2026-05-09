@@ -331,21 +331,43 @@ const DataTransfer = () => {
         </div>
 
         {scanResult && (
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3 text-sm">
-            <p className="font-medium text-slate-700">Kết quả quét:</p>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4 text-sm">
+            <p className="font-semibold text-slate-700">Kết quả quét:</p>
+
+            {/* Service Catalog */}
             <div className="space-y-2">
-              <div>
-                <span className="font-medium">Service Catalog:</span>{' '}
-                {scanResult.serviceCatalog?.length > 0
-                  ? <span className="text-red-600">{scanResult.serviceCatalog.length} nhóm trùng lặp</span>
-                  : <span className="text-green-600">Không có trùng lặp ✓</span>}
-              </div>
-              <div>
-                <span className="font-medium">Inventory Items:</span>{' '}
-                {scanResult.inventoryItems?.length > 0
-                  ? <span className="text-red-600">{scanResult.inventoryItems.length} nhóm trùng lặp</span>
-                  : <span className="text-green-600">Không có trùng lặp ✓</span>}
-              </div>
+              <p className="font-medium text-slate-600">📋 Service Catalog:</p>
+              {scanResult.serviceCatalog?.length > 0 ? (
+                <div className="space-y-1.5 pl-4">
+                  {scanResult.serviceCatalog.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 text-red-700 bg-red-50 px-3 py-1.5 rounded-lg">
+                      <span className="font-medium">{item.name}</span>
+                      <span className="text-red-400">×{item.cnt}</span>
+                      <span className="text-xs bg-red-100 px-2 py-0.5 rounded-full">{item.boardingHouseName || 'Global'}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="pl-4 text-green-600">Không có trùng lặp ✓</p>
+              )}
+            </div>
+
+            {/* Inventory */}
+            <div className="space-y-2">
+              <p className="font-medium text-slate-600">📦 Inventory Items:</p>
+              {scanResult.inventoryItems?.length > 0 ? (
+                <div className="space-y-1.5 pl-4">
+                  {scanResult.inventoryItems.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 text-red-700 bg-red-50 px-3 py-1.5 rounded-lg">
+                      <span className="font-medium">{item.name}</span>
+                      <span className="text-red-400">×{item.cnt}</span>
+                      <span className="text-xs bg-red-100 px-2 py-0.5 rounded-full">{item.boardingHouseName || 'Global'}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="pl-4 text-green-600">Không có trùng lặp ✓</p>
+              )}
             </div>
           </div>
         )}
@@ -420,16 +442,38 @@ const DataTransfer = () => {
       {/* Dedup confirm modal */}
       {showRemoveConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4 animate-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-red-100 rounded-lg">
                 <Trash2 className="w-6 h-6 text-red-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa Duplicates</h3>
             </div>
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-              <p>Bản gốc (ID nhỏ nhất) sẽ được giữ lại. Các FK tham chiếu sẽ được chuyển sang bản gốc trước khi xóa bản trùng.</p>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm space-y-2 max-h-60 overflow-y-auto">
+              <p className="font-medium text-slate-700">Sẽ xóa các bản trùng sau (giữ lại bản gốc):</p>
+              {scanResult?.serviceCatalog?.map((item, i) => (
+                <div key={`sc-${i}`} className="flex items-center gap-2 text-slate-700">
+                  <span>📋</span>
+                  <span className="font-medium">{item.name}</span>
+                  <span className="text-slate-400">({item.cnt - 1} bản trùng)</span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full ml-auto">{item.boardingHouseName}</span>
+                </div>
+              ))}
+              {scanResult?.inventoryItems?.map((item, i) => (
+                <div key={`inv-${i}`} className="flex items-center gap-2 text-slate-700">
+                  <span>📦</span>
+                  <span className="font-medium">{item.name}</span>
+                  <span className="text-slate-400">({item.cnt - 1} bản trùng)</span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full ml-auto">{item.boardingHouseName}</span>
+                </div>
+              ))}
             </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+              <p>Bản gốc (ID nhỏ nhất) sẽ được giữ lại. Các FK tham chiếu sẽ được chuyển sang bản gốc trước khi xóa.</p>
+            </div>
+
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowRemoveConfirm(false)} className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Hủy</button>
               <button onClick={handleRemoveDuplicates} className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">Xác nhận xóa</button>
