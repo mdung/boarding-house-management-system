@@ -139,11 +139,20 @@ const Contracts = () => {
   )
 
   // Filter rooms and tenants for modal dropdowns by current property
-  const filteredRooms = propertyId !== 'ALL'
-    ? rooms.filter(r => r.boardingHouseId?.toString() === propertyId)
-    : allowedProperties.length > 0
-      ? rooms.filter(r => allowedProperties.some(p => String(p.id) === String(r.boardingHouseId)))
-      : rooms
+  // Only show AVAILABLE rooms for new contracts (editing shows current room regardless)
+  const filteredRooms = (() => {
+    let r = rooms
+    if (propertyId !== 'ALL') {
+      r = r.filter(rm => rm.boardingHouseId?.toString() === propertyId)
+    } else if (allowedProperties.length > 0) {
+      r = r.filter(rm => allowedProperties.some(p => String(p.id) === String(rm.boardingHouseId)))
+    }
+    // For new contracts, only show available rooms. For editing, include the current room too.
+    if (!editing) {
+      r = r.filter(rm => rm.status === 'AVAILABLE')
+    }
+    return r
+  })()
 
   // Tenants: show all (tenant can be from any property, contract links them to a room)
   // But filter by tenants who have active contracts in allowed properties, or no active contract

@@ -55,7 +55,9 @@ public class ContractService {
         for (Contract c : activeContracts) {
             if (c.getEndDate().isBefore(today)) {
                 c.setStatus(ContractStatus.EXPIRED);
+                c.setRoomReleased(true);
                 repository.save(c);
+                freeRoomIfNoOtherActive(c);
             } else if (c.getEndDate().equals(today) && now.isAfter(noon)) {
                 c.setStatus(ContractStatus.EXPIRED);
                 c.setRoomReleased(true);
