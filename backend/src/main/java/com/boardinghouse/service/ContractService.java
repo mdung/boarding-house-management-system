@@ -97,23 +97,33 @@ public class ContractService {
         // Set end date to today if checking out early
         java.time.LocalDate today = java.time.LocalDate.now();
         if (contract.getEndDate().isAfter(today)) {
-            // Early checkout: set end to today, but ensure at least 1 night
             if (!today.isAfter(contract.getStartDate())) {
                 contract.setEndDate(contract.getStartDate().plusDays(1));
             } else {
                 contract.setEndDate(today);
             }
         }
+
+        // Mark contract as expired and room released
+        contract.setStatus(ContractStatus.EXPIRED);
+        contract.setRoomReleased(true);
         repository.save(contract);
 
-        // Free the room so it can be assigned to new guests
+        // Free the room immediately
         Room room = contract.getRoom();
         room.setStatus(RoomStatus.AVAILABLE);
         roomRepository.save(room);
 
-        // Mark this specific contract as room released
-        contract.setRoomReleased(true);
-        return toDto(repository.save(contract));
+        // Double-check: if another active contract exists on this room, keep it OCCUPIED
+        boolean otherActive = repository.findByRoomId(room.getId()).stream()
+                .anyMatch(other -> other.getStatus() == ContractStatus.ACTIVE
+                        && !other.getId().equals(contract.getId()));
+        if (otherActive) {
+            room.setStatus(RoomStatus.OCCUPIED);
+            roomRepository.save(room);
+        }
+
+        return toDto(contract);
     }
 
     public List<ContractDto> getAll() {
