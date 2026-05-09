@@ -35,12 +35,31 @@ public class RoomService {
 
     public List<RoomDto> getAll() {
         contractService.autoExpireContracts();
+        syncRoomStatuses();
         return repository.findAll().stream().map(this::toDto).collect(Collectors.toList());
     }
 
     public List<RoomDto> getByBoardingHouse(Long boardingHouseId) {
         contractService.autoExpireContracts();
+        syncRoomStatuses();
         return repository.findByBoardingHouseId(boardingHouseId).stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    /**
+     * Safety net: if a room is OCCUPIED but has no ACTIVE contract, force it to AVAILABLE.
+     * This handles edge cases where checkout/expire didn't properly update room status.
+     */
+    @Transactional
+    public void syncRoomStatuses() {
+        List<Room> occupiedRooms = repository.findByStatus(RoomStatus.OCCUPIED);
+        for (Room room : occupiedRooms) {
+            boolean hasActiveContract = contractRepository.findByRoomId(room.getId()).stream()
+                    .anyMatch(c -> c.getStatus() == com.boardinghouse.entity.ContractStatus.ACTIVE);
+            if (!hasActiveContract) {
+                room.setStatus(RoomStatus.AVAILABLE);
+                repository.save(room);
+            }
+        }
     }
 
     public RoomDto getById(Long id) {
