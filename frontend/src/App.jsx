@@ -30,6 +30,7 @@ import Calendar from './pages/admin/Calendar'
 import StaffManagement from './pages/admin/StaffManagement'
 import ActivityLogs from './pages/admin/ActivityLogs'
 import DataTransfer from './pages/admin/DataTransfer'
+import SyncFromLocal from './pages/admin/SyncFromLocal'
 import BackupHistory from './pages/admin/BackupHistory'
 import RoomMatrix from './pages/admin/RoomMatrix'
 import MonthlyExpenses from './pages/admin/MonthlyExpenses'
@@ -73,6 +74,7 @@ function App() {
             <Route path="staff" element={<StaffManagement />} />
             <Route path="activity-logs" element={<ActivityLogs />} />
             <Route path="data-transfer" element={<DataTransfer />} />
+            <Route path="sync-local" element={<SyncFromLocal />} />
             <Route path="backup-history" element={<BackupHistory />} />
             <Route path="housekeeping" element={<Housekeeping />} />
             <Route path="profile" element={<Profile />} />
