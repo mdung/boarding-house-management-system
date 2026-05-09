@@ -46,23 +46,23 @@ public class DeduplicationService {
     // ─── Service Catalog ─────────────────────────────────────────────────────
 
     private List<Map<String, Object>> scanServiceCatalogDuplicates() {
-        // Duplicates = same name + category + boarding_house_id (or both null)
+        // Duplicates = same name + category (ignore boarding_house_id difference)
         String sql = """
-            SELECT name, category, boarding_house_id, COUNT(*) as cnt,
+            SELECT name, category, COUNT(*) as cnt,
                    MIN(id) as keep_id
             FROM service_catalog
-            GROUP BY name, category, boarding_house_id
+            GROUP BY name, category
             HAVING COUNT(*) > 1
             """;
         return jdbc.queryForList(sql);
     }
 
     private int deduplicateServiceCatalog() {
-        // Find duplicate groups
+        // Find duplicate groups by name + category (regardless of boarding_house_id)
         String sql = """
-            SELECT name, category, boarding_house_id
+            SELECT name, category
             FROM service_catalog
-            GROUP BY name, category, boarding_house_id
+            GROUP BY name, category
             HAVING COUNT(*) > 1
             """;
         List<Map<String, Object>> groups = jdbc.queryForList(sql);
@@ -71,19 +71,10 @@ public class DeduplicationService {
         for (Map<String, Object> group : groups) {
             String name = (String) group.get("name");
             String category = (String) group.get("category");
-            Long bhId = group.get("boarding_house_id") != null 
-                    ? ((Number) group.get("boarding_house_id")).longValue() : null;
 
             // Get all IDs in this group, ordered by ID (keep first)
-            String idsSql;
-            List<Long> ids;
-            if (bhId != null) {
-                idsSql = "SELECT id FROM service_catalog WHERE name = ? AND category = ? AND boarding_house_id = ? ORDER BY id";
-                ids = jdbc.queryForList(idsSql, Long.class, name, category, bhId);
-            } else {
-                idsSql = "SELECT id FROM service_catalog WHERE name = ? AND category = ? AND boarding_house_id IS NULL ORDER BY id";
-                ids = jdbc.queryForList(idsSql, Long.class, name, category);
-            }
+            String idsSql = "SELECT id FROM service_catalog WHERE name = ? AND category = ? ORDER BY id";
+            List<Long> ids = jdbc.queryForList(idsSql, Long.class, name, category);
 
             if (ids.size() <= 1) continue;
 
@@ -111,12 +102,12 @@ public class DeduplicationService {
     // ─── Inventory Items ─────────────────────────────────────────────────────
 
     private List<Map<String, Object>> scanInventoryItemDuplicates() {
-        // Duplicates = same name + boarding_house_id (SKU should be unique but name might repeat)
+        // Duplicates = same name (regardless of boarding_house_id)
         String sql = """
-            SELECT name, boarding_house_id, COUNT(*) as cnt,
+            SELECT name, COUNT(*) as cnt,
                    MIN(id) as keep_id
             FROM inventory_items
-            GROUP BY name, boarding_house_id
+            GROUP BY name
             HAVING COUNT(*) > 1
             """;
         return jdbc.queryForList(sql);
@@ -124,9 +115,9 @@ public class DeduplicationService {
 
     private int deduplicateInventoryItems() {
         String sql = """
-            SELECT name, boarding_house_id
+            SELECT name
             FROM inventory_items
-            GROUP BY name, boarding_house_id
+            GROUP BY name
             HAVING COUNT(*) > 1
             """;
         List<Map<String, Object>> groups = jdbc.queryForList(sql);
@@ -134,18 +125,9 @@ public class DeduplicationService {
         int totalRemoved = 0;
         for (Map<String, Object> group : groups) {
             String name = (String) group.get("name");
-            Long bhId = group.get("boarding_house_id") != null
-                    ? ((Number) group.get("boarding_house_id")).longValue() : null;
 
-            String idsSql;
-            List<Long> ids;
-            if (bhId != null) {
-                idsSql = "SELECT id FROM inventory_items WHERE name = ? AND boarding_house_id = ? ORDER BY id";
-                ids = jdbc.queryForList(idsSql, Long.class, name, bhId);
-            } else {
-                idsSql = "SELECT id FROM inventory_items WHERE name = ? AND boarding_house_id IS NULL ORDER BY id";
-                ids = jdbc.queryForList(idsSql, Long.class, name);
-            }
+            String idsSql = "SELECT id FROM inventory_items WHERE name = ? ORDER BY id";
+            List<Long> ids = jdbc.queryForList(idsSql, Long.class, name);
 
             if (ids.size() <= 1) continue;
 
